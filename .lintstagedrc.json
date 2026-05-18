@@ -1,0 +1,10 @@
+{
+  "backend/src/**/*.{ts,tsx}": [
+    "eslint --fix",
+    "vitest related --run --config backend/vitest.config.ts"
+  ],
+  "frontend/**/*.{ts,tsx}": [
+    "eslint --fix",
+    "vitest related --run --config frontend/vitest.config.ts"
+  ]
+}
