@@ -1,0 +1,16 @@
+model Check {
+  id String @id @default(cuid())
+
+  serviceId    String
+  status       StatusEnum
+  statusCode   Int?
+  responseTime Int?
+  error        String?
+  service      Service    @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  checkedAt DateTime @default(now())
+
+  @@index([serviceId])
+  @@index([checkedAt])
+  @@index([status])
+}

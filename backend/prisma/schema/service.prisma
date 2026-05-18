@@ -1,0 +1,24 @@
+model Service {
+  id String @id @default(cuid())
+
+  name          String
+  url           String
+  method        Method      @default(HEAD)
+  checkInterval Int         @default(10) // minutes
+  timeout       Int         @default(5000) // milliseconds
+  lastStatus    StatusEnum?
+
+  clientId String
+  checks   Check[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+}
+
+enum Method {
+  HEAD
+  GET
+  POST
+}
