@@ -7,29 +7,39 @@ import globals from 'globals'
 export default tseslint.config(
   {
     ignores: [
-      'node_modules',
-      'dist',
       'build',
       'coverage',
-      '**/eslint.config.mjs',
-      'commitlint.config.js',
+      'dist',
+      '.next',
+      'node_modules',
+      'eslint.config.mjs',
+      '**/vitest.config.mts',
+      '**/vitest.setup.ts',
+      'vitest.workspace.ts',
+      'prisma.config.ts',
     ],
   },
+
+  {
+    files: ['**/vitest.config.mts', '**/vitest.setup.ts', 'vitest.workspace.ts', '*.config.ts'],
+    languageOptions: { parserOptions: { projectService: false } },
+  },
+
+  {
+    files: ['**/*.ts', '**/*.tsx'],
+    languageOptions: { parserOptions: { projectService: true } },
+  },
+
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   eslintPluginPrettierRecommended,
+
   {
     languageOptions: {
-      globals: {
-        ...globals.es2021,
-      },
-      parserOptions: {
-        projectService: true,
-      },
+      globals: { ...globals.es2021 },
     },
-    plugins: {
-      import: importPlugin,
-    },
+    plugins: { import: importPlugin },
+
     rules: {
       // typescript
       '@typescript-eslint/no-explicit-any': 'error',
@@ -61,10 +71,19 @@ export default tseslint.config(
           groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
           'newlines-between': 'always',
           alphabetize: { order: 'asc', caseInsensitive: true },
+          pathGroups: [
+            {
+              pattern: '@/**',
+              group: 'internal',
+              position: 'before',
+            },
+          ],
+          pathGroupsExcludedImportTypes: ['builtin'],
         },
       ],
       'import/no-duplicates': 'error',
     },
+
     settings: {
       'import/resolver': {
         typescript: {

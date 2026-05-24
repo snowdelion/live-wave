@@ -3,13 +3,14 @@ import globals from 'globals'
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import { settings } from 'cluster'
-import { ignores } from 'eslint-plugin-prettier/recommended'
+import ignores from 'eslint-plugin-prettier/recommended'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 export default [
   ...baseConfig,
+
   {
     languageOptions: {
       globals: {
@@ -29,7 +30,26 @@ export default [
         },
       },
     },
-    ignores: ['prisma.config.ts'],
+    ignores: [
+      'vitest.config.mts',
+      'vitest.setup.ts',
+      'dist',
+      'node_modules',
+      'build',
+      'coverage',
+      'commitlint.config.js',
+      'eslint.config.mjs',
+      'prisma.config.ts',
+    ],
+  },
+
+  {
+    files: ['vitest.config.mts', 'vitest.setup.ts', 'prisma.config.ts'],
+    languageOptions: {
+      parserOptions: {
+        projectService: false,
+      },
+    },
   },
 
   // nestjs
@@ -40,16 +60,13 @@ export default [
       '@typescript-eslint/no-unsafe-assignment': 'off',
     },
   },
-  // tests
+
   {
-    files: ['**/*.spec.ts', '**/*.test.ts', '**/test/**/*.ts'],
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-unsafe-argument': 'off',
-      '@typescript-eslint/no-unsafe-assignment': 'off',
-      '@typescript-eslint/no-floating-promises': 'off',
-      '@typescript-eslint/explicit-function-return-type': 'off',
-      'import/no-duplicates': 'off',
+    files: ['vitest.config.mts', 'vitest.setup.ts'],
+    languageOptions: {
+      parserOptions: {
+        projectService: false,
+      },
     },
   },
 ]

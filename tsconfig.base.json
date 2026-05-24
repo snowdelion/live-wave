@@ -3,11 +3,10 @@
     "target": "ES2023",
     "module": "ESNext",
     "paths": {
-      "@/backend/*": ["./backend/src/*"],
+      "@/backend/*": ["./backend/*"],
       "@/frontend/*": ["./frontend/*"]
     },
     "moduleResolution": "bundler",
-    "ignoreDeprecations": "6.0",
     "esModuleInterop": true,
     "isolatedModules": true,
     "declaration": true,
@@ -23,5 +22,15 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false
   },
-  "exclude": ["node_modules", "dist", "build", ".next"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    ".next",
+    "**/vitest.config.mts",
+    "**/vitest.setup.ts",
+    "vitest.workspace.ts",
+    "eslint.config.mjs",
+    "**/prisma.config.ts"
+  ]
 }

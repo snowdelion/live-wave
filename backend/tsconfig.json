@@ -5,8 +5,16 @@
     "moduleResolution": "node",
     "outDir": "./dist",
     "rootDir": "./src",
-    "incremental": true
+    "incremental": true,
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "noEmit": false,
+    "emitDeclarationOnly": false,
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "@/backend/*": ["./src/*"]
+    },
+    "types": ["vitest/globals"]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "test"]
+  "exclude": ["node_modules", "dist", "test", "prisma.config.ts"]
 }
