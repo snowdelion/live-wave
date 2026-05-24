@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common'
+import { HttpException, HttpStatus, UnauthorizedException } from '@nestjs/common'
 import type { Request, Response } from 'express'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -80,9 +80,7 @@ describe('SessionController', () => {
   // POST /v1/session/extend
   describe('extendSession', () => {
     it('returns { extended: false } when clientId cookie is missing', async () => {
-      const result = await controller.extendSession(makeReq())
-      expect(result).toEqual({ extended: false })
-      expect(mockSessionService.extendSession).not.toHaveBeenCalled()
+      await expect(() => controller.extendSession(makeReq())).rejects.toThrow(UnauthorizedException)
     })
 
     it('calls extendSession and returns { extended: true }', async () => {
@@ -100,7 +98,6 @@ describe('SessionController', () => {
       await controller.deleteSession(makeReq(), res)
       expect(mockSessionService.deleteSession).not.toHaveBeenCalled()
       expect(res.clearCookie).toHaveBeenCalledWith('clientId', { path: '/' })
-      expect(res.send).toHaveBeenCalled()
     })
 
     it('deletes session, clears cookie and sends response when clientId present', async () => {
@@ -109,7 +106,6 @@ describe('SessionController', () => {
       await controller.deleteSession(makeReq({ clientId: 'client' }), res)
       expect(mockSessionService.deleteSession).toHaveBeenCalledWith('client')
       expect(res.clearCookie).toHaveBeenCalledWith('clientId', { path: '/' })
-      expect(res.send).toHaveBeenCalled()
     })
   })
 

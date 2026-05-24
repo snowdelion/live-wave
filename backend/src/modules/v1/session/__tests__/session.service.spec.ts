@@ -1,5 +1,6 @@
-import { BadRequestException } from '@nestjs/common'
+import { UnauthorizedException } from '@nestjs/common'
 import type { Mocked } from 'vitest'
+import { mockDeep } from 'vitest-mock-extended'
 
 import type { PrismaService } from '@/backend/shared/prisma/prisma.service'
 import { REDIS_KEYS } from '@/backend/shared/redis/redis-keys.constants'
@@ -13,11 +14,7 @@ const mockRedis = {
   del: vi.fn(),
 } as unknown as Mocked<RedisService>
 
-const mockPrisma = {
-  service: {
-    deleteMany: vi.fn(),
-  },
-} as unknown as Mocked<PrismaService>
+const mockPrisma = mockDeep<PrismaService>()
 
 const TTL = 7 * 24 * 60 * 60
 
@@ -271,7 +268,7 @@ describe('updateNotificationSettings', () => {
     mockRedis.get.mockResolvedValue(null)
 
     await expect(service.updateNotificationSettings('unknown', true)).rejects.toThrow(
-      BadRequestException,
+      UnauthorizedException,
     )
   })
 })

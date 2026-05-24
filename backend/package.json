@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development nest start --watch",
     "dev:debug": "cross-env NODE_ENV=development nest start --debug --watch",
-    "build": "cross-env NODE_ENV=production prisma generate && npm run validate && nest build",
-    "start": "cross-env NODE_ENV=production node -r ./register.js dist/main",
+    "build": "cross-env NODE_ENV=production prisma generate && pnpm run validate && nest build",
+    "start": "cross-env NODE_ENV=production node dist/main",
     "generate": "dotenv -e .env.local -- prisma generate --schema=./prisma/schema",
     "migrate": "dotenv -e .env.local -- prisma migrate dev --schema=./prisma/schema",
     "studio": "prisma studio",
@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit",
     "format:check": "prettier .",
     "lint": "eslint .",
-    "validate": "npm run typecheck && npm run format && npm run lint:fix",
+    "validate": "pnpm run typecheck && pnpm run format && pnpm run lint:fix",
     "test": "cross-env NODE_ENV=test vitest",
     "test:run": "cross-env NODE_ENV=test vitest --watch",
     "test:cov": "cross-env NODE_ENV=test vitest --coverage"
@@ -51,6 +51,7 @@
     "@types/supertest": "^7.0.0",
     "dotenv-cli": "^11.0.0",
     "prisma": "^6.0.0",
-    "supertest": "^7.0.0"
+    "supertest": "^7.0.0",
+    "vitest-mock-extended": "^4.0.0"
   }
 }

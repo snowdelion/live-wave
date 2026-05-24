@@ -228,7 +228,13 @@ describe('SessionMiddleware', () => {
 
       await middleware.use(req as never, res as never, next)
 
-      expect(res.cookie).toHaveBeenCalledWith('clientId', MOCK_UUID)
+      expect(res.cookie).toHaveBeenCalledWith('clientId', MOCK_UUID, {
+        httpOnly: true,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: '/',
+        sameSite: 'lax',
+        secure: false,
+      })
     })
 
     it('should not call extendSession', async () => {
