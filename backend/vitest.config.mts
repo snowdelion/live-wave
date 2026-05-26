@@ -21,11 +21,13 @@ export default defineConfig({
       include: ['src/**/*.{ts,js}'],
       exclude: [
         '**/node_modules/**',
-        '**/*.{test,spec}.{ts,js,mts,mjs}',
         'vitest.config.mts',
         'vitest.setup.ts',
         '**/index.ts',
         '**/*.module.ts',
+        '**/types/**',
+        '**/*.{types,dto,test,spec,entity}.{ts,js,mts,mjs}',
+        '**/main.ts',
       ],
     },
 
