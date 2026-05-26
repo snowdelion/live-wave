@@ -12,6 +12,6 @@ import { SessionModule } from './session/session.module'
 })
 export class V1Module implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(SessionMiddleware).forRoutes('/api/*path')
+    consumer.apply(SessionMiddleware).forRoutes('*path')
   }
 }
