@@ -1,10 +1,6 @@
 {
   "backend/**/*.{ts,tsx}": [
-    "eslint --fix",
-    "pnpm --filter backend exec vitest related --run --config vitest.config.mts"
-  ],
-  "frontend/**/*.{ts,tsx}": [
-    "eslint --fix",
-    "pnpm --filter frontend exec vitest related --run --config vitest.config.mts"
+    "pnpm --filter backend lint:fix",
+    "cross-env NODE_ENV=test pnpm --filter backend exec vitest related --run --config vitest.config.mts"
   ]
 }

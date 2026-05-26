@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common'
 
 import { PrismaService } from '@/backend/shared/prisma/prisma.service'
-import { REDIS_KEYS } from '@/backend/shared/redis/redis-keys.constants'
+import { REDIS_KEYS } from '@/backend/shared/redis/redis.constants'
 import { RedisService } from '@/backend/shared/redis/redis.service'
 
 import { SessionData } from './types/session.types'

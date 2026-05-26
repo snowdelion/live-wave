@@ -4,3 +4,5 @@ export const REDIS_KEYS = {
   telegramToClient: (chatId: number | string) => `live-wave:telegram:chat-to-client:${chatId}`,
   telegramCode: (code: string) => `live-wave:telegram:code:${code}`,
 } as const
+
+export const REDIS_CLIENT = 'REDIS_CLIENT'

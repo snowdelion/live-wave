@@ -1,11 +1,13 @@
 import { Test, type TestingModule } from '@nestjs/testing'
 
+import { REDIS_CLIENT } from '../redis.constants'
 import { RedisService } from '../redis.service'
 
 const mockRedis = {
   set: vi.fn(),
   get: vi.fn(),
   del: vi.fn(),
+  ping: vi.fn(),
 }
 
 describe('RedisService', () => {
@@ -15,7 +17,7 @@ describe('RedisService', () => {
     vi.clearAllMocks()
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [RedisService, { provide: 'REDIS_CLIENT', useValue: mockRedis }],
+      providers: [RedisService, { provide: REDIS_CLIENT, useValue: mockRedis }],
     }).compile()
 
     service = module.get<RedisService>(RedisService)
@@ -69,6 +71,38 @@ describe('RedisService', () => {
 
       expect(mockRedis.del).toHaveBeenCalledOnce()
       expect(mockRedis.del).toHaveBeenCalledWith('key')
+    })
+  })
+
+  describe('ping', () => {
+    it('calls ping', async () => {
+      mockRedis.ping = vi.fn().mockResolvedValue('PONG')
+      await expect(service.ping()).resolves.toBeUndefined()
+      expect(mockRedis.ping).toHaveBeenCalledOnce()
+    })
+  })
+
+  describe('when redis throws', () => {
+    const setMessage = 'set failed'
+    const getMessage = 'get failed'
+    const delMessage = 'del failed'
+
+    beforeEach(() => {
+      mockRedis.set.mockRejectedValue(new Error(setMessage))
+      mockRedis.get.mockRejectedValue(new Error(getMessage))
+      mockRedis.del.mockRejectedValue(new Error(delMessage))
+    })
+
+    it('set throws an error', async () => {
+      await expect(service.set('key', 'value')).rejects.toThrow(`Redis set failed: ${setMessage}`)
+    })
+
+    it('get throws an error', async () => {
+      await expect(service.get('key')).rejects.toThrow(`Redis get failed: ${getMessage}`)
+    })
+
+    it('del throws an error', async () => {
+      await expect(service.del('key')).rejects.toThrow(`Redis del failed: ${delMessage}`)
     })
   })
 })

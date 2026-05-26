@@ -1,5 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common'
 
+import { HealthModule } from './health/health.module'
 import { SessionMiddleware } from './session/middleware/session.middleware'
 import { SessionModule } from './session/session.module'
 // import { TelegramModule } from './telegram/telegram.module'
@@ -7,6 +8,7 @@ import { SessionModule } from './session/session.module'
 @Module({
   imports: [
     SessionModule,
+    HealthModule,
     //  TelegramModule
   ],
 })
