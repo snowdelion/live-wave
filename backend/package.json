@@ -17,8 +17,8 @@
     "lint": "eslint .",
     "validate": "pnpm run typecheck && pnpm run format && pnpm run lint:fix",
     "test": "cross-env NODE_ENV=test vitest",
-    "test:run": "cross-env NODE_ENV=test vitest --watch",
-    "test:cov": "cross-env NODE_ENV=test vitest --coverage"
+    "test:run": "cross-env NODE_ENV=test vitest --no-watch",
+    "test:cov": "cross-env NODE_ENV=test vitest --coverage --no-watch"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.10",
