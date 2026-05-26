@@ -1,5 +1,6 @@
 import { Test, type TestingModule } from '@nestjs/testing'
 
+import { REDIS_CLIENT } from '../redis.constants'
 import { RedisService } from '../redis.service'
 
 const mockRedis = {
@@ -16,7 +17,7 @@ describe('RedisService', () => {
     vi.clearAllMocks()
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [RedisService, { provide: 'REDIS_CLIENT', useValue: mockRedis }],
+      providers: [RedisService, { provide: REDIS_CLIENT, useValue: mockRedis }],
     }).compile()
 
     service = module.get<RedisService>(RedisService)

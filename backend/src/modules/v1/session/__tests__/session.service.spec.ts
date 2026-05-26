@@ -3,7 +3,7 @@ import type { Mocked } from 'vitest'
 import { mockDeep } from 'vitest-mock-extended'
 
 import type { PrismaService } from '@/backend/shared/prisma/prisma.service'
-import { REDIS_KEYS } from '@/backend/shared/redis/redis-keys.constants'
+import { REDIS_KEYS } from '@/backend/shared/redis/redis.constants'
 import type { RedisService } from '@/backend/shared/redis/redis.service'
 
 import { SessionService } from '../session.service'

@@ -1,4 +1,4 @@
-import { REDIS_KEYS } from '../redis-keys.constants'
+import { REDIS_KEYS } from '../redis.constants'
 
 describe('REDIS_KEYS', () => {
   describe('session', () => {
