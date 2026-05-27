@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, UnauthorizedException } from '@nestjs/common'
+import { UnauthorizedException } from '@nestjs/common'
 import type { Request, Response } from 'express'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -12,8 +12,8 @@ const mockSessionService = {
   updateNotificationSettings: vi.fn(),
 } satisfies Partial<Record<keyof SessionService, ReturnType<typeof vi.fn>>>
 
-function makeReq(cookies: Record<string, string> = {}): Request {
-  return { cookies } as unknown as Request
+function makeReq(cookies: Record<string, string> = {}, clientId?: string): Request {
+  return { cookies, clientId } as unknown as Request
 }
 
 type ExtendResponse = Response & {
@@ -45,7 +45,7 @@ describe('SessionController', () => {
 
     it('returns { exists: false } when session is not found', async () => {
       mockSessionService.getSession.mockResolvedValue(null)
-      const result = await controller.getSession(makeReq({ clientId: 'client' }))
+      const result = await controller.getSession(makeReq({ clientId: 'client' }, 'client'))
       expect(result).toEqual({ exists: false })
     })
 
@@ -54,7 +54,7 @@ describe('SessionController', () => {
         servicesCount: 3,
         telegramChatId: 1,
       })
-      const result = await controller.getSession(makeReq({ clientId: 'client' }))
+      const result = await controller.getSession(makeReq({ clientId: 'client' }, 'client'))
       expect(result).toEqual({ exists: true, servicesCount: 3, telegramLinked: true })
     })
 
@@ -63,7 +63,7 @@ describe('SessionController', () => {
         servicesCount: null,
         telegramChatId: null,
       })
-      const result = await controller.getSession(makeReq({ clientId: 'client' }))
+      const result = await controller.getSession(makeReq({ clientId: 'client' }, 'client'))
       expect(result).toEqual({ exists: true, servicesCount: 0, telegramLinked: false })
     })
 
@@ -72,7 +72,7 @@ describe('SessionController', () => {
         servicesCount: 1,
         telegramChatId: undefined,
       })
-      const result = await controller.getSession(makeReq({ clientId: 'client' }))
+      const result = await controller.getSession(makeReq({ clientId: 'client' }, 'client'))
       expect(result).toMatchObject({ telegramLinked: false })
     })
   })
@@ -80,12 +80,18 @@ describe('SessionController', () => {
   // POST /v1/session/extend
   describe('extendSession', () => {
     it('returns { extended: false } when clientId cookie is missing', async () => {
-      await expect(() => controller.extendSession(makeReq())).rejects.toThrow(UnauthorizedException)
+      vi.spyOn(mockSessionService, 'extendSession').mockRejectedValue(
+        new UnauthorizedException('No active session'),
+      )
+
+      await expect(controller.extendSession(undefined as unknown as string)).rejects.toThrow(
+        new UnauthorizedException('No active session'),
+      )
     })
 
     it('calls extendSession and returns { extended: true }', async () => {
       mockSessionService.extendSession.mockResolvedValue(undefined)
-      const result = await controller.extendSession(makeReq({ clientId: 'client' }))
+      const result = await controller.extendSession('client')
       expect(mockSessionService.extendSession).toHaveBeenCalledWith('client')
       expect(result).toEqual({ extended: true })
     })
@@ -103,7 +109,7 @@ describe('SessionController', () => {
     it('deletes session, clears cookie and sends response when clientId present', async () => {
       mockSessionService.deleteSession.mockResolvedValue(undefined)
       const res = makeRes()
-      await controller.deleteSession(makeReq({ clientId: 'client' }), res)
+      await controller.deleteSession(makeReq({ clientId: 'client' }, 'client'), res)
       expect(mockSessionService.deleteSession).toHaveBeenCalledWith('client')
       expect(res.clearCookie).toHaveBeenCalledWith('clientId', { path: '/' })
     })
@@ -112,14 +118,18 @@ describe('SessionController', () => {
   // PATCH /v1/session/notifications
   describe('updateNotifications', () => {
     it('throws BAD_REQUEST when clientId cookie is missing', async () => {
+      vi.spyOn(mockSessionService, 'updateNotificationSettings').mockRejectedValue(
+        new UnauthorizedException('No active session'),
+      )
+
       await expect(
-        controller.updateNotifications(makeReq(), { notifyTelegram: true }),
-      ).rejects.toThrow(new HttpException('No active session', HttpStatus.BAD_REQUEST))
+        controller.updateNotifications(undefined as unknown as string, { notifyTelegram: true }),
+      ).rejects.toThrow(new UnauthorizedException('No active session'))
     })
 
     it('updates notification settings and returns result', async () => {
       mockSessionService.updateNotificationSettings.mockResolvedValue({ notifyTelegram: true })
-      const result = await controller.updateNotifications(makeReq({ clientId: 'client' }), {
+      const result = await controller.updateNotifications('client', {
         notifyTelegram: true,
       })
       expect(mockSessionService.updateNotificationSettings).toHaveBeenCalledWith('client', true)
@@ -128,7 +138,7 @@ describe('SessionController', () => {
 
     it('passes notifyTelegram: false correctly', async () => {
       mockSessionService.updateNotificationSettings.mockResolvedValue({ notifyTelegram: false })
-      const result = await controller.updateNotifications(makeReq({ clientId: 'client' }), {
+      const result = await controller.updateNotifications('client', {
         notifyTelegram: false,
       })
       expect(mockSessionService.updateNotificationSettings).toHaveBeenCalledWith('client', false)

@@ -1,16 +1,7 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpStatus,
-  Patch,
-  Post,
-  Req,
-  Res,
-  UnauthorizedException,
-} from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpStatus, Patch, Post, Req, Res } from '@nestjs/common'
 import type { Request, Response } from 'express'
+
+import { ClientId } from '@/backend/shared/decorators/client-id.decorator'
 
 import { SessionDocs } from './decorators/session-docs.decorator'
 import { CurrentSessionDto } from './dto/current-session.dto'
@@ -29,7 +20,7 @@ export class SessionController {
     responseType: CurrentSessionDto,
   })
   async getSession(@Req() req: Request) {
-    const clientId = (req.clientId || req.cookies.clientId) as string | undefined
+    const clientId = req.clientId
     if (!clientId) return { exists: false }
 
     const session = await this.sessionService.getSession(clientId)
@@ -48,10 +39,7 @@ export class SessionController {
     description: 'When the user interacts, the session is automatically extended',
     responseType: ExtendSessionDto,
   })
-  async extendSession(@Req() req: Request) {
-    const clientId = req.cookies.clientId as string | undefined
-    if (!clientId) throw new UnauthorizedException('No active session')
-
+  async extendSession(@ClientId() clientId: string) {
     await this.sessionService.extendSession(clientId)
     return { extended: true }
   }
@@ -63,7 +51,7 @@ export class SessionController {
     description: 'Delete all cookies, services, checks, redis keys',
   })
   async deleteSession(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const clientId = req.cookies.clientId as string | undefined
+    const clientId = req.clientId
     if (clientId) await this.sessionService.deleteSession(clientId)
 
     res.clearCookie('clientId', { path: '/' })
@@ -76,10 +64,7 @@ export class SessionController {
       'Returns "notifyTelegram". If true, user will receive norifications from telegram bot',
     responseType: UpdateNotificationsDto,
   })
-  async updateNotifications(@Req() req: Request, @Body() body: UpdateNotificationsDto) {
-    const clientId = req.cookies.clientId as string | undefined
-    if (!clientId) throw new UnauthorizedException('No active session')
-
+  async updateNotifications(@ClientId() clientId: string, @Body() body: UpdateNotificationsDto) {
     const session = await this.sessionService.updateNotificationSettings(
       clientId,
       body.notifyTelegram,
