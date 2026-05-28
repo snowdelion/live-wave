@@ -1,4 +1,4 @@
-model Service {
+model Monitor {
   id String @id @default(cuid())
 
   name          String

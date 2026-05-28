@@ -86,7 +86,7 @@ describe('createSession', () => {
 
     await service.createSession('new-client', '1.2.3.4')
 
-    expect(mockPrisma.service.deleteMany).toHaveBeenCalledWith({
+    expect(mockPrisma.monitor.deleteMany).toHaveBeenCalledWith({
       where: { clientId: 'old-client' },
     })
   })
@@ -140,7 +140,7 @@ describe('deleteSession', () => {
 
     await service.deleteSession('client-1')
 
-    expect(mockPrisma.service.deleteMany).toHaveBeenCalledWith({
+    expect(mockPrisma.monitor.deleteMany).toHaveBeenCalledWith({
       where: { clientId: 'client-1' },
     })
     expect(mockRedis.del).toHaveBeenCalledWith(REDIS_KEYS.session('client-1'))

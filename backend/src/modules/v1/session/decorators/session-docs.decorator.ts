@@ -1,6 +1,8 @@
 import { applyDecorators, HttpCode, HttpStatus, type Type } from '@nestjs/common'
 import { ApiCookieAuth, ApiOperation, ApiResponse } from '@nestjs/swagger'
 
+import type { ExtraResponse } from '@/backend/shared/decorators/docs.types'
+
 export function SessionDocs({
   statusCode = HttpStatus.OK,
   summary,
@@ -33,7 +35,22 @@ export function SessionDocs({
     decorators.push(ApiResponse(responseOptions))
   }
 
-  for (const res of extraResponses) decorators.push(ApiResponse(res))
+  for (const res of extraResponses) {
+    const options: Parameters<typeof ApiResponse>[0] = {
+      status: res.status,
+      description: res.description,
+    }
+    if (res.example) {
+      options.content = { 'application/json': { example: res.example } }
+    }
+    if (res.type) {
+      if (Array.isArray(res.type)) {
+        options.isArray = true
+        options.type = res.type[0]
+      } else options.type = res.type
+    }
+    decorators.push(ApiResponse(options))
+  }
 
   return applyDecorators(...decorators)
 }
@@ -49,11 +66,4 @@ interface SessionDocsArgs {
 
   responseType?: Type<unknown>
   extraResponses?: Array<ExtraResponse>
-}
-
-type ExtraResponse = {
-  status: HttpStatus
-  description: string
-
-  type?: Type<unknown>
 }
