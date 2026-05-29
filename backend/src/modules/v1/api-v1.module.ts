@@ -1,16 +1,12 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common'
 
 import { HealthModule } from './health/health.module'
+import { MonitorModule } from './monitor/monitor.module'
 import { SessionMiddleware } from './session/middleware/session.middleware'
 import { SessionModule } from './session/session.module'
-// import { TelegramModule } from './telegram/telegram.module'
 
 @Module({
-  imports: [
-    SessionModule,
-    HealthModule,
-    //  TelegramModule
-  ],
+  imports: [SessionModule, HealthModule, MonitorModule],
 })
 export class V1Module implements NestModule {
   configure(consumer: MiddlewareConsumer) {
