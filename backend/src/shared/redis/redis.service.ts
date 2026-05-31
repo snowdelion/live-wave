@@ -40,6 +40,24 @@ export class RedisService {
     await this.redis.ping()
   }
 
+  async incr(key: string) {
+    try {
+      return await this.redis.incr(key)
+    } catch (e) {
+      const errorDetails = this.logError('incr', e)
+      throw new Error(`Redis incr failed: ${errorDetails}`)
+    }
+  }
+
+  async expire(key: string, seconds: number) {
+    try {
+      await this.redis.expire(key, seconds)
+    } catch (e) {
+      const errorDetails = this.logError('expire', e)
+      throw new Error(`Redis expire failed: ${errorDetails}`)
+    }
+  }
+
   private logError(method: string, error: unknown): string {
     const errorMsg = error instanceof Error ? error.message : 'unknown error'
 
