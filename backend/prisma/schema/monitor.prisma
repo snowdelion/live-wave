@@ -11,6 +11,9 @@ model Monitor {
   clientId String
   checks   Check[]
 
+  lastCheckedAt DateTime?
+  nextCheckAt   DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -20,5 +23,4 @@ model Monitor {
 enum Method {
   HEAD
   GET
-  POST
 }
