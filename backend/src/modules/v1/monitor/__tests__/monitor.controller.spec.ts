@@ -1,7 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-import type { CreateMonitorDto } from '../dto/create-monitor.dto'
-import type { UpdateMonitorDto } from '../dto/update-monitor.dto'
+import type { CreateMonitorDto } from '../dto/requests/create-monitor.dto'
+import type { UpdateMonitorDto } from '../dto/requests/update-monitor.dto'
 import { MonitorController } from '../monitor.controller'
 import type { MonitorService } from '../monitor.service'
 

@@ -1,7 +1,7 @@
 import { HttpStatus } from '@nestjs/common'
 
-import { MonitorResponseWithChecksDto } from './dto/monitor-response-with-checks.dto'
-import { MonitorResponseDto } from './dto/monitor-response.dto'
+import { MonitorResponseWithChecksDto } from './dto/responses/monitor-response-with-checks.dto'
+import { MonitorResponseDto } from './dto/responses/monitor-response.dto'
 
 export const createMonitorDocs = {
   summary: 'Creates a new monitoring service',
