@@ -8,6 +8,9 @@ const mockRedis = {
   get: vi.fn(),
   del: vi.fn(),
   ping: vi.fn(),
+  incr: vi.fn(),
+  expire: vi.fn(),
+  multi: vi.fn(),
 }
 
 describe('RedisService', () => {
@@ -79,6 +82,50 @@ describe('RedisService', () => {
       mockRedis.ping = vi.fn().mockResolvedValue('PONG')
       await expect(service.ping()).resolves.toBeUndefined()
       expect(mockRedis.ping).toHaveBeenCalledOnce()
+    })
+  })
+
+  describe('incr', () => {
+    it('increments the key and returns new value', async () => {
+      mockRedis.incr = vi.fn().mockResolvedValue(5)
+      const result = await service.incr('key')
+      expect(mockRedis.incr).toHaveBeenCalledWith('key')
+      expect(result).toBe(5)
+    })
+
+    it('throws an error when redis fails', async () => {
+      mockRedis.incr = vi.fn().mockRejectedValue(new Error('fail'))
+      await expect(service.incr('key')).rejects.toThrow('Redis incr failed: fail')
+    })
+  })
+
+  describe('expire', () => {
+    it('sets expiration on key', async () => {
+      mockRedis.expire = vi.fn().mockResolvedValue(1)
+      await service.expire('key', 60)
+      expect(mockRedis.expire).toHaveBeenCalledWith('key', 60)
+    })
+
+    it('throws error when redis fails', async () => {
+      mockRedis.expire = vi.fn().mockRejectedValue(new Error('fail'))
+      await expect(service.expire('key', 60)).rejects.toThrow('Redis expire failed: fail')
+    })
+  })
+
+  describe('multi', () => {
+    it('returns a multi instance', () => {
+      const mockMulti = { exec: vi.fn() }
+      mockRedis.multi = vi.fn().mockReturnValue(mockMulti)
+      const result = service.multi()
+      expect(mockRedis.multi).toHaveBeenCalled()
+      expect(result).toBe(mockMulti)
+    })
+
+    it('throws error when redis fails', () => {
+      mockRedis.multi = vi.fn().mockImplementation(() => {
+        throw new Error('fail')
+      })
+      expect(() => service.multi()).toThrow('Redis multi failed: fail')
     })
   })
 

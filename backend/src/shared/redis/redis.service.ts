@@ -58,6 +58,15 @@ export class RedisService {
     }
   }
 
+  multi() {
+    try {
+      return this.redis.multi()
+    } catch (e) {
+      const errorDetails = this.logError('multi', e)
+      throw new Error(`Redis multi failed: ${errorDetails}`)
+    }
+  }
+
   private logError(method: string, error: unknown): string {
     const errorMsg = error instanceof Error ? error.message : 'unknown error'
 
