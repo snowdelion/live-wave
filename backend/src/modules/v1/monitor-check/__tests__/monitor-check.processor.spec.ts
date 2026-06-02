@@ -11,7 +11,7 @@ function makeMonitor(overrides: Partial<Monitor> = {}): Monitor {
   return {
     id: 'monitor-1',
     url: 'https://example.com',
-    method: 'GET',
+    method: 'HEAD',
     checkInterval: 5,
     timeout: 5000,
     lastStatus: StatusEnum.up,

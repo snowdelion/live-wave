@@ -1,10 +1,5 @@
 import { InjectQueue } from '@nestjs/bull'
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common'
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import { Method } from '@prisma/client'
 import type { Queue } from 'bull'
 
@@ -29,21 +24,12 @@ export class MonitorService {
     if (monitorCount >= 5)
       throw new ForbiddenException('You have reached the maximum number of monitors')
 
-    const method = dto.method ?? Method.HEAD
-    const checkInterval = dto.checkInterval ?? 10
-    const minCheckInterval = method === Method.HEAD ? 1 : 5
-
-    if (checkInterval < minCheckInterval)
-      throw new BadRequestException(
-        `checkInterval for ${method} must be at least ${minCheckInterval} minute(s)`,
-      )
-
     const newMonitor = await this.prisma.monitor.create({
       data: {
         name: dto.name,
         url: dto.url,
-        method,
-        checkInterval,
+        method: dto.method ?? Method.HEAD,
+        checkInterval: dto.checkInterval ?? 10,
         timeout: dto.timeout ?? 5000,
         clientId,
       },
