@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger'
 import { StatusEnum } from '@prisma/client'
 
-export class CheckResponseDto {
+export class MonitorCheckResponseDto {
   @ApiProperty({ example: 'ck3kq1t7x0000u1w6p8x1f1c2' })
   id!: string
 

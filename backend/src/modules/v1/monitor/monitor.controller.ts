@@ -8,18 +8,19 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common'
 import { ApiExtraModels } from '@nestjs/swagger'
 
 import { ClientId } from '@/backend/shared/decorators/client-id.decorator'
-
-import { CheckResponseDto } from '../checks/dto/check-response.dto'
+import { RateLimitGuard } from '@/backend/shared/rate-limit/guards/rate-limit.guard'
 
 import { MonitorDocs } from './decorators/monitor-docs.decorator'
-import { CreateMonitorDto } from './dto/create-monitor.dto'
-import { MonitorResponseWithChecksDto } from './dto/monitor-response-with-checks.dto'
-import { MonitorResponseDto } from './dto/monitor-response.dto'
-import { UpdateMonitorDto } from './dto/update-monitor.dto'
+import { CreateMonitorDto } from './dto/requests/create-monitor.dto'
+import { UpdateMonitorDto } from './dto/requests/update-monitor.dto'
+import { MonitorCheckResponseDto } from './dto/responses/monitor-check-response.dto'
+import { MonitorResponseWithChecksDto } from './dto/responses/monitor-response-with-checks.dto'
+import { MonitorResponseDto } from './dto/responses/monitor-response.dto'
 import {
   createMonitorDocs,
   deleteMonitorDocs,
@@ -29,7 +30,7 @@ import {
 } from './monitor.docs'
 import { MonitorService } from './monitor.service'
 
-@ApiExtraModels(MonitorResponseDto, MonitorResponseWithChecksDto, CheckResponseDto)
+@ApiExtraModels(MonitorResponseDto, MonitorResponseWithChecksDto, MonitorCheckResponseDto)
 @Controller('v1/monitor')
 export class MonitorController {
   constructor(private monitorService: MonitorService) {}
@@ -37,6 +38,7 @@ export class MonitorController {
   @Post()
   @MonitorDocs(createMonitorDocs)
   @HttpCode(HttpStatus.CREATED)
+  @UseGuards(RateLimitGuard)
   async create(@ClientId() clientId: string, @Body() dto: CreateMonitorDto) {
     return await this.monitorService.create(clientId, dto)
   }

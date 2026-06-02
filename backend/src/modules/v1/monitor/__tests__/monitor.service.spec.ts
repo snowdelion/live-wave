@@ -5,8 +5,10 @@ import type { PrismaService } from '@/backend/shared/prisma/prisma.service'
 
 import { MonitorService } from '../monitor.service'
 
+// --- mocks ---
 const mockPrisma = {
   monitor: {
+    count: vi.fn(),
     create: vi.fn(),
     findMany: vi.fn(),
     findUnique: vi.fn(),
@@ -15,14 +17,24 @@ const mockPrisma = {
   },
 } as unknown as PrismaService
 
-const makeService = () => new MonitorService(mockPrisma)
+const mockMonitorCheckService = {
+  scheduleCheck: vi.fn(),
+}
 
+const mockChecksQueue = {
+  removeJobs: vi.fn(),
+}
+
+const makeService = () =>
+  new MonitorService(mockPrisma, mockMonitorCheckService as any, mockChecksQueue as any)
+
+// --- helpers ---
 const CLIENT_ID = 'client-abc'
 const OTHER_CLIENT_ID = 'client-xyz'
 const MONITOR_ID = 'id'
 
 const baseMonitor = {
-  id: 'id',
+  id: MONITOR_ID,
   clientId: CLIENT_ID,
   name: 'name',
   url: 'https://example.com',
@@ -30,15 +42,18 @@ const baseMonitor = {
   checkInterval: 10,
   timeout: 5000,
   lastStatus: null,
+  lastCheckedAt: null,
+  nextCheckAt: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 }
 
 beforeEach(() => {
   vi.resetAllMocks()
+  vi.mocked(mockPrisma.monitor.count).mockResolvedValue(0)
 })
 
-// POST /api/v1/monitor
+// --- POST /api/v1/monitor ---
 describe('create', () => {
   it('creates a monitor with defaults', async () => {
     vi.mocked(mockPrisma.monitor.create).mockResolvedValue(baseMonitor)
@@ -78,9 +93,29 @@ describe('create', () => {
       data: expect.objectContaining({ method: 'GET', checkInterval: 30, timeout: 3000 }),
     })
   })
+
+  it('schedules a check after creation', async () => {
+    vi.mocked(mockPrisma.monitor.create).mockResolvedValue(baseMonitor)
+
+    const service = makeService()
+    await service.create(CLIENT_ID, { name: 'name', url: 'https://example.com' })
+
+    expect(mockMonitorCheckService.scheduleCheck).toHaveBeenCalledWith(baseMonitor)
+  })
+
+  it('throws ForbiddenException when the client already has 5 monitors', async () => {
+    vi.mocked(mockPrisma.monitor.count).mockResolvedValue(5)
+
+    const service = makeService()
+    await expect(
+      service.create(CLIENT_ID, { name: 'name', url: 'https://example.com' }),
+    ).rejects.toThrow(ForbiddenException)
+
+    expect(mockPrisma.monitor.create).not.toHaveBeenCalled()
+  })
 })
 
-// GET /api/v1/monitor
+// --- GET /api/v1/monitor ---
 describe('findAllByClientId', () => {
   it('returns monitors ordered by createdAt desc', async () => {
     const monitors = [baseMonitor]
@@ -97,7 +132,7 @@ describe('findAllByClientId', () => {
   })
 })
 
-// GET /api/v1/monitor/{id}
+// --- GET /api/v1/monitor/{id} ---
 describe('findById', () => {
   it('returns the monitor when found and owned by clientId', async () => {
     vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue({
@@ -136,10 +171,11 @@ describe('findById', () => {
   })
 })
 
-// PATCH /api/v1/monitor/{id}
+// --- PATCH /api/v1/monitor/{id} ---
 describe('update', () => {
   it('updates and returns the monitor', async () => {
     const updated = { ...baseMonitor, name: 'Updated' }
+    vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(baseMonitor)
     vi.mocked(mockPrisma.monitor.update).mockResolvedValue(updated)
 
     const service = makeService()
@@ -152,7 +188,8 @@ describe('update', () => {
     expect(result).toEqual(updated)
   })
 
-  it('throws ForbiddenException when updated monitor belongs to another client', async () => {
+  it('throws NotFoundException when updated monitor belongs to another client', async () => {
+    vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(baseMonitor)
     vi.mocked(mockPrisma.monitor.update).mockResolvedValue({
       ...baseMonitor,
       clientId: OTHER_CLIENT_ID,
@@ -162,7 +199,29 @@ describe('update', () => {
     await expect(service.update(CLIENT_ID, MONITOR_ID, {})).rejects.toThrow(NotFoundException)
   })
 
+  it('reschedules check when checkInterval changes', async () => {
+    const updated = { ...baseMonitor, checkInterval: 30 }
+    vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(baseMonitor)
+    vi.mocked(mockPrisma.monitor.update).mockResolvedValue(updated)
+
+    const service = makeService()
+    await service.update(CLIENT_ID, MONITOR_ID, { checkInterval: 30 })
+
+    expect(mockMonitorCheckService.scheduleCheck).toHaveBeenCalledWith(updated)
+  })
+
+  it('does not reschedule check when checkInterval is unchanged', async () => {
+    vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(baseMonitor)
+    vi.mocked(mockPrisma.monitor.update).mockResolvedValue(baseMonitor)
+
+    const service = makeService()
+    await service.update(CLIENT_ID, MONITOR_ID, { name: 'New name' })
+
+    expect(mockMonitorCheckService.scheduleCheck).not.toHaveBeenCalled()
+  })
+
   it('wraps prisma errors in NotFoundException', async () => {
+    vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(baseMonitor)
     vi.mocked(mockPrisma.monitor.update).mockRejectedValue(new Error('Record not found'))
 
     const service = makeService()
@@ -172,6 +231,7 @@ describe('update', () => {
   })
 
   it('handles non-Error rejections gracefully', async () => {
+    vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(baseMonitor)
     vi.mocked(mockPrisma.monitor.update).mockRejectedValue('oops')
 
     const service = makeService()
@@ -181,9 +241,9 @@ describe('update', () => {
   })
 })
 
-// DELETE /api/v1/monitor/{id}
+// --- DELETE /api/v1/monitor/{id} ---
 describe('delete', () => {
-  it('deletes the monitor', async () => {
+  it('deletes the monitor and removes queued jobs', async () => {
     vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(baseMonitor)
     vi.mocked(mockPrisma.monitor.delete).mockResolvedValue(baseMonitor)
 
@@ -193,9 +253,10 @@ describe('delete', () => {
     expect(mockPrisma.monitor.delete).toHaveBeenCalledWith({
       where: { id: MONITOR_ID, clientId: CLIENT_ID },
     })
+    expect(mockChecksQueue.removeJobs).toHaveBeenCalled()
   })
 
-  it('throws NotFoundException (via catch) when monitor belongs to another client', async () => {
+  it('throws NotFoundException when monitor belongs to another client', async () => {
     vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue({
       ...baseMonitor,
       clientId: OTHER_CLIENT_ID,

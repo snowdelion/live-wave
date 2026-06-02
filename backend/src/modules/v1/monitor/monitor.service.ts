@@ -1,25 +1,56 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
+import { InjectQueue } from '@nestjs/bull'
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common'
+import { Method } from '@prisma/client'
+import type { Queue } from 'bull'
 
+import { BULL_KEYS, BULL_NAMES } from '@/backend/shared/bull/bull.constants'
 import { PrismaService } from '@/backend/shared/prisma/prisma.service'
 
-import { CreateMonitorDto } from './dto/create-monitor.dto'
-import { UpdateMonitorDto } from './dto/update-monitor.dto'
+import { MonitorCheckService } from '../monitor-check/monitor-check.service'
+
+import { CreateMonitorDto } from './dto/requests/create-monitor.dto'
+import { UpdateMonitorDto } from './dto/requests/update-monitor.dto'
 
 @Injectable()
 export class MonitorService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private monitorCheckService: MonitorCheckService,
+    @InjectQueue(BULL_NAMES.QUEUE) private checksQueue: Queue,
+  ) {}
 
   async create(clientId: string, dto: CreateMonitorDto) {
-    return await this.prisma.monitor.create({
+    const monitorCount = await this.prisma.monitor.count({ where: { clientId } })
+    if (monitorCount >= 5)
+      throw new ForbiddenException('You have reached the maximum number of monitors')
+
+    const method = dto.method ?? Method.HEAD
+    const checkInterval = dto.checkInterval ?? 10
+    const minCheckInterval = method === Method.HEAD ? 1 : 5
+
+    if (checkInterval < minCheckInterval)
+      throw new BadRequestException(
+        `checkInterval for ${method} must be at least ${minCheckInterval} minute(s)`,
+      )
+
+    const newMonitor = await this.prisma.monitor.create({
       data: {
         name: dto.name,
         url: dto.url,
-        method: dto.method ?? 'HEAD',
-        checkInterval: dto.checkInterval ?? 10,
+        method,
+        checkInterval,
         timeout: dto.timeout ?? 5000,
         clientId,
       },
     })
+
+    await this.monitorCheckService.scheduleCheck(newMonitor)
+    return newMonitor
   }
 
   async findAllByClientId(clientId: string) {
@@ -48,14 +79,19 @@ export class MonitorService {
 
   async update(clientId: string, id: string, dto: UpdateMonitorDto) {
     try {
-      const monitor = await this.prisma.monitor.update({
+      const oldMonitor = await this.prisma.monitor.findUnique({ where: { id } })
+      const updatedMonitor = await this.prisma.monitor.update({
         where: { id },
         data: dto,
       })
-      if (monitor.clientId !== clientId)
+
+      if (updatedMonitor.clientId !== clientId)
         throw new ForbiddenException('Uptime monitoring service not found')
 
-      return monitor
+      if (dto.checkInterval !== undefined && dto.checkInterval !== oldMonitor?.checkInterval)
+        await this.monitorCheckService.scheduleCheck(updatedMonitor)
+
+      return updatedMonitor
     } catch (e) {
       const details = e instanceof Error ? e.message : 'unexpected error'
       throw new NotFoundException(`Uptime monitoring service not found: ${details}`)
@@ -68,6 +104,7 @@ export class MonitorService {
       if (monitor?.clientId !== clientId) throw new ForbiddenException('Access denied')
 
       await this.prisma.monitor.delete({ where: { id, clientId } })
+      await this.checksQueue.removeJobs(`${BULL_KEYS.RAW_CHECK(monitor.id)}-*`)
     } catch (e) {
       const details = e instanceof Error ? e.message : 'unexpected error'
       throw new NotFoundException(`Uptime monitoring service not found: ${details}`)
