@@ -84,13 +84,13 @@ describe('create', () => {
     await service.create(CLIENT_ID, {
       name: 'name',
       url: 'https://example.com',
-      method: 'GET',
+      method: 'HEAD',
       checkInterval: 30,
       timeout: 3000,
     })
 
     expect(mockPrisma.monitor.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ method: 'GET', checkInterval: 30, timeout: 3000 }),
+      data: expect.objectContaining({ method: 'HEAD', checkInterval: 30, timeout: 3000 }),
     })
   })
 

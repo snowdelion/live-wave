@@ -22,5 +22,5 @@ model Monitor {
 
 enum Method {
   HEAD
-  GET
+
 }
