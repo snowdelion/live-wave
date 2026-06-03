@@ -33,7 +33,7 @@ model Monitor {
 
 model HttpMonitor {
   monitorId String  @id
-  monitor   Monitor @relation(fields: [monitorId], references: [id])
+  monitor   Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
 
   url    String
   method Method @default(HEAD)
@@ -45,14 +45,14 @@ enum Method {
 
 model IcmpMonitor {
   monitorId String  @id
-  monitor   Monitor @relation(fields: [monitorId], references: [id])
+  monitor   Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
 
   host String
 }
 
 model TcpMonitor {
   monitorId String  @id
-  monitor   Monitor @relation(fields: [monitorId], references: [id])
+  monitor   Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
 
   host String
   port Int
