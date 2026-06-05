@@ -1,5 +1,5 @@
 import { applyDecorators, HttpStatus, type Type } from '@nestjs/common'
-import { ApiOperation, ApiParam, type ApiParamOptions, ApiResponse } from '@nestjs/swagger'
+import { ApiBody, ApiOperation, ApiParam, type ApiParamOptions, ApiResponse } from '@nestjs/swagger'
 
 import type { ExtraResponse } from '@/backend/shared/decorators/docs.types'
 
@@ -10,6 +10,8 @@ export function MonitorDocs({
   extraResponses = [],
   extraParam,
   responseType,
+  bodySchema,
+  isUpdate = false,
 }: MonitorDocsArgs) {
   const decorators = [
     ApiOperation({ summary, description }),
@@ -19,6 +21,34 @@ export function MonitorDocs({
       type: responseType,
     }),
   ]
+
+  if (bodySchema) decorators.push(ApiBody({ schema: bodySchema }))
+  else if (isUpdate)
+    decorators.push(
+      ApiBody({
+        schema: {
+          oneOf: [
+            { $ref: '#/components/schemas/UpdateHttpMonitorDto' },
+            { $ref: '#/components/schemas/UpdateTcpMonitorDto' },
+            { $ref: '#/components/schemas/UpdateIcmpMonitorDto' },
+          ],
+          discriminator: { propertyName: 'type' },
+        },
+      }),
+    )
+  else
+    decorators.push(
+      ApiBody({
+        schema: {
+          oneOf: [
+            { $ref: '#/components/schemas/CreateHttpMonitorDto' },
+            { $ref: '#/components/schemas/CreateTcpMonitorDto' },
+            { $ref: '#/components/schemas/CreateIcmpMonitorDto' },
+          ],
+          discriminator: { propertyName: 'type' },
+        },
+      }),
+    )
 
   for (const res of extraResponses) {
     const options: Parameters<typeof ApiResponse>[0] = {
@@ -50,4 +80,9 @@ interface MonitorDocsArgs {
   extraResponses?: ExtraResponse[]
   extraParam?: ApiParamOptions
   responseType?: Type<unknown>
+  bodySchema?: {
+    oneOf: Array<{ $ref: string }>
+    discriminator: { propertyName: string }
+  }
+  isUpdate?: boolean
 }

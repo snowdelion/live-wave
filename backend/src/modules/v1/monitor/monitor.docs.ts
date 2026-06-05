@@ -63,6 +63,7 @@ export const updateMonitorDocs = {
     description: 'Monitoring service ID',
     example: 'cmpplwrap0000u1cwddpe8mq8',
   },
+  isUpdate: true,
 }
 
 export const deleteMonitorDocs = {
