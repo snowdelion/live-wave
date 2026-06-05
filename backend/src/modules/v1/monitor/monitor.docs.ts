@@ -1,7 +1,7 @@
 import { HttpStatus } from '@nestjs/common'
 
+import { HttpMonitorResponseDto } from './dto/responses/http-monitor-response.dto'
 import { MonitorResponseWithChecksDto } from './dto/responses/monitor-response-with-checks.dto'
-import { MonitorResponseDto } from './dto/responses/monitor-response.dto'
 
 export const createMonitorDocs = {
   summary: 'Creates a new monitoring service',
@@ -11,7 +11,7 @@ export const createMonitorDocs = {
     {
       status: HttpStatus.CREATED,
       description: 'Monitoring service has been created successfully',
-      type: MonitorResponseDto,
+      type: HttpMonitorResponseDto,
     },
   ],
 }
@@ -24,9 +24,10 @@ export const findByClientIdDocs = {
     {
       status: HttpStatus.OK,
       description: 'Monitoring service has been created successfully',
-      type: [MonitorResponseDto],
+      type: [HttpMonitorResponseDto],
     },
   ],
+  hasBody: false,
 }
 
 export const findMonitorByIdDocs = {
@@ -45,6 +46,7 @@ export const findMonitorByIdDocs = {
     description: 'Monitoring service ID',
     example: 'cmpplwrap0000u1cwddpe8mq8',
   },
+  hasBody: false,
 }
 
 export const updateMonitorDocs = {
@@ -55,7 +57,7 @@ export const updateMonitorDocs = {
     {
       status: HttpStatus.OK,
       description: 'Monitoring service updated successfully',
-      type: MonitorResponseDto,
+      type: HttpMonitorResponseDto,
     },
   ],
   extraParam: {
@@ -81,4 +83,5 @@ export const deleteMonitorDocs = {
     description: 'Monitoring service ID',
     example: 'cmpplwrap0000u1cwddpe8mq8',
   },
+  hasBody: false,
 }

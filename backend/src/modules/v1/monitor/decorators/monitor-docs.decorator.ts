@@ -12,6 +12,7 @@ export function MonitorDocs({
   responseType,
   bodySchema,
   isUpdate = false,
+  hasBody = true,
 }: MonitorDocsArgs) {
   const decorators = [
     ApiOperation({ summary, description }),
@@ -22,33 +23,35 @@ export function MonitorDocs({
     }),
   ]
 
-  if (bodySchema) decorators.push(ApiBody({ schema: bodySchema }))
-  else if (isUpdate)
-    decorators.push(
-      ApiBody({
-        schema: {
-          oneOf: [
-            { $ref: '#/components/schemas/UpdateHttpMonitorDto' },
-            { $ref: '#/components/schemas/UpdateTcpMonitorDto' },
-            { $ref: '#/components/schemas/UpdateIcmpMonitorDto' },
-          ],
-          discriminator: { propertyName: 'type' },
-        },
-      }),
-    )
-  else
-    decorators.push(
-      ApiBody({
-        schema: {
-          oneOf: [
-            { $ref: '#/components/schemas/CreateHttpMonitorDto' },
-            { $ref: '#/components/schemas/CreateTcpMonitorDto' },
-            { $ref: '#/components/schemas/CreateIcmpMonitorDto' },
-          ],
-          discriminator: { propertyName: 'type' },
-        },
-      }),
-    )
+  if (hasBody) {
+    if (bodySchema) decorators.push(ApiBody({ schema: bodySchema }))
+    else if (isUpdate)
+      decorators.push(
+        ApiBody({
+          schema: {
+            oneOf: [
+              { $ref: '#/components/schemas/UpdateHttpMonitorDto' },
+              { $ref: '#/components/schemas/UpdateTcpMonitorDto' },
+              { $ref: '#/components/schemas/UpdateIcmpMonitorDto' },
+            ],
+            discriminator: { propertyName: 'type' },
+          },
+        }),
+      )
+    else
+      decorators.push(
+        ApiBody({
+          schema: {
+            oneOf: [
+              { $ref: '#/components/schemas/CreateHttpMonitorDto' },
+              { $ref: '#/components/schemas/CreateTcpMonitorDto' },
+              { $ref: '#/components/schemas/CreateIcmpMonitorDto' },
+            ],
+            discriminator: { propertyName: 'type' },
+          },
+        }),
+      )
+  }
 
   for (const res of extraResponses) {
     const options: Parameters<typeof ApiResponse>[0] = {
@@ -85,4 +88,5 @@ interface MonitorDocsArgs {
     discriminator: { propertyName: string }
   }
   isUpdate?: boolean
+  hasBody?: boolean
 }
