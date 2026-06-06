@@ -5,6 +5,7 @@ model Check {
   statusCode   Int?
   responseTime Int?
   error        String?
+  details      Json?
 
   monitorId String
   monitor   Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
@@ -14,4 +15,5 @@ model Check {
   @@index([monitorId])
   @@index([checkedAt])
   @@index([status])
+  @@index([details])
 }

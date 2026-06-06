@@ -1,9 +1,15 @@
+enum MonitorType {
+  HTTP
+  ICMP
+  TCP
+}
+
 model Monitor {
   id String @id @default(cuid())
 
-  name          String
-  url           String
-  method        Method      @default(HEAD)
+  name String
+  type MonitorType @default(HTTP)
+
   checkInterval Int         @default(10) // minutes
   timeout       Int         @default(5000) // milliseconds
   lastStatus    StatusEnum?
@@ -14,13 +20,40 @@ model Monitor {
   lastCheckedAt DateTime?
   nextCheckAt   DateTime?
 
+  httpMonitor HttpMonitor?
+  icmpMonitor IcmpMonitor?
+  tcpMonitor  TcpMonitor?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([clientId])
+  @@index([type])
+}
+
+model HttpMonitor {
+  monitorId String  @id
+  monitor   Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+
+  url    String
+  method Method @default(HEAD)
 }
 
 enum Method {
   HEAD
+}
 
+model IcmpMonitor {
+  monitorId String  @id
+  monitor   Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+
+  host String
+}
+
+model TcpMonitor {
+  monitorId String  @id
+  monitor   Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+
+  host String
+  port Int
 }

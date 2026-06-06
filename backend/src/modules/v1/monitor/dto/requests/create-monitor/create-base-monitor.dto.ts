@@ -1,18 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { Method } from '@prisma/client'
+import { MonitorType } from '@prisma/client'
 import {
   IsEnum,
   IsInt,
   IsOptional,
   IsString,
-  IsUrl,
   Max,
   MaxLength,
   Min,
   MinLength,
 } from 'class-validator'
 
-export class CreateMonitorDto {
+export abstract class CreateBaseMonitorDto {
   @ApiProperty({ example: 'example', description: 'Name your monitor service' })
   @IsString()
   @MinLength(1)
@@ -20,24 +19,11 @@ export class CreateMonitorDto {
   name!: string
 
   @ApiProperty({
-    example: 'https://example.com',
-    description: 'Will make small monitoring requests',
+    example: MonitorType.HTTP,
+    description: 'The type of monitoring',
   })
-  @IsString()
-  @IsUrl({ protocols: ['http', 'https'] }, { message: 'Enter the correct URL address' })
-  @MaxLength(1000)
-  url!: string
-
-  @ApiProperty({
-    enum: Method,
-    default: Method.HEAD,
-    example: 'HEAD',
-    description: 'Request method type. "HEAD" by default',
-    required: false,
-  })
-  @IsEnum(Method)
-  @IsOptional()
-  method?: Method = Method.HEAD
+  @IsEnum(MonitorType)
+  type!: MonitorType
 
   @ApiProperty({
     example: 10,

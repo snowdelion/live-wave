@@ -1,0 +1,99 @@
+import { Injectable, Logger } from '@nestjs/common'
+import { StatusEnum } from '@prisma/client'
+
+import { PrismaService } from '@/backend/shared/prisma/prisma.service'
+import { httpFetch } from '@/backend/shared/utils/http-fetch.utils'
+
+@Injectable()
+export class HttpStrategy {
+  private readonly logger = new Logger(HttpStrategy.name)
+  constructor(private prisma: PrismaService) {}
+
+  async check(monitorId: string) {
+    const monitor = await this.prisma.monitor.findUnique({
+      where: { id: monitorId },
+      include: { httpMonitor: true },
+    })
+
+    if (!monitor || !monitor.httpMonitor) {
+      this.logger.warn(`Monitor ${monitorId} or its HttpMonitor not found, skipping check`)
+      return
+    }
+
+    const { id, checkInterval, timeout, httpMonitor } = monitor
+
+    await this.performCheck(id, checkInterval, timeout, httpMonitor.url, httpMonitor.method)
+  }
+
+  private async performCheck(
+    monitorId: string,
+    checkInterval: number,
+    timeout: number,
+    url: string,
+    method: string,
+  ) {
+    let status: StatusEnum = StatusEnum.down
+    let statusCode: number | null = null
+    let error: string | null = null
+    let responseTime: number | null = null
+    const start = Date.now()
+
+    try {
+      this.logger.warn(`fetching for ${url}`)
+      const res = await httpFetch({
+        url,
+        timeout,
+        retries: 3,
+        options: {
+          method,
+          redirect: 'follow',
+          cache: 'no-cache',
+          headers: { 'User-Agent': 'LiveWave-Uptime-Monitor/1.0' },
+        },
+      })
+
+      statusCode = res.status
+      status = res.ok ? StatusEnum.up : StatusEnum.down
+      responseTime = Date.now() - start
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'unknown error'
+      status = StatusEnum.down
+    }
+
+    if (status === StatusEnum.down)
+      this.logger.warn(
+        `Monitor ${monitorId} is down! Status code: ${statusCode}. Response time: ${responseTime}. ${error ? `Error: ${error}.` : ''}`,
+      )
+
+    try {
+      await this.prisma.$transaction([
+        this.prisma.check.create({
+          data: {
+            monitorId,
+            status,
+            statusCode,
+            responseTime,
+            error,
+          },
+        }),
+        this.prisma.monitor.update({
+          where: { id: monitorId },
+          data: {
+            lastCheckedAt: new Date(),
+            lastStatus: status,
+            nextCheckAt: new Date(Date.now() + checkInterval * 60 * 1000),
+          },
+        }),
+      ])
+    } catch (e) {
+      const isError = e instanceof Error
+      if (isError && 'code' in e && e.code === 'P2003') {
+        this.logger.warn(`Monitor ${monitorId} not found, skipping check`)
+        return
+      }
+      const errorStack = isError ? e.stack : undefined
+      const details = isError ? e.message : 'unknown error'
+      this.logger.error(`Failed to handle check: ${details}`, errorStack)
+    }
+  }
+}
