@@ -1,4 +1,4 @@
-import { BullModule } from '@nestjs/bull'
+import { BullModule } from '@nestjs/bullmq'
 import { Module } from '@nestjs/common'
 
 import { BULL_NAMES } from '@/backend/shared/bull/bull.constants'

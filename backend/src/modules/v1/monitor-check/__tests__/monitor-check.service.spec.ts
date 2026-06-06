@@ -1,6 +1,5 @@
 import { Logger } from '@nestjs/common'
-import type { Monitor } from '@prisma/client'
-import type { Job, Queue } from 'bull'
+import type { Job, Queue } from 'bullmq'
 
 import { BULL_KEYS, BULL_NAMES } from '@/backend/shared/bull/bull.constants'
 import type { PrismaService } from '@/backend/shared/prisma/prisma.service'
@@ -8,23 +7,27 @@ import type { PrismaService } from '@/backend/shared/prisma/prisma.service'
 import { MonitorCheckService } from '../monitor-check.service'
 
 // --- helpers ---
-const makeMonitor = (overrides: Partial<Monitor> = {}): Monitor =>
-  ({
-    id: 'monitor-1',
-    nextCheckAt: null,
-    ...overrides,
-  }) as Monitor
+const MONITOR_ID = 'monitor-1'
+const CHECK_INTERVAL = 5
+
+const makeMonitorRow = (overrides: { id?: string; checkInterval?: number } = {}) => ({
+  id: MONITOR_ID,
+  type: 'http',
+  checkInterval: CHECK_INTERVAL,
+  ...overrides,
+})
 
 // --- mocks ---
 const mockPrisma = {
   monitor: {
     findMany: vi.fn(),
+    findUnique: vi.fn(),
   },
 } as unknown as PrismaService
 
 const mockQueue = {
-  removeJobs: vi.fn(),
   add: vi.fn(),
+  getJobs: vi.fn().mockResolvedValue([]),
 } satisfies Partial<Queue> as unknown as Queue
 
 // --- tests ---
@@ -36,21 +39,35 @@ describe('MonitorCheckService', () => {
     vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
 
     service = new MonitorCheckService(mockPrisma, mockQueue as unknown as Queue)
-
     Object.assign(service, { prisma: mockPrisma, checksQueue: mockQueue })
   })
 
   describe('onModuleInit', () => {
-    it('fetches all monitors and schedules each one', async () => {
-      const monitors = [makeMonitor({ id: 'a' }), makeMonitor({ id: 'b' })]
-      vi.mocked(mockPrisma.monitor.findMany).mockResolvedValue(monitors)
-      vi.mocked(mockQueue.removeJobs).mockResolvedValue(undefined)
+    it('fetches due/null monitors and schedules each one', async () => {
+      const monitors = [makeMonitorRow({ id: 'a' }), makeMonitorRow({ id: 'b' })]
+      vi.mocked(mockPrisma.monitor.findMany).mockResolvedValue(monitors as any)
       vi.mocked(mockQueue.add).mockResolvedValue(undefined as unknown as Job<any>)
 
       await service.onModuleInit()
 
       expect(mockPrisma.monitor.findMany).toHaveBeenCalledOnce()
+      expect(mockPrisma.monitor.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ OR: expect.any(Array) }),
+          select: expect.objectContaining({ id: true, checkInterval: true }),
+        }),
+      )
       expect(mockQueue.add).toHaveBeenCalledTimes(2)
+    })
+
+    it('passes immediate=false so delay is derived from checkInterval', async () => {
+      vi.mocked(mockPrisma.monitor.findMany).mockResolvedValue([makeMonitorRow() as any])
+      vi.mocked(mockQueue.add).mockResolvedValue(undefined as unknown as Job<any>)
+
+      await service.onModuleInit()
+
+      const [, , opts] = vi.mocked(mockQueue.add).mock.calls[0] as any
+      expect(opts.delay).toBe(CHECK_INTERVAL * 60 * 1000)
     })
 
     it('does nothing when there are no monitors', async () => {
@@ -73,7 +90,7 @@ describe('MonitorCheckService', () => {
       )
     })
 
-    it('logs an error with "unknown error" when a non-Error is thrown', async () => {
+    it('logs "unknown error" when a non-Error is thrown', async () => {
       vi.mocked(mockPrisma.monitor.findMany).mockRejectedValue('some string error')
 
       await service.onModuleInit()
@@ -87,78 +104,96 @@ describe('MonitorCheckService', () => {
 
   describe('scheduleCheck', () => {
     beforeEach(() => {
-      vi.mocked(mockQueue.removeJobs).mockResolvedValue(undefined)
       vi.mocked(mockQueue.add).mockResolvedValue(undefined as unknown as Job<any>)
     })
 
-    it('removes stale jobs then enqueues the monitor', async () => {
-      const monitor = makeMonitor({ id: 'monitor-42' })
+    it('enqueues with the correct jobId and payload', async () => {
+      await service.scheduleCheck({ monitorId: MONITOR_ID, checkInterval: CHECK_INTERVAL })
 
-      await service.scheduleCheck(monitor)
-
-      expect(mockQueue.removeJobs).toHaveBeenCalledWith(`${BULL_KEYS.RAW_CHECK(monitor.id)}-*`)
       expect(mockQueue.add).toHaveBeenCalledWith(
         BULL_NAMES.CHECK,
-        monitor,
+        { monitorId: MONITOR_ID },
         expect.objectContaining({
-          jobId: expect.stringContaining(BULL_KEYS.RAW_CHECK(monitor.id)),
+          jobId: expect.stringContaining(BULL_KEYS.RAW_CHECK(MONITOR_ID)),
         }),
       )
     })
 
-    it('uses delay=0 when nextCheckAt is null (schedule immediately)', async () => {
-      const monitor = makeMonitor({ nextCheckAt: null })
+    it('uses delay=0 when immediate=true', async () => {
+      await service.scheduleCheck({
+        monitorId: MONITOR_ID,
+        checkInterval: CHECK_INTERVAL,
+        immediate: true,
+      })
 
-      await service.scheduleCheck(monitor)
-
-      expect(mockQueue.add).toHaveBeenCalledWith(
-        BULL_NAMES.CHECK,
-        monitor,
-        expect.objectContaining({ delay: 0 }),
-      )
+      const [, , opts] = vi.mocked(mockQueue.add).mock.calls[0] as any
+      expect(opts.delay).toBe(0)
     })
 
-    it('uses delay=0 when nextCheckAt is in the past', async () => {
-      const past = new Date(Date.now() - 60_000)
-      const monitor = makeMonitor({ nextCheckAt: past })
+    it('uses delay derived from checkInterval when immediate=false (default)', async () => {
+      await service.scheduleCheck({
+        monitorId: MONITOR_ID,
+        checkInterval: CHECK_INTERVAL,
+        immediate: false,
+      })
 
-      await service.scheduleCheck(monitor)
-
-      const { delay } = vi.mocked(mockQueue.add).mock.calls[0][2] as any
-      expect(delay).toBe(0)
+      const [, , opts] = vi.mocked(mockQueue.add).mock.calls[0] as any
+      expect(opts.delay).toBe(CHECK_INTERVAL * 60 * 1000)
     })
 
-    it('uses a positive delay when nextCheckAt is in the future', async () => {
-      const future = new Date(Date.now() + 30_000)
-      const monitor = makeMonitor({ nextCheckAt: future })
+    describe('when checkInterval is falsy (0 / not provided)', () => {
+      it('fetches checkInterval from DB and uses it for the delay', async () => {
+        vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(makeMonitorRow() as any)
 
-      await service.scheduleCheck(monitor)
+        await service.scheduleCheck({ monitorId: MONITOR_ID, checkInterval: 0 })
 
-      const { delay } = vi.mocked(mockQueue.add).mock.calls[0][2] as any
-      expect(delay).toBeGreaterThan(0)
-    })
+        expect(mockPrisma.monitor.findUnique).toHaveBeenCalledWith({
+          where: { id: MONITOR_ID },
+          select: { checkInterval: true },
+        })
 
-    it('logs an error (with stack) when the queue throws an Error', async () => {
-      const err = new Error('queue unavailable')
-      vi.mocked(mockQueue.removeJobs).mockRejectedValue(err)
+        const [, , opts] = vi.mocked(mockQueue.add).mock.calls[0] as any
+        expect(opts.delay).toBe(CHECK_INTERVAL * 60 * 1000)
+      })
 
-      await service.scheduleCheck(makeMonitor())
+      it('does NOT enqueue when DB fetch throws', async () => {
+        vi.mocked(mockPrisma.monitor.findUnique).mockRejectedValue(new Error('db blew up'))
 
-      expect(Logger.prototype.error).toHaveBeenCalledWith(
-        `Failed to check schedule monitors: ${err.message}`,
-        err.stack,
-      )
-    })
+        await service.scheduleCheck({ monitorId: MONITOR_ID, checkInterval: 0 })
 
-    it('logs "unknown error" when a non-Error is thrown', async () => {
-      vi.mocked(mockQueue.removeJobs).mockRejectedValue(42)
+        expect(mockQueue.add).not.toHaveBeenCalled()
+      })
 
-      await service.scheduleCheck(makeMonitor())
+      it('does NOT enqueue when monitor is not found', async () => {
+        vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(null)
 
-      expect(Logger.prototype.error).toHaveBeenCalledWith(
-        'Failed to check schedule monitors: unknown error',
-        undefined,
-      )
+        await service.scheduleCheck({ monitorId: MONITOR_ID, checkInterval: 0 })
+
+        expect(mockQueue.add).not.toHaveBeenCalled()
+      })
+
+      it('logs an error (with stack) when the DB fetch throws an Error', async () => {
+        const err = new Error('connection refused')
+        vi.mocked(mockPrisma.monitor.findUnique).mockRejectedValue(err)
+
+        await service.scheduleCheck({ monitorId: MONITOR_ID, checkInterval: 0 })
+
+        expect(Logger.prototype.error).toHaveBeenCalledWith(
+          `Failed to schedule check: ${err.message}`,
+          err.stack,
+        )
+      })
+
+      it('logs "unknown error" when a non-Error is thrown', async () => {
+        vi.mocked(mockPrisma.monitor.findUnique).mockRejectedValue(42)
+
+        await service.scheduleCheck({ monitorId: MONITOR_ID, checkInterval: 0 })
+
+        expect(Logger.prototype.error).toHaveBeenCalledWith(
+          'Failed to schedule check: unknown error',
+          undefined,
+        )
+      })
     })
   })
 })

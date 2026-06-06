@@ -1,4 +1,4 @@
-import { BullModule } from '@nestjs/bull'
+import { BullModule } from '@nestjs/bullmq'
 import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 
@@ -16,7 +16,7 @@ import { RedisModule } from './shared/redis/redis.module'
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-        redis: configService.get<string>('REDIS_URL'),
+        connection: { url: configService.get<string>('REDIS_URL') },
         defaultJobOptions: {
           attempts: 3,
           backoff: { type: 'exponential', delay: 1000 },

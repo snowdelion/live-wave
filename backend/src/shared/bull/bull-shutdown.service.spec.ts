@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common'
-import type { Queue } from 'bull'
+import type { Queue } from 'bullmq'
 
 import { BullShutdownService } from './bull-shutdown.service'
 
@@ -27,7 +27,6 @@ describe('BullShutdownService', () => {
       await service.onApplicationShutdown()
 
       expect(queue.close).toHaveBeenCalledOnce()
-      expect(queue.close).toHaveBeenCalledWith(true)
     })
 
     it('logs success when the queue closes cleanly', async () => {

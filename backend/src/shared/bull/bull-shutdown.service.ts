@@ -1,6 +1,6 @@
-import { InjectQueue } from '@nestjs/bull'
+import { InjectQueue } from '@nestjs/bullmq'
 import { Injectable, Logger, OnApplicationShutdown } from '@nestjs/common'
-import { Queue } from 'bull'
+import { Queue } from 'bullmq'
 
 import { BULL_NAMES } from './bull.constants'
 
@@ -12,7 +12,7 @@ export class BullShutdownService implements OnApplicationShutdown {
 
   async onApplicationShutdown() {
     try {
-      await this.queue.close(true)
+      await this.queue.close()
       this.logger.log(`Bull queue closed successfully`)
     } catch (e) {
       const isError = e instanceof Error
