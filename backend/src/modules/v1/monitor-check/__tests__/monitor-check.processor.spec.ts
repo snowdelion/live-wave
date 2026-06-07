@@ -3,6 +3,7 @@ import { MonitorType, StatusEnum } from '@prisma/client'
 import type { Job } from 'bullmq'
 
 import type { PrismaService } from '@/backend/shared/prisma/prisma.service'
+import type { RateLimitService } from '@/backend/shared/rate-limit/rate-limit.service'
 
 import { MonitorCheckProcessor } from '../monitor-check.processor'
 import type { MonitorCheckService } from '../monitor-check.service'
@@ -11,6 +12,8 @@ import type { HttpStrategy } from '../strategies/http-check.strategy'
 // --- helpers ---
 const MONITOR_ID = 'monitor-1'
 const CHECK_INTERVAL = 5
+const HTTP_URL = 'https://example.com/health'
+const HTTP_HOSTNAME = 'example.com'
 
 const makeMonitorRow = (
   overrides: Partial<{
@@ -20,6 +23,9 @@ const makeMonitorRow = (
     timeout: number
     lastStatus: StatusEnum | null
     clientId: string
+    httpMonitor: { url: string } | null
+    icmpMonitor: { host: string } | null
+    tcpMonitor: { host: string } | null
   }> = {},
 ) => ({
   id: MONITOR_ID,
@@ -28,6 +34,9 @@ const makeMonitorRow = (
   timeout: 5000,
   lastStatus: StatusEnum.up,
   clientId: 'client-1',
+  httpMonitor: { url: HTTP_URL },
+  icmpMonitor: null,
+  tcpMonitor: null,
   ...overrides,
 })
 
@@ -50,6 +59,10 @@ const mockMonitorCheckService = {
   scheduleCheck: vi.fn(),
 } satisfies Partial<MonitorCheckService> as unknown as MonitorCheckService
 
+const mockRateLimitService = {
+  domain: vi.fn(),
+} satisfies Partial<RateLimitService> as unknown as RateLimitService
+
 // --- tests ---
 describe('MonitorCheckProcessor', () => {
   let processor: MonitorCheckProcessor
@@ -61,8 +74,14 @@ describe('MonitorCheckProcessor', () => {
 
     vi.mocked(mockHttpStrategy.check).mockResolvedValue(undefined)
     vi.mocked(mockMonitorCheckService.scheduleCheck).mockResolvedValue(undefined)
+    vi.mocked(mockRateLimitService.domain).mockResolvedValue(false)
 
-    processor = new MonitorCheckProcessor(mockPrisma, mockHttpStrategy, mockMonitorCheckService)
+    processor = new MonitorCheckProcessor(
+      mockPrisma,
+      mockHttpStrategy,
+      mockMonitorCheckService,
+      mockRateLimitService,
+    )
   })
 
   describe('process', () => {
@@ -79,7 +98,7 @@ describe('MonitorCheckProcessor', () => {
       expect(mockMonitorCheckService.scheduleCheck).not.toHaveBeenCalled()
     })
 
-    it('loads monitor with the expected select and delegates HTTP checks to HttpStrategy', async () => {
+    it('loads monitor with the expected select (including relation fields)', async () => {
       vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValueOnce(makeMonitorRow() as never)
 
       await processor.process(makeJob())
@@ -93,12 +112,68 @@ describe('MonitorCheckProcessor', () => {
           timeout: true,
           lastStatus: true,
           clientId: true,
+          httpMonitor: true,
+          icmpMonitor: true,
+          tcpMonitor: true,
         },
       })
+    })
+
+    it('delegates HTTP checks to HttpStrategy when not rate-limited', async () => {
+      vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValueOnce(makeMonitorRow() as never)
+
+      await processor.process(makeJob())
+
       expect(mockHttpStrategy.check).toHaveBeenCalledWith(MONITOR_ID)
     })
 
-    it('reschedules the next check via MonitorCheckService when monitor exists', async () => {
+    it('calls rateLimitService with the extracted hostname and correct config', async () => {
+      vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValueOnce(makeMonitorRow() as never)
+
+      await processor.process(makeJob())
+
+      expect(mockRateLimitService.domain).toHaveBeenCalledWith({
+        domain: HTTP_HOSTNAME,
+        expireSeconds: 60,
+        maxPerMinute: 6,
+      })
+    })
+
+    it('skips the strategy but still reschedules when rate limit is exceeded', async () => {
+      vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValueOnce(makeMonitorRow() as never)
+      vi.mocked(mockRateLimitService.domain).mockResolvedValueOnce(true)
+
+      await processor.process(makeJob())
+
+      expect(Logger.prototype.warn).toHaveBeenCalledWith(
+        `Rate limit exceeded for ${HTTP_HOSTNAME}, skipping check`,
+      )
+      expect(mockHttpStrategy.check).not.toHaveBeenCalled()
+      expect(mockMonitorCheckService.scheduleCheck).toHaveBeenCalledWith({
+        monitorId: MONITOR_ID,
+        immediate: false,
+      })
+    })
+
+    it('skips the strategy but still reschedules when target host cannot be determined', async () => {
+      vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValueOnce(
+        makeMonitorRow({ httpMonitor: null }) as never,
+      )
+
+      await processor.process(makeJob())
+
+      expect(Logger.prototype.warn).toHaveBeenCalledWith(
+        `Can't determine target host for monitor ${MONITOR_ID}`,
+      )
+      expect(mockRateLimitService.domain).not.toHaveBeenCalled()
+      expect(mockHttpStrategy.check).not.toHaveBeenCalled()
+      expect(mockMonitorCheckService.scheduleCheck).toHaveBeenCalledWith({
+        monitorId: MONITOR_ID,
+        immediate: false,
+      })
+    })
+
+    it('reschedules the next check via MonitorCheckService when check completes successfully', async () => {
       vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValueOnce(makeMonitorRow() as never)
 
       await processor.process(makeJob())
@@ -111,7 +186,11 @@ describe('MonitorCheckProcessor', () => {
 
     it('logs an error for unknown monitor types without calling HttpStrategy', async () => {
       vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValueOnce(
-        makeMonitorRow({ type: MonitorType.ICMP }) as never,
+        makeMonitorRow({
+          type: MonitorType.ICMP,
+          icmpMonitor: { host: 'icmp-host.example.com' },
+          httpMonitor: null,
+        }) as never,
       )
 
       await processor.process(makeJob())
@@ -149,13 +228,83 @@ describe('MonitorCheckProcessor', () => {
       )
     })
 
-    it('propagates when the initial findUnique throws (finally is not reached)', async () => {
+    it('propagates when the initial findUnique throws and does not reschedule', async () => {
       vi.mocked(mockPrisma.monitor.findUnique).mockRejectedValueOnce(new Error('DB exploded'))
 
       await expect(processor.process(makeJob())).rejects.toThrow('DB exploded')
 
       expect(mockHttpStrategy.check).not.toHaveBeenCalled()
       expect(mockMonitorCheckService.scheduleCheck).not.toHaveBeenCalled()
+    })
+
+    describe('ICMP monitor', () => {
+      it('uses icmpMonitor.host as the rate-limit domain', async () => {
+        const icmpHost = 'icmp-host.example.com'
+        vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValueOnce(
+          makeMonitorRow({
+            type: MonitorType.ICMP,
+            icmpMonitor: { host: icmpHost },
+            httpMonitor: null,
+          }) as never,
+        )
+
+        await processor.process(makeJob())
+
+        expect(mockRateLimitService.domain).toHaveBeenCalledWith(
+          expect.objectContaining({ domain: icmpHost }),
+        )
+      })
+
+      it('skips strategy but still reschedules when icmpMonitor relation is null', async () => {
+        vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValueOnce(
+          makeMonitorRow({ type: MonitorType.ICMP, icmpMonitor: null, httpMonitor: null }) as never,
+        )
+
+        await processor.process(makeJob())
+
+        expect(Logger.prototype.warn).toHaveBeenCalledWith(
+          `Can't determine target host for monitor ${MONITOR_ID}`,
+        )
+        expect(mockMonitorCheckService.scheduleCheck).toHaveBeenCalledWith({
+          monitorId: MONITOR_ID,
+          immediate: false,
+        })
+      })
+    })
+
+    describe('TCP monitor', () => {
+      it('uses tcpMonitor.host as the rate-limit domain', async () => {
+        const tcpHost = 'tcp-host.example.com'
+        vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValueOnce(
+          makeMonitorRow({
+            type: MonitorType.TCP,
+            tcpMonitor: { host: tcpHost },
+            httpMonitor: null,
+          }) as never,
+        )
+
+        await processor.process(makeJob())
+
+        expect(mockRateLimitService.domain).toHaveBeenCalledWith(
+          expect.objectContaining({ domain: tcpHost }),
+        )
+      })
+
+      it('skips strategy but still reschedules when tcpMonitor relation is null', async () => {
+        vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValueOnce(
+          makeMonitorRow({ type: MonitorType.TCP, tcpMonitor: null, httpMonitor: null }) as never,
+        )
+
+        await processor.process(makeJob())
+
+        expect(Logger.prototype.warn).toHaveBeenCalledWith(
+          `Can't determine target host for monitor ${MONITOR_ID}`,
+        )
+        expect(mockMonitorCheckService.scheduleCheck).toHaveBeenCalledWith({
+          monitorId: MONITOR_ID,
+          immediate: false,
+        })
+      })
     })
   })
 })

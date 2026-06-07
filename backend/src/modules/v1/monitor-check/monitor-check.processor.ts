@@ -1,10 +1,11 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Logger } from '@nestjs/common'
-import { MonitorType } from '@prisma/client'
+import { type HttpMonitor, type IcmpMonitor, MonitorType, type TcpMonitor } from '@prisma/client'
 import { Job } from 'bullmq'
 
 import { BULL_NAMES } from '@/backend/shared/bull/bull.constants'
 import { PrismaService } from '@/backend/shared/prisma/prisma.service'
+import { RateLimitService } from '@/backend/shared/rate-limit/rate-limit.service'
 
 import { MonitorCheckService } from './monitor-check.service'
 import { HttpStrategy } from './strategies/http-check.strategy'
@@ -17,6 +18,7 @@ export class MonitorCheckProcessor extends WorkerHost {
     private prisma: PrismaService,
     private httpStrategy: HttpStrategy,
     private monitorCheckService: MonitorCheckService,
+    private rateLimitService: RateLimitService,
   ) {
     super()
   }
@@ -35,6 +37,9 @@ export class MonitorCheckProcessor extends WorkerHost {
           timeout: true,
           lastStatus: true,
           clientId: true,
+          httpMonitor: true,
+          icmpMonitor: true,
+          tcpMonitor: true,
         },
       })
 
@@ -43,6 +48,22 @@ export class MonitorCheckProcessor extends WorkerHost {
         return
       }
       shouldReschedule = true
+
+      const targetHost = this.getTargetHost(monitor)
+      if (!targetHost) {
+        this.logger.warn(`Can't determine target host for monitor ${monitorId}`)
+        return
+      }
+
+      const isRateLimited = await this.rateLimitService.domain({
+        domain: targetHost,
+        expireSeconds: 60,
+        maxPerMinute: 6,
+      })
+      if (isRateLimited) {
+        this.logger.warn(`Rate limit exceeded for ${targetHost}, skipping check`)
+        return
+      }
 
       switch (monitor.type) {
         case MonitorType.HTTP:
@@ -63,6 +84,27 @@ export class MonitorCheckProcessor extends WorkerHost {
       if (shouldReschedule) {
         await this.monitorCheckService.scheduleCheck({ monitorId, immediate: false })
       }
+    }
+  }
+
+  private getTargetHost(monitor: {
+    type: MonitorType
+    httpMonitor: HttpMonitor | null
+    tcpMonitor: TcpMonitor | null
+    icmpMonitor: IcmpMonitor | null
+  }): string | null {
+    switch (monitor.type) {
+      case MonitorType.HTTP:
+        if (monitor.httpMonitor) return new URL(monitor.httpMonitor?.url).hostname
+        else return null
+
+      case MonitorType.ICMP:
+        if (monitor.icmpMonitor) return monitor.icmpMonitor.host
+        else return null
+
+      case MonitorType.TCP:
+        if (monitor.tcpMonitor) return monitor.tcpMonitor.host
+        else return null
     }
   }
 }
