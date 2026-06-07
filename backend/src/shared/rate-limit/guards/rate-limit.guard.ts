@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common'
 import type { Request } from 'express'
 
+import { REDIS_KEYS } from '../../redis/redis.constants'
 import { RATE_LIMIT_RULES } from '../rate-limit.constants'
 import { RateLimitService } from '../rate-limit.service'
 
@@ -18,9 +19,9 @@ export class RateLimitGuard implements CanActivate {
     const req: Request = context.switchToHttp().getRequest()
     const ip = req.ip || req.socket.remoteAddress || 'unknown'
 
-    const prefix = `live-wave:rate-limit:create-monitor:${ip}`
-
+    const prefix = REDIS_KEYS.createRateLimit(ip)
     const rules = RATE_LIMIT_RULES.CREATE_MONITOR
+
     const isAllowed = await this.rateLimitService.checkRules(prefix, rules)
     if (!isAllowed) throw new HttpException('Too many requests', HttpStatus.TOO_MANY_REQUESTS)
 
