@@ -8,6 +8,7 @@ import type { RateLimitService } from '@/backend/shared/rate-limit/rate-limit.se
 import { MonitorCheckProcessor } from '../monitor-check.processor'
 import type { MonitorCheckService } from '../monitor-check.service'
 import type { HttpStrategy } from '../strategies/http-check.strategy'
+import type { TcpStrategy } from '../strategies/tcp-check.strategy'
 
 // --- helpers ---
 const MONITOR_ID = 'monitor-1'
@@ -54,6 +55,9 @@ const mockPrisma = {
 const mockHttpStrategy = {
   check: vi.fn(),
 } satisfies Partial<HttpStrategy> as unknown as HttpStrategy
+const mockTcpStrategy = {
+  check: vi.fn(),
+} satisfies Partial<TcpStrategy> as unknown as TcpStrategy
 
 const mockMonitorCheckService = {
   scheduleCheck: vi.fn(),
@@ -79,6 +83,7 @@ describe('MonitorCheckProcessor', () => {
     processor = new MonitorCheckProcessor(
       mockPrisma,
       mockHttpStrategy,
+      mockTcpStrategy,
       mockMonitorCheckService,
       mockRateLimitService,
     )

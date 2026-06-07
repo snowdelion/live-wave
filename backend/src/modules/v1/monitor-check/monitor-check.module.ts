@@ -7,10 +7,17 @@ import { BULL_NAMES } from '@/backend/shared/bull/bull.constants'
 import { MonitorCheckProcessor } from './monitor-check.processor'
 import { MonitorCheckService } from './monitor-check.service'
 import { HttpStrategy } from './strategies/http-check.strategy'
+import { TcpStrategy } from './strategies/tcp-check.strategy'
 
 @Module({
   imports: [BullModule.registerQueue({ name: BULL_NAMES.QUEUE })],
-  providers: [MonitorCheckService, MonitorCheckProcessor, BullShutdownService, HttpStrategy],
+  providers: [
+    MonitorCheckService,
+    MonitorCheckProcessor,
+    BullShutdownService,
+    HttpStrategy,
+    TcpStrategy,
+  ],
   exports: [MonitorCheckService],
 })
 export class MonitorCheckModule {}

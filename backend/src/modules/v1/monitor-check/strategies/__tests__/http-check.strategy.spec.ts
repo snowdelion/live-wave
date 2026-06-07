@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PrismaService } from '@/backend/shared/prisma/prisma.service'
 import { httpFetch } from '@/backend/shared/utils/http-fetch.utils'
 
-import { HttpStrategy } from './http-check.strategy'
+import { HttpStrategy } from '../http-check.strategy'
 
 vi.mock('@/backend/shared/utils/http-fetch.utils', () => ({
   httpFetch: vi.fn(),

@@ -9,6 +9,7 @@ import { RateLimitService } from '@/backend/shared/rate-limit/rate-limit.service
 
 import { MonitorCheckService } from './monitor-check.service'
 import { HttpStrategy } from './strategies/http-check.strategy'
+import { TcpStrategy } from './strategies/tcp-check.strategy'
 
 @Processor(BULL_NAMES.QUEUE, { concurrency: 5 })
 export class MonitorCheckProcessor extends WorkerHost {
@@ -17,6 +18,7 @@ export class MonitorCheckProcessor extends WorkerHost {
   constructor(
     private prisma: PrismaService,
     private httpStrategy: HttpStrategy,
+    private tcpStrategy: TcpStrategy,
     private monitorCheckService: MonitorCheckService,
     private rateLimitService: RateLimitService,
   ) {
@@ -68,6 +70,10 @@ export class MonitorCheckProcessor extends WorkerHost {
       switch (monitor.type) {
         case MonitorType.HTTP:
           await this.httpStrategy.check(monitorId)
+          break
+
+        case MonitorType.TCP:
+          await this.tcpStrategy.check(monitorId)
           break
 
         default:
