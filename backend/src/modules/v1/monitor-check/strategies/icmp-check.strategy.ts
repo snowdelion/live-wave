@@ -53,7 +53,7 @@ export class IcmpStrategy {
     if (status === StatusEnum.down)
       this.logger.warn(`Monitor ${monitorId} (${host}) is down! Error: ${error}`)
 
-    await this.confirmTransaction({ monitorId, status, responseTime, error, checkInterval })
+    await this.confirmTransaction({ monitorId, status, responseTime, error, checkInterval, host })
   }
 
   private getTimeout(ms: number) {
@@ -82,10 +82,11 @@ export class IcmpStrategy {
     responseTime,
     error,
     checkInterval,
+    host,
   }: ConfirmTransactionOptions) {
     await this.prisma.$transaction([
       this.prisma.check.create({
-        data: { monitorId, status, responseTime, error },
+        data: { monitorId, status, responseTime, error, details: { host } },
       }),
 
       this.prisma.monitor.update({
@@ -113,4 +114,5 @@ interface ConfirmTransactionOptions {
   responseTime: number
   error: string | null
   checkInterval: number
+  host: string
 }
