@@ -53,7 +53,15 @@ export class TcpStrategy {
       responseTime = Date.now() - start
     }
 
-    await this.confirmTransaction({ monitorId, status, responseTime, error, checkInterval })
+    await this.confirmTransaction({
+      monitorId,
+      status,
+      responseTime,
+      error,
+      checkInterval,
+      host,
+      port,
+    })
   }
 
   private checkTcpPort({ host, port, timeoutMs }: CheckTcpPortOptions): Promise<void> {
@@ -81,10 +89,12 @@ export class TcpStrategy {
     responseTime,
     error,
     checkInterval,
+    host,
+    port,
   }: ConfirmTransactionOptions) {
     await this.prisma.$transaction([
       this.prisma.check.create({
-        data: { monitorId, status, responseTime, error },
+        data: { monitorId, status, responseTime, error, details: { host, port } },
       }),
 
       this.prisma.monitor.update({
@@ -119,4 +129,6 @@ interface ConfirmTransactionOptions {
   responseTime: number
   error: string | null
   checkInterval: number
+  host: string
+  port: number
 }

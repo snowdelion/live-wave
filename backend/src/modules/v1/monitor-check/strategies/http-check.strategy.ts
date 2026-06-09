@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { StatusEnum } from '@prisma/client'
+import { Method, StatusEnum } from '@prisma/client'
 
 import { PrismaService } from '@/backend/shared/prisma/prisma.service'
 import { httpFetch } from '@/backend/shared/utils/http-fetch.utils'
@@ -30,41 +30,41 @@ export class HttpStrategy {
     checkInterval: number,
     timeout: number,
     url: string,
-    method: string,
+    method: Method,
   ) {
-    let status: StatusEnum = StatusEnum.down
-    let statusCode: number | null = null
-    let error: string | null = null
-    let responseTime: number | null = null
-    const start = Date.now()
-
-    try {
-      this.logger.warn(`fetching for ${url}`)
-      const res = await httpFetch({
-        url,
-        timeout,
-        retries: 3,
-        options: {
-          method,
-          redirect: 'follow',
-          cache: 'no-cache',
-          headers: { 'User-Agent': 'LiveWave-Uptime-Monitor/1.0' },
-        },
-      })
-
-      statusCode = res.status
-      status = res.ok ? StatusEnum.up : StatusEnum.down
-      responseTime = Date.now() - start
-    } catch (e) {
-      error = e instanceof Error ? e.message : 'unknown error'
-      status = StatusEnum.down
-    }
+    const { status, statusCode, error, responseTime } = await this.getFetchResults({
+      url,
+      timeout,
+      method,
+    })
 
     if (status === StatusEnum.down)
       this.logger.warn(
         `Monitor ${monitorId} is down! Status code: ${statusCode}. Response time: ${responseTime}. ${error ? `Error: ${error}.` : ''}`,
       )
 
+    await this.confirmTransaction({
+      monitorId,
+      statusCode,
+      responseTime,
+      error,
+      status,
+      checkInterval,
+      url,
+      method,
+    })
+  }
+
+  private async confirmTransaction({
+    monitorId,
+    statusCode,
+    responseTime,
+    error,
+    status,
+    checkInterval,
+    url,
+    method,
+  }: ConfirmTransactionOptions) {
     try {
       await this.prisma.$transaction([
         this.prisma.check.create({
@@ -74,6 +74,7 @@ export class HttpStrategy {
             statusCode,
             responseTime,
             error,
+            details: { url, method },
           },
         }),
         this.prisma.monitor.update({
@@ -96,4 +97,53 @@ export class HttpStrategy {
       this.logger.error(`Failed to handle check: ${details}`, errorStack)
     }
   }
+
+  private async getFetchResults({ url, timeout, method }: GetFetchResultsOptions) {
+    const start = Date.now()
+    let status: StatusEnum = StatusEnum.down
+    let statusCode: number | null = null
+    let error: string | null = null
+    let responseTime: number | null = null
+
+    try {
+      const res = await httpFetch({
+        url,
+        timeout,
+        retries: 3,
+        options: {
+          method,
+          redirect: 'follow',
+          cache: 'no-cache',
+          headers: { 'User-Agent': 'LiveWave-Uptime-Monitor/1.0' },
+        },
+      })
+
+      statusCode = res.status
+      status = res.ok ? StatusEnum.up : StatusEnum.down
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'unknown error'
+      status = StatusEnum.down
+    } finally {
+      responseTime = Date.now() - start
+    }
+
+    return { status, statusCode, error, responseTime }
+  }
+}
+
+interface ConfirmTransactionOptions {
+  monitorId: string
+  statusCode: number | null
+  responseTime: number | null
+  error: string | null
+  status: StatusEnum
+  checkInterval: number
+  url: string
+  method: Method
+}
+
+interface GetFetchResultsOptions {
+  url: string
+  timeout: number
+  method: Method
 }

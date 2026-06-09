@@ -173,6 +173,10 @@ describe('HttpStrategy', () => {
           statusCode: 204,
           responseTime: expect.any(Number) as number,
           error: null,
+          details: {
+            method: 'HEAD',
+            url: 'https://example.com/health',
+          },
         },
       })
       expect(mockPrisma.monitor.update).toHaveBeenCalledWith({
@@ -215,12 +219,16 @@ describe('HttpStrategy', () => {
           monitorId: MONITOR_ID,
           status: StatusEnum.down,
           statusCode: null,
-          responseTime: null,
+          responseTime: 0,
           error: 'fetch failed',
+          details: {
+            method: 'HEAD',
+            url: 'https://example.com/health',
+          },
         },
       })
       expect(Logger.prototype.warn).toHaveBeenCalledWith(
-        `Monitor ${MONITOR_ID} is down! Status code: null. Response time: null. Error: fetch failed.`,
+        `Monitor ${MONITOR_ID} is down! Status code: null. Response time: 0. Error: fetch failed.`,
       )
     })
 
@@ -236,7 +244,7 @@ describe('HttpStrategy', () => {
         }),
       })
       expect(Logger.prototype.warn).toHaveBeenCalledWith(
-        `Monitor ${MONITOR_ID} is down! Status code: null. Response time: null. Error: unknown error.`,
+        `Monitor ${MONITOR_ID} is down! Status code: null. Response time: 0. Error: unknown error.`,
       )
     })
 
