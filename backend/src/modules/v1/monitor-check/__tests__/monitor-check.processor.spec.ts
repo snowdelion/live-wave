@@ -8,6 +8,7 @@ import type { RateLimitService } from '@/backend/shared/rate-limit/rate-limit.se
 import { MonitorCheckProcessor } from '../monitor-check.processor'
 import type { MonitorCheckService } from '../monitor-check.service'
 import type { HttpStrategy } from '../strategies/http-check.strategy'
+import type { IcmpStrategy } from '../strategies/icmp-check.strategy'
 import type { TcpStrategy } from '../strategies/tcp-check.strategy'
 
 // --- helpers ---
@@ -58,6 +59,9 @@ const mockHttpStrategy = {
 const mockTcpStrategy = {
   check: vi.fn(),
 } satisfies Partial<TcpStrategy> as unknown as TcpStrategy
+const mockIcmpStrategy = {
+  check: vi.fn(),
+} satisfies Partial<IcmpStrategy> as unknown as IcmpStrategy
 
 const mockMonitorCheckService = {
   scheduleCheck: vi.fn(),
@@ -84,6 +88,7 @@ describe('MonitorCheckProcessor', () => {
       mockPrisma,
       mockHttpStrategy,
       mockTcpStrategy,
+      mockIcmpStrategy,
       mockMonitorCheckService,
       mockRateLimitService,
     )
@@ -190,9 +195,22 @@ describe('MonitorCheckProcessor', () => {
     })
 
     it('logs an error for unknown monitor types without calling HttpStrategy', async () => {
+      const unknownType = 'invalid type' as unknown as MonitorType
+
+      const processor = new MonitorCheckProcessor(
+        mockPrisma,
+        mockHttpStrategy,
+        mockTcpStrategy,
+        mockIcmpStrategy,
+        mockMonitorCheckService,
+        mockRateLimitService,
+      )
+
+      const errorSpy = vi.spyOn(processor['logger'], 'error').mockImplementation(() => {})
+
       vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValueOnce(
         makeMonitorRow({
-          type: MonitorType.ICMP,
+          type: unknownType,
           icmpMonitor: { host: 'icmp-host.example.com' },
           httpMonitor: null,
         }) as never,
@@ -200,11 +218,9 @@ describe('MonitorCheckProcessor', () => {
 
       await processor.process(makeJob())
 
-      expect(Logger.prototype.error).toHaveBeenCalledWith(
-        `Unknown monitor type: ${MonitorType.ICMP}`,
-      )
+      expect(errorSpy).toHaveBeenCalledWith(`Unknown monitor type: ${unknownType}`)
       expect(mockHttpStrategy.check).not.toHaveBeenCalled()
-      expect(mockMonitorCheckService.scheduleCheck).toHaveBeenCalledOnce()
+      expect(mockMonitorCheckService.scheduleCheck).not.toHaveBeenCalledOnce()
     })
 
     it('logs check failures (Error) without throwing and still reschedules', async () => {
