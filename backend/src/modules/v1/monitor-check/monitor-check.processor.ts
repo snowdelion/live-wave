@@ -9,6 +9,7 @@ import { RateLimitService } from '@/backend/shared/rate-limit/rate-limit.service
 
 import { MonitorCheckService } from './monitor-check.service'
 import { HttpStrategy } from './strategies/http-check.strategy'
+import { IcmpStrategy } from './strategies/icmp-check.strategy'
 import { TcpStrategy } from './strategies/tcp-check.strategy'
 
 @Processor(BULL_NAMES.QUEUE, { concurrency: 5 })
@@ -19,6 +20,7 @@ export class MonitorCheckProcessor extends WorkerHost {
     private prisma: PrismaService,
     private httpStrategy: HttpStrategy,
     private tcpStrategy: TcpStrategy,
+    private icmpStrategy: IcmpStrategy,
     private monitorCheckService: MonitorCheckService,
     private rateLimitService: RateLimitService,
   ) {
@@ -49,6 +51,11 @@ export class MonitorCheckProcessor extends WorkerHost {
         this.logger.warn(`Monitor ${monitorId} not found, skipping check`)
         return
       }
+
+      if (![MonitorType.HTTP, MonitorType.TCP, MonitorType.ICMP].includes(monitor.type)) {
+        this.logger.error(`Unknown monitor type: ${monitor.type}`)
+        return
+      }
       shouldReschedule = true
 
       const targetHost = this.getTargetHost(monitor)
@@ -76,8 +83,9 @@ export class MonitorCheckProcessor extends WorkerHost {
           await this.tcpStrategy.check(monitorId)
           break
 
-        default:
-          this.logger.error(`Unknown monitor type: ${monitor.type}`)
+        case MonitorType.ICMP:
+          await this.icmpStrategy.check(monitorId)
+          break
       }
     } catch (e) {
       const isError = e instanceof Error
