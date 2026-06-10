@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { Method, StatusEnum } from '@prisma/client'
+import { Method, RecordType, StatusEnum } from '@prisma/client'
 
 export class MonitorCheckResponseDto {
   @ApiProperty({ example: 'ck3kq1t7x0000u1w6p8x1f1c2' })
@@ -22,10 +22,11 @@ export class MonitorCheckResponseDto {
       { $ref: '#/components/schemas/HttpCheckDetails' },
       { $ref: '#/components/schemas/TcpCheckDetails' },
       { $ref: '#/components/schemas/IcmpCheckDetails' },
+      { $ref: '#/components/schemas/DnsCheckDetails' },
     ],
     description: 'Check details depending on monitor type',
   })
-  details?: HttpCheckDetails | TcpCheckDetails | IcmpCheckDetails
+  details?: HttpCheckDetails | TcpCheckDetails | IcmpCheckDetails | DnsCheckDetails
 
   @ApiProperty({ example: 'cmpplwrap0000u1cwddpe8mq8' })
   monitorId!: string
@@ -53,4 +54,12 @@ export class TcpCheckDetails {
 
   @ApiProperty({ example: 5432 })
   port!: number
+}
+
+export class DnsCheckDetails {
+  @ApiProperty({ example: 'example.com' })
+  host!: string
+
+  @ApiProperty({ example: RecordType.AAAA })
+  recordType!: RecordType
 }
