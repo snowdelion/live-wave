@@ -16,6 +16,7 @@ import { ClientId } from '@/backend/shared/decorators/client-id.decorator'
 import { RateLimitGuard } from '@/backend/shared/rate-limit/guards/rate-limit.guard'
 
 import { MonitorDocs } from './decorators/monitor-docs.decorator'
+import { CreateDnsMonitorDto } from './dto/requests/create-monitor/create-dns-monitor.dto'
 import { CreateHttpMonitorDto } from './dto/requests/create-monitor/create-http-monitor.dto'
 import { CreateIcmpMonitorDto } from './dto/requests/create-monitor/create-icmp-monitor.dto'
 import { CreateTcpMonitorDto } from './dto/requests/create-monitor/create-tcp-monitor.dto'
@@ -47,6 +48,7 @@ import { MonitorService } from './monitor.service'
   CreateHttpMonitorDto,
   CreateTcpMonitorDto,
   CreateIcmpMonitorDto,
+  CreateDnsMonitorDto,
   UpdateHttpMonitorDto,
   UpdateTcpMonitorDto,
   UpdateIcmpMonitorDto,
@@ -68,7 +70,7 @@ export class MonitorController {
   async create(
     @ClientId() clientId: string,
     @Body()
-    dto: CreateHttpMonitorDto | CreateIcmpMonitorDto | CreateTcpMonitorDto,
+    dto: CreateHttpMonitorDto | CreateIcmpMonitorDto | CreateTcpMonitorDto | CreateDnsMonitorDto,
   ) {
     return await this.monitorService.create(clientId, dto)
   }
