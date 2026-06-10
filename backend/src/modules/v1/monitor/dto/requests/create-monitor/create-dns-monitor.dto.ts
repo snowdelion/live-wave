@@ -5,7 +5,7 @@ import { IsEnum, IsOptional, IsString } from 'class-validator'
 import { CreateBaseMonitorDto } from './create-base-monitor.dto'
 
 export class CreateDnsMonitorDto extends CreateBaseMonitorDto {
-  @ApiProperty({ enum: MonitorType, default: MonitorType.DNS, required: false })
+  @ApiProperty({ enum: MonitorType, default: MonitorType.DNS })
   type = MonitorType.DNS
 
   @ApiProperty({
