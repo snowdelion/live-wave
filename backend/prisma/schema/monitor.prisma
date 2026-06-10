@@ -2,6 +2,7 @@ enum MonitorType {
   HTTP
   ICMP
   TCP
+  DNS
 }
 
 model Monitor {
@@ -23,6 +24,7 @@ model Monitor {
   httpMonitor HttpMonitor?
   icmpMonitor IcmpMonitor?
   tcpMonitor  TcpMonitor?
+  dnsMonitor  DnsMonitor?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -56,4 +58,20 @@ model TcpMonitor {
 
   host String
   port Int
+}
+
+model DnsMonitor {
+  monitorId String  @id
+  monitor   Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+
+  host       String
+  recordType RecordType
+}
+
+enum RecordType {
+  A
+  AAAA
+  MX
+  TXT
+  CNAME
 }
