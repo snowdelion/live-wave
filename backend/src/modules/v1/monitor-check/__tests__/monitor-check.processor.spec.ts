@@ -7,6 +7,7 @@ import type { RateLimitService } from '@/backend/shared/rate-limit/rate-limit.se
 
 import { MonitorCheckProcessor } from '../monitor-check.processor'
 import type { MonitorCheckService } from '../monitor-check.service'
+import type { DnsStrategy } from '../strategies/dns-check.strategy'
 import type { HttpStrategy } from '../strategies/http-check.strategy'
 import type { IcmpStrategy } from '../strategies/icmp-check.strategy'
 import type { TcpStrategy } from '../strategies/tcp-check.strategy'
@@ -62,6 +63,9 @@ const mockTcpStrategy = {
 const mockIcmpStrategy = {
   check: vi.fn(),
 } satisfies Partial<IcmpStrategy> as unknown as IcmpStrategy
+const mockDnsStrategy = {
+  check: vi.fn(),
+} satisfies Partial<DnsStrategy> as unknown as DnsStrategy
 
 const mockMonitorCheckService = {
   scheduleCheck: vi.fn(),
@@ -89,6 +93,7 @@ describe('MonitorCheckProcessor', () => {
       mockHttpStrategy,
       mockTcpStrategy,
       mockIcmpStrategy,
+      mockDnsStrategy,
       mockMonitorCheckService,
       mockRateLimitService,
     )
@@ -125,6 +130,7 @@ describe('MonitorCheckProcessor', () => {
           httpMonitor: true,
           icmpMonitor: true,
           tcpMonitor: true,
+          dnsMonitor: true,
         },
       })
     })
@@ -202,6 +208,7 @@ describe('MonitorCheckProcessor', () => {
         mockHttpStrategy,
         mockTcpStrategy,
         mockIcmpStrategy,
+        mockDnsStrategy,
         mockMonitorCheckService,
         mockRateLimitService,
       )

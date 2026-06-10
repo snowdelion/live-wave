@@ -6,6 +6,7 @@ import { BULL_NAMES } from '@/backend/shared/bull/bull.constants'
 
 import { MonitorCheckProcessor } from './monitor-check.processor'
 import { MonitorCheckService } from './monitor-check.service'
+import { DnsStrategy } from './strategies/dns-check.strategy'
 import { HttpStrategy } from './strategies/http-check.strategy'
 import { IcmpStrategy } from './strategies/icmp-check.strategy'
 import { TcpStrategy } from './strategies/tcp-check.strategy'
@@ -19,6 +20,7 @@ import { TcpStrategy } from './strategies/tcp-check.strategy'
     HttpStrategy,
     TcpStrategy,
     IcmpStrategy,
+    DnsStrategy,
   ],
   exports: [MonitorCheckService],
 })
