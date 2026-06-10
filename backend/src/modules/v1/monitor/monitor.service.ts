@@ -5,15 +5,26 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common'
-import { HttpMonitor, IcmpMonitor, Method, Monitor, MonitorType, TcpMonitor } from '@prisma/client'
+import {
+  DnsMonitor,
+  HttpMonitor,
+  IcmpMonitor,
+  Method,
+  Monitor,
+  MonitorType,
+  RecordType,
+  TcpMonitor,
+} from '@prisma/client'
 
 import { PrismaService } from '@/backend/shared/prisma/prisma.service'
 
 import { MonitorCheckService } from '../monitor-check/monitor-check.service'
 
+import { CreateDnsMonitorDto } from './dto/requests/create-monitor/create-dns-monitor.dto'
 import { CreateHttpMonitorDto } from './dto/requests/create-monitor/create-http-monitor.dto'
 import { CreateIcmpMonitorDto } from './dto/requests/create-monitor/create-icmp-monitor.dto'
 import { CreateTcpMonitorDto } from './dto/requests/create-monitor/create-tcp-monitor.dto'
+import { UpdateDnsMonitorDto } from './dto/requests/update-monitor/update-dns-monitor.dto'
 import { UpdateHttpMonitorDto } from './dto/requests/update-monitor/update-http-monitor.dto'
 import { UpdateIcmpMonitorDto } from './dto/requests/update-monitor/update-icmp-monitor.dto'
 import { UpdateTcpMonitorDto } from './dto/requests/update-monitor/update-tcp-monitor.dto'
@@ -28,7 +39,7 @@ export class MonitorService {
 
   async create(
     clientId: string,
-    dto: CreateHttpMonitorDto | CreateIcmpMonitorDto | CreateTcpMonitorDto,
+    dto: CreateHttpMonitorDto | CreateIcmpMonitorDto | CreateTcpMonitorDto | CreateDnsMonitorDto,
   ) {
     const monitorCount = await this.prisma.monitor.count({ where: { clientId } })
     if (monitorCount >= 5)
@@ -43,6 +54,9 @@ export class MonitorService {
 
       case MonitorType.TCP:
         return await this.createTcp(clientId, dto)
+
+      case MonitorType.DNS:
+        return await this.createDns(clientId, dto)
 
       default:
         throw new BadRequestException(`Unknown monitor type`)
@@ -127,6 +141,31 @@ export class MonitorService {
     return newMonitor
   }
 
+  async createDns(clientId: string, dto: CreateDnsMonitorDto) {
+    const newMonitor = await this.prisma.monitor.create({
+      data: {
+        clientId,
+        name: dto.name,
+        checkInterval: dto.checkInterval ?? 10,
+        timeout: dto.timeout ?? 5000,
+        type: MonitorType.DNS,
+        dnsMonitor: {
+          create: { host: dto.host, recordType: dto.recordType ?? RecordType.A },
+        },
+      },
+
+      include: { dnsMonitor: true },
+    })
+
+    this.logger.log(`Created DNS monitor ${newMonitor.id}`)
+    await this.monitorCheckService.scheduleCheck({
+      monitorId: newMonitor.id,
+      checkInterval: newMonitor.checkInterval,
+      immediate: true,
+    })
+    return newMonitor
+  }
+
   async findAllByClientId(clientId: string) {
     const monitors = await this.prisma.monitor.findMany({
       where: { clientId },
@@ -174,7 +213,7 @@ export class MonitorService {
   ) {
     const existing = await this.prisma.monitor.findUnique({
       where: { id },
-      include: { httpMonitor: true, icmpMonitor: true, tcpMonitor: true },
+      include: { httpMonitor: true, icmpMonitor: true, tcpMonitor: true, dnsMonitor: true },
     })
     if (!existing || existing.clientId !== clientId)
       throw new NotFoundException('Monitor not found')
@@ -193,6 +232,9 @@ export class MonitorService {
 
       case MonitorType.TCP:
         return await this.updateTcp(id, existing, dto)
+
+      case MonitorType.DNS:
+        return await this.updateDns(id, existing, dto)
 
       default:
         throw new BadRequestException(`Unknown monitor type`)
@@ -324,6 +366,58 @@ export class MonitorService {
         `ICMP monitor ${updatedTcpMonitor?.id} updated successfully. From ${JSON.stringify(existing)} to ${JSON.stringify(updatedTcpMonitor)}`,
       )
       return updatedTcpMonitor
+    })
+
+    if (
+      updateData.checkInterval !== undefined &&
+      updateData.checkInterval !== existing.checkInterval
+    ) {
+      try {
+        await this.monitorCheckService.scheduleCheck({
+          monitorId: id,
+          checkInterval: updateData.checkInterval,
+          immediate: false,
+        })
+      } catch (e) {
+        const details = e instanceof Error ? e.message : 'unexpected error'
+        this.logger.error(`Failed to reschedule monitor ${id}: ${details}`)
+      }
+    }
+    return updatedMonitor
+  }
+
+  async updateDns(
+    id: string,
+    existing: Monitor & { dnsMonitor: DnsMonitor | null },
+    dto: UpdateDnsMonitorDto,
+  ) {
+    const updateData: Partial<Monitor> = {}
+    if (dto.name !== undefined) updateData.name = dto.name
+    if (dto.checkInterval !== undefined) updateData.checkInterval = dto.checkInterval
+    if (dto.timeout !== undefined) updateData.timeout = dto.timeout
+
+    const updatedMonitor = await this.prisma.$transaction(async tx => {
+      await tx.monitor.update({ where: { id }, data: updateData })
+
+      const host = dto.host ?? existing.dnsMonitor?.host
+      const recordType = dto.recordType ?? existing.dnsMonitor?.recordType
+      if (!host || !recordType) throw new BadRequestException('Host and recordType required')
+
+      await tx.dnsMonitor.upsert({
+        where: { monitorId: id },
+        update: { host, recordType },
+        create: { monitorId: id, host, recordType },
+      })
+
+      const updatedDnsMonitor = await tx.monitor.findUnique({
+        where: { id },
+        include: { dnsMonitor: true },
+      })
+
+      this.logger.log(
+        `Dns monitor ${updatedDnsMonitor?.id} updated successfully. From ${JSON.stringify(existing)} to ${JSON.stringify(updatedDnsMonitor)}`,
+      )
+      return updatedDnsMonitor
     })
 
     if (

@@ -1,6 +1,12 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Logger } from '@nestjs/common'
-import { type HttpMonitor, type IcmpMonitor, MonitorType, type TcpMonitor } from '@prisma/client'
+import {
+  DnsMonitor,
+  type HttpMonitor,
+  type IcmpMonitor,
+  MonitorType,
+  type TcpMonitor,
+} from '@prisma/client'
 import { Job } from 'bullmq'
 
 import { BULL_NAMES } from '@/backend/shared/bull/bull.constants'
@@ -8,6 +14,7 @@ import { PrismaService } from '@/backend/shared/prisma/prisma.service'
 import { RateLimitService } from '@/backend/shared/rate-limit/rate-limit.service'
 
 import { MonitorCheckService } from './monitor-check.service'
+import { DnsStrategy } from './strategies/dns-check.strategy'
 import { HttpStrategy } from './strategies/http-check.strategy'
 import { IcmpStrategy } from './strategies/icmp-check.strategy'
 import { TcpStrategy } from './strategies/tcp-check.strategy'
@@ -21,6 +28,7 @@ export class MonitorCheckProcessor extends WorkerHost {
     private httpStrategy: HttpStrategy,
     private tcpStrategy: TcpStrategy,
     private icmpStrategy: IcmpStrategy,
+    private dnsStrategy: DnsStrategy,
     private monitorCheckService: MonitorCheckService,
     private rateLimitService: RateLimitService,
   ) {
@@ -44,6 +52,7 @@ export class MonitorCheckProcessor extends WorkerHost {
           httpMonitor: true,
           icmpMonitor: true,
           tcpMonitor: true,
+          dnsMonitor: true,
         },
       })
 
@@ -52,7 +61,11 @@ export class MonitorCheckProcessor extends WorkerHost {
         return
       }
 
-      if (![MonitorType.HTTP, MonitorType.TCP, MonitorType.ICMP].includes(monitor.type)) {
+      if (
+        ![MonitorType.HTTP, MonitorType.TCP, MonitorType.ICMP, MonitorType.DNS].includes(
+          monitor.type,
+        )
+      ) {
         this.logger.error(`Unknown monitor type: ${monitor.type}`)
         return
       }
@@ -86,6 +99,10 @@ export class MonitorCheckProcessor extends WorkerHost {
         case MonitorType.ICMP:
           await this.icmpStrategy.check(monitorId)
           break
+
+        case MonitorType.DNS:
+          await this.dnsStrategy.check(monitorId)
+          break
       }
     } catch (e) {
       const isError = e instanceof Error
@@ -106,6 +123,7 @@ export class MonitorCheckProcessor extends WorkerHost {
     httpMonitor: HttpMonitor | null
     tcpMonitor: TcpMonitor | null
     icmpMonitor: IcmpMonitor | null
+    dnsMonitor: DnsMonitor | null
   }): string | null {
     switch (monitor.type) {
       case MonitorType.HTTP:
@@ -118,6 +136,10 @@ export class MonitorCheckProcessor extends WorkerHost {
 
       case MonitorType.TCP:
         if (monitor.tcpMonitor) return monitor.tcpMonitor.host
+        else return null
+
+      case MonitorType.DNS:
+        if (monitor.dnsMonitor) return monitor.dnsMonitor.host
         else return null
     }
   }
