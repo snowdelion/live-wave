@@ -16,6 +16,7 @@ import { ClientId } from '@/backend/shared/decorators/client-id.decorator'
 import { RateLimitGuard } from '@/backend/shared/rate-limit/guards/rate-limit.guard'
 
 import { MonitorDocs } from './decorators/monitor-docs.decorator'
+import { MONITOR_EXTRA_MODELS } from './dto/monitor-extra-models'
 import { CreateDnsMonitorDto } from './dto/requests/create-monitor/create-dns-monitor.dto'
 import { CreateHttpMonitorDto } from './dto/requests/create-monitor/create-http-monitor.dto'
 import { CreateIcmpMonitorDto } from './dto/requests/create-monitor/create-icmp-monitor.dto'
@@ -23,16 +24,6 @@ import { CreateTcpMonitorDto } from './dto/requests/create-monitor/create-tcp-mo
 import { UpdateHttpMonitorDto } from './dto/requests/update-monitor/update-http-monitor.dto'
 import { UpdateIcmpMonitorDto } from './dto/requests/update-monitor/update-icmp-monitor.dto'
 import { UpdateTcpMonitorDto } from './dto/requests/update-monitor/update-tcp-monitor.dto'
-import { HttpMonitorConfig } from './dto/responses/http-monitor-response.dto'
-import { IcmpMonitorConfig } from './dto/responses/icmp-monitor-response.dto'
-import {
-  HttpCheckDetails,
-  IcmpCheckDetails,
-  MonitorCheckResponseDto,
-  TcpCheckDetails,
-} from './dto/responses/monitor-check-response.dto'
-import { MonitorResponseWithChecksDto } from './dto/responses/monitor-response-with-checks.dto'
-import { TcpMonitorConfig } from './dto/responses/tcp-monitor-response.dto'
 import {
   createMonitorDocs,
   deleteMonitorDocs,
@@ -42,23 +33,7 @@ import {
 } from './monitor.docs'
 import { MonitorService } from './monitor.service'
 
-@ApiExtraModels(
-  MonitorResponseWithChecksDto,
-  MonitorCheckResponseDto,
-  CreateHttpMonitorDto,
-  CreateTcpMonitorDto,
-  CreateIcmpMonitorDto,
-  CreateDnsMonitorDto,
-  UpdateHttpMonitorDto,
-  UpdateTcpMonitorDto,
-  UpdateIcmpMonitorDto,
-  HttpCheckDetails,
-  TcpCheckDetails,
-  IcmpCheckDetails,
-  HttpMonitorConfig,
-  IcmpMonitorConfig,
-  TcpMonitorConfig,
-)
+@ApiExtraModels(...MONITOR_EXTRA_MODELS)
 @Controller('v1/monitor')
 export class MonitorController {
   constructor(private monitorService: MonitorService) {}

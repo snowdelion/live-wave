@@ -17,7 +17,7 @@ export class TcpMonitorResponseDto {
   id!: string
   @ApiProperty({ example: 'example' })
   name!: string
-  @ApiProperty({ example: MonitorType.HTTP, enum: MonitorType })
+  @ApiProperty({ example: MonitorType.TCP, enum: MonitorType })
   type!: MonitorType
 
   @ApiProperty({ example: 10 })
@@ -31,7 +31,7 @@ export class TcpMonitorResponseDto {
   clientId!: string
 
   @ApiProperty({
-    example: TcpMonitorConfig,
+    type: TcpMonitorConfig,
     description: 'Current monitor type config options (url, method)',
   })
   tcpMonitor!: TcpMonitorConfig
