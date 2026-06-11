@@ -30,7 +30,7 @@ export class HttpMonitorResponseDto {
   clientId!: string
 
   @ApiProperty({
-    example: HttpMonitorConfig,
+    type: HttpMonitorConfig,
     description: 'Current monitor type config options (url, method)',
   })
   httpMonitor!: HttpMonitorConfig

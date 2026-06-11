@@ -14,7 +14,7 @@ export class IcmpMonitorResponseDto {
   id!: string
   @ApiProperty({ example: 'example' })
   name!: string
-  @ApiProperty({ example: MonitorType.HTTP, enum: MonitorType })
+  @ApiProperty({ example: MonitorType.ICMP, enum: MonitorType })
   type!: MonitorType
 
   @ApiProperty({ example: 10 })
@@ -28,7 +28,7 @@ export class IcmpMonitorResponseDto {
   clientId!: string
 
   @ApiProperty({
-    example: IcmpMonitorConfig,
+    type: IcmpMonitorConfig,
     description: 'Current monitor type config options (url, method)',
   })
   icmpMonitor!: IcmpMonitorConfig
