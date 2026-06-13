@@ -1,9 +1,15 @@
 import { Logger, NotFoundException } from '@nestjs/common'
 
+import type { RedisService } from '@/backend/shared/redis/redis.service'
+
 import { AnalyticsService } from '../analytics.service'
 
 // --- mocks ---
 const mockMonitor = { clientId: 'client-1', name: 'My Monitor' }
+const mockRedis = {
+  get: vi.fn(),
+  set: vi.fn(),
+} as unknown as RedisService
 
 const makeUptimeRaw = (overrides = {}) => [
   { uptime: 99.5, averageResponseTime: 123.4, totalChecks: 200, ...overrides },
@@ -58,7 +64,7 @@ describe('AnalyticsService', () => {
 
   beforeEach(() => {
     prisma = makePrisma()
-    service = new AnalyticsService(prisma as never)
+    service = new AnalyticsService(prisma as never, mockRedis)
     loggerErrorSpy = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
   })
 

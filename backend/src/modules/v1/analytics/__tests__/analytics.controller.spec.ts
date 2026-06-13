@@ -130,6 +130,9 @@ describe('AnalyticsController', () => {
       mockAnalyticsService.getIncidents.mockResolvedValue([])
       mockAnalyticsService.getTimeline.mockResolvedValue([])
 
+      const now = new Date('2024-06-01T12:00:00.000Z').getTime()
+      vi.spyOn(Date, 'now').mockReturnValue(now)
+
       const days = 14
       await controller.getIncidents('c', 'm', { days })
       await controller.getTimeline('c', 'm', { days })

@@ -1,11 +1,16 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common'
 
 import { PrismaService } from '@/backend/shared/prisma/prisma.service'
+import { REDIS_KEYS } from '@/backend/shared/redis/redis.constants'
+import { RedisService } from '@/backend/shared/redis/redis.service'
 
 @Injectable()
 export class AnalyticsService {
   private readonly logger = new Logger(AnalyticsService.name)
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private redis: RedisService,
+  ) {}
 
   async getOverview(clientId: string, monitorId: string, days: number = 7) {
     const monitor = await this.prisma.monitor.findUnique({
@@ -14,6 +19,10 @@ export class AnalyticsService {
     })
     if (!monitor || monitor.clientId !== clientId) throw new NotFoundException('Monitor not found')
 
+    const key = REDIS_KEYS.overviewAnalytics(monitorId, days)
+    const cached = await this.redis.get(key)
+    if (cached) return JSON.parse(cached) as OverviewResult
+
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - days)
     startDate.setHours(0, 0, 0, 0)
@@ -21,7 +30,7 @@ export class AnalyticsService {
     const { uptime, averageResponseTime, totalChecks } = await this.getUptime(monitorId, startDate)
     const dailyStats = await this.getDailyStats(monitorId, startDate)
 
-    return {
+    const result: OverviewResult = {
       monitorId,
       monitorName: monitor.name,
       periodDays: days,
@@ -32,6 +41,9 @@ export class AnalyticsService {
       averageResponseTime: averageResponseTime ?? null,
       dailyStats,
     }
+
+    await this.redis.set(key, JSON.stringify(result), 120)
+    return result
   }
 
   private async getDailyStats(monitorId: string, startDate: Date): Promise<DailyStats> {
@@ -264,3 +276,15 @@ type DailyStats = {
 
 type IncidentRaw = { startAt: Date; endAt: Date; cause: string | null; durationMs: number | null }
 type Incidents = { startAt: Date; endAt: Date; cause: string | null; durationMs: number }[]
+
+export interface OverviewResult {
+  monitorId: string
+  monitorName: string
+  periodDays: number
+  startDate: Date
+  endDate: Date
+  totalChecks: number
+  uptime: number | null
+  averageResponseTime: number | null
+  dailyStats: DailyStats
+}
