@@ -27,7 +27,10 @@ export class AnalyticsService {
     startDate.setDate(startDate.getDate() - days)
     startDate.setHours(0, 0, 0, 0)
 
-    const { uptime, averageResponseTime, totalChecks } = await this.getUptime(monitorId, startDate)
+    const { uptime, averageResponseTime, totalChecks, p95ResponseTime } = await this.getUptime(
+      monitorId,
+      startDate,
+    )
     const dailyStats = await this.getDailyStats(monitorId, startDate)
 
     const result: OverviewResult = {
@@ -39,7 +42,8 @@ export class AnalyticsService {
       totalChecks,
       uptime,
       averageResponseTime: averageResponseTime ?? null,
-      dailyStats,
+      p95ResponseTime: p95ResponseTime ?? null,
+      dailyStats: dailyStats,
     }
 
     await this.redis.set(key, JSON.stringify(result), 120)
@@ -53,6 +57,7 @@ export class AnalyticsService {
           TO_CHAR(DATE("checkedAt"), 'YYYY-MM-DD') AS day,
           ROUND((COUNT(*) FILTER (WHERE status = 'up')::float / NULLIF(COUNT(*), 0) * 100)::numeric, 1) AS uptime,
           ROUND(AVG("responseTime") FILTER (WHERE "responseTime" IS NOT NULL), 1) AS "averageResponseTime",
+          ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY "responseTime")::numeric, 1) AS "p95ResponseTime",
           COUNT(*) FILTER (WHERE status = 'down') AS "failureCount"
         FROM "Check"
         WHERE "monitorId" = ${monitorId} AND "checkedAt" >= ${startDate}
@@ -63,6 +68,7 @@ export class AnalyticsService {
         day: r.day,
         uptime: r.uptime ? Number(r.uptime) : 0,
         averageResponseTime: r.averageResponseTime ? Number(r.averageResponseTime) : null,
+        p95ResponseTime: r.p95ResponseTime ? Number(r.p95ResponseTime) : null,
         failureCount: r.failureCount ? Number(r.failureCount) : 0,
       }))
     } catch (e) {
@@ -76,6 +82,7 @@ export class AnalyticsService {
         SELECT 
           ROUND((COUNT(*) FILTER (WHERE status = 'up')::float / NULLIF(COUNT(*), 0) * 100)::numeric, 1) AS uptime,
           ROUND(AVG("responseTime") FILTER (WHERE "responseTime" IS NOT NULL), 1) AS "averageResponseTime",
+          ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY "responseTime")::numeric, 1) AS "p95ResponseTime",
           COUNT(*) AS "totalChecks"
         FROM "Check"
         WHERE "monitorId" = ${monitorId} AND "checkedAt" >= ${startDate}
@@ -85,6 +92,7 @@ export class AnalyticsService {
         uptime: item.uptime !== null ? Number(item.uptime) : null,
         averageResponseTime:
           item.averageResponseTime !== null ? Number(item.averageResponseTime) : null,
+        p95ResponseTime: item.p95ResponseTime !== null ? Number(item.p95ResponseTime) : null,
         totalChecks: item.totalChecks !== null ? Number(item.totalChecks) : 0,
       }
     } catch (e) {
@@ -210,13 +218,20 @@ export class AnalyticsService {
     try {
       const bucketMinutes = this.getBucketMinutes(startDate)
       const results = await this.prisma.$queryRaw<
-        { bucket: Date; up: bigint; down: bigint; averageResponseTime: number }[]
+        {
+          bucket: Date
+          up: bigint
+          down: bigint
+          averageResponseTime: number
+          p95ResponseTime: number | null
+        }[]
       >`
         SELECT
           DATE_TRUNC('minute', "checkedAt") - (EXTRACT(MINUTE FROM "checkedAt")::int % ${bucketMinutes}) * INTERVAL '1 minute' AS bucket,
           COUNT(*) FILTER (WHERE status = 'up') AS up,
           COUNT(*) FILTER (WHERE status = 'down') AS down,
-          ROUND(AVG("responseTime") FILTER (WHERE "responseTime" IS NOT NULL), 1) AS "averageResponseTime"
+          ROUND(AVG("responseTime") FILTER (WHERE "responseTime" IS NOT NULL), 1) AS "averageResponseTime",
+          ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY "responseTime")::numeric, 1) AS "p95ResponseTime"
         FROM "Check"
         WHERE "monitorId" = ${monitorId} AND "checkedAt" BETWEEN ${startDate} AND ${new Date()}
         GROUP BY bucket
@@ -227,6 +242,7 @@ export class AnalyticsService {
         up: Number(r.up),
         down: Number(r.down),
         averageResponseTime: r.averageResponseTime ? Number(r.averageResponseTime) : null,
+        p95ResponseTime: r.p95ResponseTime ? Number(r.p95ResponseTime) : null,
       }))
     } catch (e) {
       this.logAndThrow('get timeline', e)
@@ -257,20 +273,28 @@ export class AnalyticsService {
 type UptimeRaw = {
   uptime: number | null
   averageResponseTime: number | null
+  p95ResponseTime: number | null
   totalChecks: number | null
 }
-type UptimeItem = { uptime: number | null; averageResponseTime: number | null; totalChecks: number }
+type UptimeItem = {
+  uptime: number | null
+  averageResponseTime: number | null
+  p95ResponseTime: number | null
+  totalChecks: number
+}
 
 type DailyStatsRaw = {
   day: string
   uptime: number | null
   averageResponseTime: number | null
+  p95ResponseTime: number | null
   failureCount: number | null
 }
 type DailyStats = {
   day: string
   uptime: number
   averageResponseTime: number | null
+  p95ResponseTime: number | null
   failureCount: number
 }[]
 
@@ -286,5 +310,6 @@ export interface OverviewResult {
   totalChecks: number
   uptime: number | null
   averageResponseTime: number | null
+  p95ResponseTime: number | null
   dailyStats: DailyStats
 }

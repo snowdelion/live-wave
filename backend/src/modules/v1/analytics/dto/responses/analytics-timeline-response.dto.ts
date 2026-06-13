@@ -9,6 +9,8 @@ export class AnalyticsTimelineEntryDto {
   @ApiProperty({ example: 2 })
   down!: number
 
-  @ApiProperty({ example: 29.5 })
-  averageResponseTime!: number
+  @ApiProperty({ example: 29.5, nullable: true })
+  averageResponseTime!: number | null
+  @ApiProperty({ example: 42.5, nullable: true })
+  p95ResponseTime!: number | null
 }
