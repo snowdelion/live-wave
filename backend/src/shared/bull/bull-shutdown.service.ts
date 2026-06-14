@@ -2,6 +2,8 @@ import { InjectQueue } from '@nestjs/bullmq'
 import { Injectable, Logger, OnApplicationShutdown } from '@nestjs/common'
 import { Queue } from 'bullmq'
 
+import { logAndThrow } from '../utils/error.utils'
+
 import { BULL_NAMES } from './bull.constants'
 
 @Injectable()
@@ -15,14 +17,12 @@ export class BullShutdownService implements OnApplicationShutdown {
       await this.queue.close()
       this.logger.log(`Bull queue closed successfully`)
     } catch (e) {
-      const isError = e instanceof Error
-      const errorStack = isError ? e.stack : undefined
-      const details = isError ? e.message : 'unknown error'
-
-      this.logger.error(
-        `Failed to close Bull queues on application shutdown: ${details}`,
-        errorStack,
-      )
+      logAndThrow({
+        name: BullShutdownService.name,
+        context: 'close Bull queues on application shutdown',
+        e,
+        shouldThrow: false,
+      })
     }
   }
 }

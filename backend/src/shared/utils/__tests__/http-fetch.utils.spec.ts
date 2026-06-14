@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { httpFetch } from './http-fetch.utils'
+import { httpFetch } from '../http-fetch.utils'
 
 type FetchMock = ReturnType<typeof vi.fn<typeof fetch>>
 
@@ -15,7 +15,7 @@ function createMockResponse(status = 200): Response {
   return new Response(null, { status })
 }
 
-describe('httpFetch – additional coverage', () => {
+describe('httpFetch - additional coverage', () => {
   let fetchMock: FetchMock
 
   beforeEach(() => {

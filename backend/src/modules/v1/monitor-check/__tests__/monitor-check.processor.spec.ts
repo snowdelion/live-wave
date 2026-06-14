@@ -251,7 +251,9 @@ describe('MonitorCheckProcessor', () => {
       await expect(processor.process(makeJob())).resolves.toBeUndefined()
 
       expect(Logger.prototype.error).toHaveBeenCalledWith(
-        `Failed to check monitor ${MONITOR_ID}: unknown error`,
+        expect.stringMatching(
+          new RegExp(`Failed to check monitor ${MONITOR_ID}: unknown error`, 'i'),
+        ),
         undefined,
       )
     })

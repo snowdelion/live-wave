@@ -12,6 +12,7 @@ import { Job } from 'bullmq'
 import { BULL_NAMES } from '@/backend/shared/bull/bull.constants'
 import { PrismaService } from '@/backend/shared/prisma/prisma.service'
 import { RateLimitService } from '@/backend/shared/rate-limit/rate-limit.service'
+import { logAndThrow } from '@/backend/shared/utils/error.utils'
 
 import { MonitorCheckService } from './monitor-check.service'
 import { DnsStrategy } from './strategies/dns-check.strategy'
@@ -105,12 +106,12 @@ export class MonitorCheckProcessor extends WorkerHost {
           break
       }
     } catch (e) {
-      const isError = e instanceof Error
-      const errorStack = isError ? e.stack : undefined
-      const details = isError ? e.message : 'unknown error'
-      this.logger.error(`Failed to check monitor ${monitorId}: ${details}`, errorStack)
-
-      if (!shouldReschedule) throw e
+      logAndThrow({
+        name: MonitorCheckProcessor.name,
+        context: `check monitor ${monitorId}`,
+        e,
+        shouldThrow: !shouldReschedule,
+      })
     } finally {
       if (shouldReschedule) {
         await this.monitorCheckService.scheduleCheck({ monitorId, immediate: false })

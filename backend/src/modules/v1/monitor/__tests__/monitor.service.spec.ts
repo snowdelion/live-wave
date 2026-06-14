@@ -713,7 +713,7 @@ describe('delete', () => {
 
     const service = makeService()
     await expect(service.delete(CLIENT_ID, MONITOR_ID)).rejects.toThrow(
-      'Uptime monitoring service not found: unexpected error',
+      /Uptime monitoring service not found: unknown error/i,
     )
   })
 })

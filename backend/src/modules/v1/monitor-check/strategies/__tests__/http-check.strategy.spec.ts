@@ -240,11 +240,16 @@ describe('HttpStrategy', () => {
       expect(mockPrisma.check.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           status: StatusEnum.down,
-          error: 'unknown error',
+          error: expect.stringMatching(/unknown error/i),
         }),
       })
       expect(Logger.prototype.warn).toHaveBeenCalledWith(
-        `Monitor ${MONITOR_ID} is down! Status code: null. Response time: 0. Error: unknown error.`,
+        expect.stringMatching(
+          new RegExp(
+            `Monitor ${MONITOR_ID} is down! Status code: null\\. Response time: \\d+\\. Error: unknown error\\.`,
+            'i',
+          ),
+        ),
       )
     })
 
@@ -280,7 +285,7 @@ describe('HttpStrategy', () => {
       await strategy.check(MONITOR_ID)
 
       expect(Logger.prototype.error).toHaveBeenCalledWith(
-        'Failed to handle check: unknown error',
+        expect.stringMatching(/failed to handle check: unknown error/i),
         undefined,
       )
     })

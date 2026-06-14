@@ -2,6 +2,7 @@ import { HttpStatus, Injectable } from '@nestjs/common'
 
 import { PrismaService } from '@/backend/shared/prisma/prisma.service'
 import { RedisService } from '@/backend/shared/redis/redis.service'
+import { getErrorMessage } from '@/backend/shared/utils/error.utils'
 
 @Injectable()
 export class HealthService {
@@ -34,7 +35,7 @@ export class HealthService {
       await this.prisma.$queryRaw`SELECT 1`
       return { status: 'up' }
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Service unavailable'
+      const message = getErrorMessage(e, 'Service unavailable')
       return { status: 'down', error: message }
     }
   }
@@ -44,7 +45,7 @@ export class HealthService {
       await this.redis.ping()
       return { status: 'up' }
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Service unavailable'
+      const message = getErrorMessage(e, 'Service unavailable')
       return { status: 'down', error: message }
     }
   }

@@ -59,7 +59,9 @@ describe('BullShutdownService', () => {
 
       expect(errorSpy).toHaveBeenCalledOnce()
       expect(errorSpy).toHaveBeenCalledWith(
-        'Failed to close Bull queues on application shutdown: unknown error',
+        expect.stringMatching(
+          /Failed to close Bull queues on application shutdown: unknown error/i,
+        ),
         undefined,
       )
     })

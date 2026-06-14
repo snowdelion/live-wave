@@ -3,6 +3,7 @@ import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/
 import { PrismaService } from '@/backend/shared/prisma/prisma.service'
 import { REDIS_KEYS } from '@/backend/shared/redis/redis.constants'
 import { RedisService } from '@/backend/shared/redis/redis.service'
+import { logAndThrow } from '@/backend/shared/utils/error.utils'
 
 import { SessionData } from './types/session.types'
 
@@ -35,7 +36,18 @@ export class SessionService {
     const rawData = await this.redis.get(REDIS_KEYS.session(clientId))
     if (!rawData) return null
 
-    const parsed = JSON.parse(rawData) as SessionData
+    let parsed: SessionData
+    try {
+      parsed = JSON.parse(rawData) as SessionData
+    } catch (e) {
+      logAndThrow({
+        name: SessionService.name,
+        context: 'parse session data',
+        e,
+        shouldThrow: false,
+      })
+      return null
+    }
     if (!this.isSessionData(parsed)) throw new BadRequestException('Invalid session data')
     return parsed
   }

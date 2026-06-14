@@ -2,6 +2,8 @@ import { Global, Inject, Logger, Module, OnApplicationShutdown } from '@nestjs/c
 import { ConfigService } from '@nestjs/config'
 import Redis from 'ioredis'
 
+import { getErrorMessage } from '../utils/error.utils'
+
 import { createRedisClient } from './redis.config'
 import { REDIS_CLIENT } from './redis.constants'
 import { RedisService } from './redis.service'
@@ -29,8 +31,8 @@ export class RedisModule implements OnApplicationShutdown {
       await this.redisClient.quit()
       logger.log('Redis connection closed successfully')
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'unexpected error'
-      logger.error(`Failed to close Redis connection cleanly: ${msg}`)
+      const message = getErrorMessage(e, 'Service unavailable')
+      logger.error(`Failed to close Redis connection cleanly: ${message}`)
     }
   }
 }

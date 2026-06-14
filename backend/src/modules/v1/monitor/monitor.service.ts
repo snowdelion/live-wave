@@ -17,6 +17,7 @@ import {
 } from '@prisma/client'
 
 import { PrismaService } from '@/backend/shared/prisma/prisma.service'
+import { logAndThrow } from '@/backend/shared/utils/error.utils'
 
 import { MonitorCheckService } from '../monitor-check/monitor-check.service'
 
@@ -82,7 +83,7 @@ export class MonitorService {
       include: { httpMonitor: true },
     })
 
-    this.logger.log(`Created HTTP monitor ${newMonitor.id}`)
+    this.logger.debug(`Created HTTP monitor ${newMonitor.id}`)
     await this.monitorCheckService.scheduleCheck({
       monitorId: newMonitor.id,
       checkInterval: newMonitor.checkInterval,
@@ -107,7 +108,7 @@ export class MonitorService {
       include: { tcpMonitor: true },
     })
 
-    this.logger.log(`Created TCP monitor ${newMonitor.id}`)
+    this.logger.debug(`Created TCP monitor ${newMonitor.id}`)
     await this.monitorCheckService.scheduleCheck({
       monitorId: newMonitor.id,
       checkInterval: newMonitor.checkInterval,
@@ -132,7 +133,7 @@ export class MonitorService {
       include: { icmpMonitor: true },
     })
 
-    this.logger.log(`Created ICMP monitor ${newMonitor.id}`)
+    this.logger.debug(`Created ICMP monitor ${newMonitor.id}`)
     await this.monitorCheckService.scheduleCheck({
       monitorId: newMonitor.id,
       checkInterval: newMonitor.checkInterval,
@@ -157,7 +158,7 @@ export class MonitorService {
       include: { dnsMonitor: true },
     })
 
-    this.logger.log(`Created DNS monitor ${newMonitor.id}`)
+    this.logger.debug(`Created DNS monitor ${newMonitor.id}`)
     await this.monitorCheckService.scheduleCheck({
       monitorId: newMonitor.id,
       checkInterval: newMonitor.checkInterval,
@@ -269,7 +270,7 @@ export class MonitorService {
         include: { httpMonitor: true },
       })
 
-      this.logger.log(
+      this.logger.debug(
         `HTTP monitor ${updatedHttpMonitor?.id} updated successfully. From ${JSON.stringify(existing)} to ${JSON.stringify(updatedHttpMonitor)}`,
       )
       return updatedHttpMonitor
@@ -315,7 +316,7 @@ export class MonitorService {
         include: { icmpMonitor: true },
       })
 
-      this.logger.log(
+      this.logger.debug(
         `ICMP monitor ${updatedIcmpMonitor?.id} updated successfully. From ${JSON.stringify(existing)} to ${JSON.stringify(updatedIcmpMonitor)}`,
       )
       return updatedIcmpMonitor
@@ -362,7 +363,7 @@ export class MonitorService {
         include: { tcpMonitor: true },
       })
 
-      this.logger.log(
+      this.logger.debug(
         `ICMP monitor ${updatedTcpMonitor?.id} updated successfully. From ${JSON.stringify(existing)} to ${JSON.stringify(updatedTcpMonitor)}`,
       )
       return updatedTcpMonitor
@@ -379,8 +380,12 @@ export class MonitorService {
           immediate: false,
         })
       } catch (e) {
-        const details = e instanceof Error ? e.message : 'unexpected error'
-        this.logger.error(`Failed to reschedule monitor ${id}: ${details}`)
+        logAndThrow({
+          context: 'reschedule monitor',
+          e,
+          name: MonitorService.name,
+          shouldThrow: false,
+        })
       }
     }
     return updatedMonitor
@@ -431,8 +436,12 @@ export class MonitorService {
           immediate: false,
         })
       } catch (e) {
-        const details = e instanceof Error ? e.message : 'unexpected error'
-        this.logger.error(`Failed to reschedule monitor ${id}: ${details}`)
+        throw logAndThrow({
+          context: 'reschedule monitor',
+          e,
+          name: MonitorService.name,
+          shouldThrow: false,
+        })
       }
     }
     return updatedMonitor
@@ -447,8 +456,13 @@ export class MonitorService {
       await this.prisma.monitor.delete({ where: { id } })
       await this.monitorCheckService.clearScheduledJobs(monitor.id)
     } catch (e) {
-      const details = e instanceof Error ? e.message : 'unexpected error'
-      throw new NotFoundException(`Uptime monitoring service not found: ${details}`)
+      throw logAndThrow({
+        name: MonitorService.name,
+        context: 'delete monitor',
+        e,
+        exception: NotFoundException,
+        exceptionContext: 'Uptime monitoring service not found',
+      })
     }
   }
 }
