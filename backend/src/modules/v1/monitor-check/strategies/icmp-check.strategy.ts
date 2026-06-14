@@ -3,6 +3,7 @@ import { StatusEnum } from '@prisma/client'
 import { ping, PingResult } from 'node-ping-rs'
 
 import { PrismaService } from '@/backend/shared/prisma/prisma.service'
+import { getErrorMessage } from '@/backend/shared/utils/error.utils'
 
 @Injectable()
 export class IcmpStrategy {
@@ -40,10 +41,10 @@ export class IcmpStrategy {
       const result = await Promise.race([pingPromise, timeoutPromise])
 
       if (result.success) status = StatusEnum.up
-      else error = this.getErrorMessage(result.error, timeout)
+      else error = this.getFormattedIcmpError(result.error, timeout)
     } catch (e) {
-      const originalError = e instanceof Error ? e.message : ''
-      error = this.getErrorMessage(originalError, timeout)
+      const originalError = getErrorMessage(e, '')
+      error = this.getFormattedIcmpError(originalError, timeout)
       status = StatusEnum.down
     } finally {
       if (timeoutId) clearTimeout(timeoutId)
@@ -67,7 +68,7 @@ export class IcmpStrategy {
     return { timeoutId, timeoutPromise }
   }
 
-  private getErrorMessage(error: string = '', timeout: number) {
+  private getFormattedIcmpError(error: string = '', timeout: number) {
     if (/DNS|lookup|getaddrinfo/i.test(error)) return 'DNS lookup failed'
     if (/timeout/i.test(error)) return `Ping timeout after ${timeout}ms`
     if (/unreachable/i.test(error)) return 'Network unreachable'

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { Method, StatusEnum } from '@prisma/client'
 
 import { PrismaService } from '@/backend/shared/prisma/prisma.service'
+import { getErrorMessage, logAndThrow } from '@/backend/shared/utils/error.utils'
 import { httpFetch } from '@/backend/shared/utils/http-fetch.utils'
 
 @Injectable()
@@ -87,14 +88,20 @@ export class HttpStrategy {
         }),
       ])
     } catch (e) {
-      const isError = e instanceof Error
-      if (isError && 'code' in e && e.code === 'P2003') {
+      const isNotFound = e instanceof Error && 'code' in e && e.code === 'P2003'
+      if (isNotFound) {
         this.logger.warn(`Monitor ${monitorId} not found, skipping check`)
         return
       }
-      const errorStack = isError ? e.stack : undefined
-      const details = isError ? e.message : 'unknown error'
-      this.logger.error(`Failed to handle check: ${details}`, errorStack)
+
+      error = getErrorMessage(e)
+      status = StatusEnum.down
+      logAndThrow({
+        name: HttpStrategy.name,
+        context: 'handle check',
+        e,
+        shouldThrow: false,
+      })
     }
   }
 
@@ -121,7 +128,7 @@ export class HttpStrategy {
       statusCode = res.status
       status = res.ok ? StatusEnum.up : StatusEnum.down
     } catch (e) {
-      error = e instanceof Error ? e.message : 'unknown error'
+      error = getErrorMessage(e)
       status = StatusEnum.down
     } finally {
       responseTime = Date.now() - start

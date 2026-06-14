@@ -4,6 +4,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { StatusEnum } from '@prisma/client'
 
 import { PrismaService } from '@/backend/shared/prisma/prisma.service'
+import { getErrorMessage } from '@/backend/shared/utils/error.utils'
 
 @Injectable()
 export class TcpStrategy {
@@ -46,10 +47,10 @@ export class TcpStrategy {
     try {
       await this.checkTcpPort({ host, port, timeoutMs: timeout })
       status = StatusEnum.up
-      responseTime = Date.now() - start
     } catch (e) {
-      error = e instanceof Error ? e.message : 'unknown error'
+      error = getErrorMessage(e)
       status = StatusEnum.down
+    } finally {
       responseTime = Date.now() - start
     }
 

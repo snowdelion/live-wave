@@ -4,6 +4,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { RecordType, StatusEnum } from '@prisma/client'
 
 import { PrismaService } from '@/backend/shared/prisma/prisma.service'
+import { getErrorMessage } from '@/backend/shared/utils/error.utils'
 
 @Injectable()
 export class DnsStrategy {
@@ -72,7 +73,7 @@ export class DnsStrategy {
       resolvedValue = this.formatDnsRecord(result, recordType)
       success = true
     } catch (e) {
-      error = e instanceof Error ? e.message : 'DNS query failed'
+      error = getErrorMessage(e, 'DNS query failed')
     } finally {
       responseTime = Date.now() - start
     }

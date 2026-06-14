@@ -1,12 +1,12 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common'
+import { Injectable, NotFoundException } from '@nestjs/common'
 
 import { PrismaService } from '@/backend/shared/prisma/prisma.service'
 import { REDIS_KEYS } from '@/backend/shared/redis/redis.constants'
 import { RedisService } from '@/backend/shared/redis/redis.service'
+import { logAndThrow } from '@/backend/shared/utils/error.utils'
 
 @Injectable()
 export class AnalyticsService {
-  private readonly logger = new Logger(AnalyticsService.name)
   constructor(
     private prisma: PrismaService,
     private redis: RedisService,
@@ -72,7 +72,7 @@ export class AnalyticsService {
         failureCount: r.failureCount ? Number(r.failureCount) : 0,
       }))
     } catch (e) {
-      this.logAndThrow('get daily stats', e)
+      throw logAndThrow({ context: 'get daily stats', e, name: AnalyticsService.name })
     }
   }
 
@@ -96,7 +96,7 @@ export class AnalyticsService {
         totalChecks: item.totalChecks !== null ? Number(item.totalChecks) : 0,
       }
     } catch (e) {
-      this.logAndThrow('get uptime', e)
+      throw logAndThrow({ context: 'get uptime', e, name: AnalyticsService.name })
     }
   }
 
@@ -178,7 +178,7 @@ export class AnalyticsService {
         cause: i.cause ?? null,
       }))
     } catch (e) {
-      this.logAndThrow('get incidents list', e)
+      throw logAndThrow({ context: 'get incidents list', e, name: AnalyticsService.name })
     }
   }
 
@@ -200,7 +200,7 @@ export class AnalyticsService {
       `
       return Number(result[0]?.count ?? 0)
     } catch (e) {
-      this.logAndThrow('get incidents count', e)
+      throw logAndThrow({ context: 'get incidents count', e, name: AnalyticsService.name })
     }
   }
 
@@ -245,7 +245,7 @@ export class AnalyticsService {
         p95ResponseTime: r.p95ResponseTime ? Number(r.p95ResponseTime) : null,
       }))
     } catch (e) {
-      this.logAndThrow('get timeline', e)
+      throw logAndThrow({ context: 'get timeline', e, name: AnalyticsService.name })
     }
   }
 
@@ -259,14 +259,6 @@ export class AnalyticsService {
 
     for (const b of bucketValues) if (bucket <= b) return b
     return 1440
-  }
-
-  private logAndThrow(context: string, e: unknown): never {
-    const isError = e instanceof Error
-    const msg = isError ? e.message : 'Unknown error'
-    const stack = isError ? e.stack : undefined
-    this.logger.error(`Failed to ${context}: ${msg}`, stack)
-    throw e
   }
 }
 

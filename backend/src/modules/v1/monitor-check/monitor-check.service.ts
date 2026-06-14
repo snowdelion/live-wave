@@ -4,6 +4,7 @@ import { Queue } from 'bullmq'
 
 import { BULL_KEYS, BULL_NAMES } from '@/backend/shared/bull/bull.constants'
 import { PrismaService } from '@/backend/shared/prisma/prisma.service'
+import { logAndThrow } from '@/backend/shared/utils/error.utils'
 
 @Injectable()
 export class MonitorCheckService implements OnModuleInit {
@@ -30,10 +31,12 @@ export class MonitorCheckService implements OnModuleInit {
           immediate: false,
         })
     } catch (e) {
-      const isError = e instanceof Error
-      const msg = isError ? e.message : 'unknown error'
-      const errorStack = isError ? e.stack : undefined
-      this.logger.error(`Failed to check monitors: ${msg}`, errorStack)
+      logAndThrow({
+        name: MonitorCheckService.name,
+        context: 'check monitors',
+        e,
+        shouldThrow: false,
+      })
     }
   }
 
@@ -62,10 +65,12 @@ export class MonitorCheckService implements OnModuleInit {
       delay = immediate ? 0 : interval * 60 * 1000
       await this.enqueueCheck(monitorId, delay)
     } catch (e) {
-      const isError = e instanceof Error
-      const msg = isError ? e.message : 'unknown error'
-      const errorStack = isError ? e.stack : undefined
-      this.logger.error(`Failed to schedule check: ${msg}`, errorStack)
+      logAndThrow({
+        name: MonitorCheckService.name,
+        context: 'schedule check',
+        e,
+        shouldThrow: false,
+      })
     }
   }
 
@@ -90,9 +95,13 @@ export class MonitorCheckService implements OnModuleInit {
         try {
           if (job.id && job.id.startsWith(prefix)) await job.remove()
         } catch (e) {
-          const isError = e instanceof Error
-          const msg = isError ? e.message : 'unknown error'
-          this.logger.warn(`Failed to remove job: ${job.id}: ${msg}`)
+          logAndThrow({
+            name: MonitorCheckService.name,
+            context: 'remove job',
+            e,
+            shouldThrow: false,
+            loggerType: 'warn',
+          })
         }
     }
   }

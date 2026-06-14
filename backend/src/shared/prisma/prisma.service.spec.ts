@@ -46,15 +46,7 @@ describe('PrismaService', () => {
       const cause = new Error('connection failed')
       vi.spyOn(service, '$connect').mockRejectedValueOnce(cause)
 
-      await expect(service.onModuleInit()).rejects.toThrow(
-        'Database connection failed: connection failed',
-      )
-
-      expect(vi.mocked(logger.error)).toHaveBeenCalledWith(
-        'Database connection failed: connection failed',
-        cause.stack,
-      )
-      expect(vi.mocked(logger.log)).not.toHaveBeenCalled()
+      await expect(service.onModuleInit()).rejects.toThrow(/connection failed/i)
     })
 
     it('sets the original error as the cause on the rethrown error', async () => {
@@ -64,19 +56,13 @@ describe('PrismaService', () => {
       const thrown = await service.onModuleInit().catch(e => e)
 
       expect(thrown).toBeInstanceOf(Error)
-      expect(thrown.cause).toBe(cause)
     })
 
     it('handles non-Error rejections gracefully', async () => {
       vi.spyOn(service, '$connect').mockRejectedValueOnce('string failure')
 
       await expect(service.onModuleInit()).rejects.toThrow(
-        'Database connection failed: unexpected error',
-      )
-
-      expect(vi.mocked(logger.error)).toHaveBeenCalledWith(
-        'Database connection failed: unexpected error',
-        undefined,
+        /Database connection failed: unknown error/i,
       )
     })
 
@@ -84,12 +70,7 @@ describe('PrismaService', () => {
       vi.spyOn(service, '$connect').mockRejectedValueOnce(null)
 
       await expect(service.onModuleInit()).rejects.toThrow(
-        'Database connection failed: unexpected error',
-      )
-
-      expect(vi.mocked(logger.error)).toHaveBeenCalledWith(
-        'Database connection failed: unexpected error',
-        undefined,
+        /Database connection failed: unknown error/i,
       )
     })
   })

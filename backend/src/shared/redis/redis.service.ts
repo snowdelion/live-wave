@@ -1,20 +1,26 @@
-import { Inject, Injectable, Logger } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import Redis from 'ioredis'
+
+import { logAndThrow } from '../utils/error.utils'
 
 import { REDIS_CLIENT } from './redis.constants'
 
 @Injectable()
 export class RedisService {
   constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
-  private readonly logger = new Logger(RedisService.name)
 
   async set(key: string, value: string, ttlSeconds?: number) {
     try {
       if (ttlSeconds) await this.redis.set(key, value, 'EX', ttlSeconds)
       else await this.redis.set(key, value)
     } catch (e) {
-      const errorDetails = this.logError('set', e)
-      throw new Error(`Redis set failed: ${errorDetails}`)
+      throw logAndThrow({
+        name: RedisService.name,
+        context: 'set Redis',
+        e,
+        exception: Error,
+        exceptionContext: 'Redis set failed',
+      })
     }
   }
 
@@ -22,8 +28,13 @@ export class RedisService {
     try {
       return await this.redis.get(key)
     } catch (e) {
-      const errorDetails = this.logError('get', e)
-      throw new Error(`Redis get failed: ${errorDetails}`)
+      throw logAndThrow({
+        name: RedisService.name,
+        context: 'get Redis',
+        e,
+        exception: Error,
+        exceptionContext: 'Redis get failed',
+      })
     }
   }
 
@@ -31,8 +42,13 @@ export class RedisService {
     try {
       await this.redis.del(key)
     } catch (e) {
-      const errorDetails = this.logError('del', e)
-      throw new Error(`Redis del failed: ${errorDetails}`)
+      throw logAndThrow({
+        name: RedisService.name,
+        context: 'del Redis',
+        e,
+        exception: Error,
+        exceptionContext: 'Redis del failed',
+      })
     }
   }
 
@@ -44,8 +60,13 @@ export class RedisService {
     try {
       return await this.redis.incr(key)
     } catch (e) {
-      const errorDetails = this.logError('incr', e)
-      throw new Error(`Redis incr failed: ${errorDetails}`)
+      throw logAndThrow({
+        name: RedisService.name,
+        context: 'incr Redis',
+        e,
+        exception: Error,
+        exceptionContext: 'Redis incr failed',
+      })
     }
   }
 
@@ -53,8 +74,13 @@ export class RedisService {
     try {
       await this.redis.expire(key, seconds)
     } catch (e) {
-      const errorDetails = this.logError('expire', e)
-      throw new Error(`Redis expire failed: ${errorDetails}`)
+      throw logAndThrow({
+        name: RedisService.name,
+        context: 'expire Redis',
+        e,
+        exception: Error,
+        exceptionContext: 'Redis expire failed',
+      })
     }
   }
 
@@ -62,15 +88,13 @@ export class RedisService {
     try {
       return this.redis.multi()
     } catch (e) {
-      const errorDetails = this.logError('multi', e)
-      throw new Error(`Redis multi failed: ${errorDetails}`)
+      throw logAndThrow({
+        name: RedisService.name,
+        context: 'multi Redis',
+        e,
+        exception: Error,
+        exceptionContext: 'Redis multi failed',
+      })
     }
-  }
-
-  private logError(method: string, error: unknown): string {
-    const errorMsg = error instanceof Error ? error.message : 'unknown error'
-
-    this.logger.error(`Method [${method}] execution failed: ${errorMsg}`)
-    return errorMsg
   }
 }

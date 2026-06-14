@@ -102,7 +102,7 @@ describe('TcpStrategy', () => {
     })
   })
 
-  describe('performCheck() – successful connection', () => {
+  describe('performCheck() - successful connection', () => {
     beforeEach(() => setupSocket('connect'))
 
     it('records status=up in the transaction', async () => {
@@ -145,7 +145,7 @@ describe('TcpStrategy', () => {
     })
   })
 
-  describe('performCheck() – connection error', () => {
+  describe('performCheck() - connection error', () => {
     it('records status=down on socket error', async () => {
       setupSocket('error', new Error('ECONNREFUSED'))
       mockFindUnique.mockResolvedValue(makeMonitor())
@@ -182,11 +182,11 @@ describe('TcpStrategy', () => {
       await strategy.check('monitor-1')
 
       const [[[checkCreate]]] = mockTransaction.mock.calls
-      expect(checkCreate.data.error).toBe('unknown error')
+      expect(checkCreate.data.error).toMatch(/unknown error/i)
     })
   })
 
-  describe('performCheck() – timeout', () => {
+  describe('performCheck() - timeout', () => {
     it('records status=down on timeout', async () => {
       setupSocket('timeout')
       mockFindUnique.mockResolvedValue(makeMonitor())

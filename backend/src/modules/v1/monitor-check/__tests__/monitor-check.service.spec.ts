@@ -96,7 +96,7 @@ describe('MonitorCheckService', () => {
       await service.onModuleInit()
 
       expect(Logger.prototype.error).toHaveBeenCalledWith(
-        'Failed to check monitors: unknown error',
+        expect.stringMatching(/failed to check monitors: unknown error/i),
         undefined,
       )
     })
@@ -190,7 +190,7 @@ describe('MonitorCheckService', () => {
         await service.scheduleCheck({ monitorId: MONITOR_ID, checkInterval: 0 })
 
         expect(Logger.prototype.error).toHaveBeenCalledWith(
-          'Failed to schedule check: unknown error',
+          expect.stringMatching(/failed to schedule check: unknown error/i),
           undefined,
         )
       })
