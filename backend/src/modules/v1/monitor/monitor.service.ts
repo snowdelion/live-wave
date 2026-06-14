@@ -21,14 +21,8 @@ import { logAndThrow } from '@/backend/shared/utils/error.utils'
 
 import { MonitorCheckService } from '../monitor-check/monitor-check.service'
 
-import { CreateDnsMonitorDto } from './dto/requests/create-monitor/create-dns-monitor.dto'
-import { CreateHttpMonitorDto } from './dto/requests/create-monitor/create-http-monitor.dto'
-import { CreateIcmpMonitorDto } from './dto/requests/create-monitor/create-icmp-monitor.dto'
-import { CreateTcpMonitorDto } from './dto/requests/create-monitor/create-tcp-monitor.dto'
-import { UpdateDnsMonitorDto } from './dto/requests/update-monitor/update-dns-monitor.dto'
-import { UpdateHttpMonitorDto } from './dto/requests/update-monitor/update-http-monitor.dto'
-import { UpdateIcmpMonitorDto } from './dto/requests/update-monitor/update-icmp-monitor.dto'
-import { UpdateTcpMonitorDto } from './dto/requests/update-monitor/update-tcp-monitor.dto'
+import { CreateMonitorDto } from './dto/requests/create-monitor.dto'
+import { UpdateMonitorDto } from './dto/requests/update-monitor.dto'
 
 @Injectable()
 export class MonitorService {
@@ -38,10 +32,7 @@ export class MonitorService {
     private monitorCheckService: MonitorCheckService,
   ) {}
 
-  async create(
-    clientId: string,
-    dto: CreateHttpMonitorDto | CreateIcmpMonitorDto | CreateTcpMonitorDto | CreateDnsMonitorDto,
-  ) {
+  async create(clientId: string, dto: CreateMonitorDto) {
     const monitorCount = await this.prisma.monitor.count({ where: { clientId } })
     if (monitorCount >= 5)
       throw new ForbiddenException('You have reached the maximum number of monitors')
@@ -64,7 +55,9 @@ export class MonitorService {
     }
   }
 
-  async createHttp(clientId: string, dto: CreateHttpMonitorDto) {
+  async createHttp(clientId: string, dto: CreateMonitorDto) {
+    if (!dto.url) throw new BadRequestException('URL is required')
+
     const newMonitor = await this.prisma.monitor.create({
       data: {
         clientId,
@@ -92,7 +85,9 @@ export class MonitorService {
     return newMonitor
   }
 
-  async createTcp(clientId: string, dto: CreateTcpMonitorDto) {
+  async createTcp(clientId: string, dto: CreateMonitorDto) {
+    if (!dto.host || !dto.port) throw new BadRequestException('Host and port are required')
+
     const newMonitor = await this.prisma.monitor.create({
       data: {
         clientId,
@@ -117,7 +112,9 @@ export class MonitorService {
     return newMonitor
   }
 
-  async createIcmp(clientId: string, dto: CreateIcmpMonitorDto) {
+  async createIcmp(clientId: string, dto: CreateMonitorDto) {
+    if (!dto.host) throw new BadRequestException('Host required')
+
     const newMonitor = await this.prisma.monitor.create({
       data: {
         clientId,
@@ -142,7 +139,9 @@ export class MonitorService {
     return newMonitor
   }
 
-  async createDns(clientId: string, dto: CreateDnsMonitorDto) {
+  async createDns(clientId: string, dto: CreateMonitorDto) {
+    if (!dto.host) throw new BadRequestException('Host required')
+
     const newMonitor = await this.prisma.monitor.create({
       data: {
         clientId,
@@ -207,11 +206,7 @@ export class MonitorService {
     return rest
   }
 
-  async update(
-    clientId: string,
-    id: string,
-    dto: UpdateHttpMonitorDto | UpdateIcmpMonitorDto | UpdateTcpMonitorDto,
-  ) {
+  async update(clientId: string, id: string, dto: UpdateMonitorDto) {
     const existing = await this.prisma.monitor.findUnique({
       where: { id },
       include: { httpMonitor: true, icmpMonitor: true, tcpMonitor: true, dnsMonitor: true },
@@ -245,7 +240,7 @@ export class MonitorService {
   async updateHttp(
     id: string,
     existing: Monitor & { httpMonitor: HttpMonitor | null },
-    dto: UpdateHttpMonitorDto,
+    dto: UpdateMonitorDto,
   ) {
     const updateData: Partial<Monitor> = {}
     if (dto.name !== undefined) updateData.name = dto.name
@@ -292,7 +287,7 @@ export class MonitorService {
   async updateIcmp(
     id: string,
     existing: Monitor & { icmpMonitor: IcmpMonitor | null },
-    dto: UpdateIcmpMonitorDto,
+    dto: UpdateMonitorDto,
   ) {
     const updateData: Partial<Monitor> = {}
     if (dto.name !== undefined) updateData.name = dto.name
@@ -338,7 +333,7 @@ export class MonitorService {
   async updateTcp(
     id: string,
     existing: Monitor & { tcpMonitor: TcpMonitor | null },
-    dto: UpdateTcpMonitorDto,
+    dto: UpdateMonitorDto,
   ) {
     const updateData: Partial<Monitor> = {}
     if (dto.name !== undefined) updateData.name = dto.name
@@ -394,7 +389,7 @@ export class MonitorService {
   async updateDns(
     id: string,
     existing: Monitor & { dnsMonitor: DnsMonitor | null },
-    dto: UpdateDnsMonitorDto,
+    dto: UpdateMonitorDto,
   ) {
     const updateData: Partial<Monitor> = {}
     if (dto.name !== undefined) updateData.name = dto.name
