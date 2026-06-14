@@ -1,5 +1,5 @@
-import type { CreateHttpMonitorDto } from '../dto/requests/create-monitor/create-http-monitor.dto'
-import type { UpdateHttpMonitorDto } from '../dto/requests/update-monitor/update-http-monitor.dto'
+import type { CreateMonitorDto } from '../dto/requests/create-monitor.dto'
+import type { UpdateMonitorDto } from '../dto/requests/update-monitor.dto'
 import { MonitorController } from '../monitor.controller'
 import type { MonitorService } from '../monitor.service'
 
@@ -33,10 +33,10 @@ describe('MonitorController', () => {
 
   describe('create', () => {
     it('should call monitorService.create with clientId and dto', async () => {
-      const dto: CreateHttpMonitorDto = {
+      const dto: CreateMonitorDto = {
         name: 'name',
         url: 'https://example.com',
-      } as CreateHttpMonitorDto
+      } as CreateMonitorDto
       mockMonitorService.create.mockResolvedValue(mockMonitor)
 
       const result = await controller.create(CLIENT_ID, dto)
@@ -47,10 +47,10 @@ describe('MonitorController', () => {
     })
 
     it('should propagate errors from monitorService.create', async () => {
-      const dto: CreateHttpMonitorDto = {
+      const dto: CreateMonitorDto = {
         name: 'name',
         url: 'https://example.com',
-      } as CreateHttpMonitorDto
+      } as CreateMonitorDto
       mockMonitorService.create.mockRejectedValue(new Error('Creation failed'))
 
       await expect(controller.create(CLIENT_ID, dto)).rejects.toThrow('Creation failed')
@@ -98,7 +98,7 @@ describe('MonitorController', () => {
 
   describe('update', () => {
     it('should call monitorService.update with clientId, id, and dto', async () => {
-      const dto: UpdateHttpMonitorDto = { name: 'Updated Monitor' } as UpdateHttpMonitorDto
+      const dto: UpdateMonitorDto = { name: 'Updated Monitor' } as UpdateMonitorDto
       const updated = { ...mockMonitor, name: 'Updated Monitor' }
       mockMonitorService.update.mockResolvedValue(updated)
 
@@ -110,7 +110,7 @@ describe('MonitorController', () => {
     })
 
     it('should propagate errors when update fails', async () => {
-      const dto: UpdateHttpMonitorDto = { name: 'Updated Monitor' } as UpdateHttpMonitorDto
+      const dto: UpdateMonitorDto = { name: 'Updated Monitor' } as UpdateMonitorDto
       mockMonitorService.update.mockRejectedValue(new Error('Update failed'))
 
       await expect(controller.update(CLIENT_ID, MONITOR_ID, dto)).rejects.toThrow('Update failed')

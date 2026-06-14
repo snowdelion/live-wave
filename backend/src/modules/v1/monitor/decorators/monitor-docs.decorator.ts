@@ -3,6 +3,9 @@ import { ApiBody, ApiOperation, ApiParam, type ApiParamOptions, ApiResponse } fr
 
 import type { ExtraResponse } from '@/backend/shared/decorators/docs.types'
 
+import { CreateMonitorDto } from '../dto/requests/create-monitor.dto'
+import { UpdateMonitorDto } from '../dto/requests/update-monitor.dto'
+
 export function MonitorDocs({
   summary,
   description,
@@ -10,7 +13,6 @@ export function MonitorDocs({
   extraResponses = [],
   extraParam,
   responseType,
-  bodySchema,
   isUpdate = false,
   hasBody = true,
 }: MonitorDocsArgs) {
@@ -24,33 +26,8 @@ export function MonitorDocs({
   ]
 
   if (hasBody) {
-    if (bodySchema) decorators.push(ApiBody({ schema: bodySchema }))
-    else if (isUpdate)
-      decorators.push(
-        ApiBody({
-          schema: {
-            oneOf: [
-              { $ref: '#/components/schemas/UpdateHttpMonitorDto' },
-              { $ref: '#/components/schemas/UpdateTcpMonitorDto' },
-              { $ref: '#/components/schemas/UpdateIcmpMonitorDto' },
-            ],
-            discriminator: { propertyName: 'type' },
-          },
-        }),
-      )
-    else
-      decorators.push(
-        ApiBody({
-          schema: {
-            oneOf: [
-              { $ref: '#/components/schemas/CreateHttpMonitorDto' },
-              { $ref: '#/components/schemas/CreateTcpMonitorDto' },
-              { $ref: '#/components/schemas/CreateIcmpMonitorDto' },
-            ],
-            discriminator: { propertyName: 'type' },
-          },
-        }),
-      )
+    const bodyType = isUpdate ? UpdateMonitorDto : CreateMonitorDto
+    decorators.push(ApiBody({ type: bodyType }))
   }
 
   for (const res of extraResponses) {
@@ -83,10 +60,6 @@ interface MonitorDocsArgs {
   extraResponses?: ExtraResponse[]
   extraParam?: ApiParamOptions
   responseType?: Type<unknown>
-  bodySchema?: {
-    oneOf: Array<{ $ref: string }>
-    discriminator: { propertyName: string }
-  }
   isUpdate?: boolean
   hasBody?: boolean
 }
