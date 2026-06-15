@@ -1,0 +1,11 @@
+model Alert {
+  id String @id @default(cuid())
+
+  telegramChatId String?
+  clientId       String  @unique
+
+  enabled Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
