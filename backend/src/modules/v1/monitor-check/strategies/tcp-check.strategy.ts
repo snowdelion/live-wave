@@ -6,12 +6,14 @@ import { StatusEnum } from '@prisma/client'
 import { PrismaService } from '@/backend/shared/prisma/prisma.service'
 import { getErrorMessage } from '@/backend/shared/utils/error.utils'
 
+import type { StrategyResult } from './strategy-result.types'
+
 @Injectable()
 export class TcpStrategy {
   private readonly logger = new Logger(TcpStrategy.name)
   constructor(private prisma: PrismaService) {}
 
-  async check(monitorId: string) {
+  async check(monitorId: string): StrategyResult {
     const monitor = await this.prisma.monitor.findUnique({
       where: { id: monitorId },
       include: { tcpMonitor: true },
@@ -19,11 +21,16 @@ export class TcpStrategy {
 
     if (!monitor || !monitor.tcpMonitor) {
       this.logger.warn(`Monitor ${monitorId} or its TcpMonitor not found, skipping check`)
-      return
+      return {
+        status: StatusEnum.down,
+        error: 'Monitor or TcpMonitor not found',
+        responseTime: null,
+        checkedAt: new Date(),
+      }
     }
 
     const { host, port } = monitor.tcpMonitor
-    await this.performCheck({
+    return await this.performCheck({
       monitorId,
       host,
       port,
@@ -48,7 +55,7 @@ export class TcpStrategy {
       await this.checkTcpPort({ host, port, timeoutMs: timeout })
       status = StatusEnum.up
     } catch (e) {
-      error = getErrorMessage(e)
+      error = this.normalizeTcpError(e, host, port, timeout)
       status = StatusEnum.down
     } finally {
       responseTime = Date.now() - start
@@ -63,6 +70,8 @@ export class TcpStrategy {
       host,
       port,
     })
+
+    return { status, error, responseTime, checkedAt: new Date() }
   }
 
   private checkTcpPort({ host, port, timeoutMs }: CheckTcpPortOptions): Promise<void> {
@@ -107,6 +116,16 @@ export class TcpStrategy {
         },
       }),
     ])
+  }
+
+  private normalizeTcpError(e: unknown, host: string, port: number, timeout: number) {
+    const rawError = getErrorMessage(e, '')
+    if (/ENOTFOUND/i.test(rawError)) return `DNS lookup failed for ${host}:${port}`
+    if (/ECONNREFUSED/i.test(rawError)) return `Connection refused by ${host}:${port}`
+    if (/timeout/i.test(rawError))
+      return `Connections timeout after ${timeout}ms to ${host}:${port}`
+    if (/ECONNRESET/i.test(rawError)) return `Connection reset by ${host}:${port}`
+    return rawError || `Failed to connect to ${host}:${port}`
   }
 }
 

@@ -1,12 +1,6 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Logger } from '@nestjs/common'
-import {
-  DnsMonitor,
-  type HttpMonitor,
-  type IcmpMonitor,
-  MonitorType,
-  type TcpMonitor,
-} from '@prisma/client'
+import { Monitor, MonitorType, StatusEnum } from '@prisma/client'
 import { Job } from 'bullmq'
 
 import { BULL_NAMES } from '@/backend/shared/bull/bull.constants'
@@ -15,9 +9,11 @@ import { RateLimitService } from '@/backend/shared/rate-limit/rate-limit.service
 import { logAndThrow } from '@/backend/shared/utils/error.utils'
 
 import { MonitorCheckService } from './monitor-check.service'
+import { formatNotificationMessage, getMonitorConfig, getTargetHost } from './monitor-check.utils'
 import { DnsStrategy } from './strategies/dns-check.strategy'
 import { HttpStrategy } from './strategies/http-check.strategy'
 import { IcmpStrategy } from './strategies/icmp-check.strategy'
+import { StrategyResult } from './strategies/strategy-result.types'
 import { TcpStrategy } from './strategies/tcp-check.strategy'
 
 @Processor(BULL_NAMES.QUEUE, { concurrency: 5 })
@@ -44,12 +40,10 @@ export class MonitorCheckProcessor extends WorkerHost {
       const monitor = await this.prisma.monitor.findUnique({
         where: { id: monitorId },
         select: {
-          id: true,
           type: true,
-          checkInterval: true,
-          timeout: true,
-          lastStatus: true,
+          name: true,
           clientId: true,
+          lastStatus: true,
           httpMonitor: true,
           icmpMonitor: true,
           tcpMonitor: true,
@@ -70,9 +64,8 @@ export class MonitorCheckProcessor extends WorkerHost {
         this.logger.error(`Unknown monitor type: ${monitor.type}`)
         return
       }
-      shouldReschedule = true
 
-      const targetHost = this.getTargetHost(monitor)
+      const targetHost = getTargetHost(monitor)
       if (!targetHost) {
         this.logger.warn(`Can't determine target host for monitor ${monitorId}`)
         return
@@ -88,23 +81,30 @@ export class MonitorCheckProcessor extends WorkerHost {
         return
       }
 
-      switch (monitor.type) {
-        case MonitorType.HTTP:
-          await this.httpStrategy.check(monitorId)
-          break
+      shouldReschedule = true
 
-        case MonitorType.TCP:
-          await this.tcpStrategy.check(monitorId)
-          break
+      const monitorConfig = getMonitorConfig(monitor)
 
-        case MonitorType.ICMP:
-          await this.icmpStrategy.check(monitorId)
-          break
-
-        case MonitorType.DNS:
-          await this.dnsStrategy.check(monitorId)
-          break
+      const strategy = this.strategies[monitor.type]
+      if (!strategy) {
+        this.logger.error(`Unknown monitor type: ${monitor.type}`)
+        return
       }
+      const { status, error, responseTime, checkedAt } = await strategy(monitorId)
+      const checkConfig: CheckConfig = {
+        status,
+        error: error ?? null,
+        responseTime,
+        checkedAt,
+      }
+
+      await this.sendNotificationIfNeeded({
+        monitorConfig,
+        checkConfig,
+        monitorId,
+        oldLastStatus: monitor.lastStatus,
+        monitor,
+      })
     } catch (e) {
       logAndThrow({
         name: MonitorCheckProcessor.name,
@@ -119,29 +119,59 @@ export class MonitorCheckProcessor extends WorkerHost {
     }
   }
 
-  private getTargetHost(monitor: {
-    type: MonitorType
-    httpMonitor: HttpMonitor | null
-    tcpMonitor: TcpMonitor | null
-    icmpMonitor: IcmpMonitor | null
-    dnsMonitor: DnsMonitor | null
-  }): string | null {
-    switch (monitor.type) {
-      case MonitorType.HTTP:
-        if (monitor.httpMonitor) return new URL(monitor.httpMonitor?.url).hostname
-        else return null
+  private async sendNotificationIfNeeded({
+    monitor,
+    oldLastStatus,
+    monitorConfig,
+    checkConfig,
+    monitorId,
+  }: SendNotificationIfNeededOptions) {
+    if (!oldLastStatus || oldLastStatus === checkConfig.status) return
 
-      case MonitorType.ICMP:
-        if (monitor.icmpMonitor) return monitor.icmpMonitor.host
-        else return null
+    const alert = await this.prisma.alert.findUnique({
+      where: { clientId: monitor.clientId },
+      select: { enabled: true, telegramChatId: true },
+    })
+    if (!alert?.enabled || !alert.telegramChatId) return
 
-      case MonitorType.TCP:
-        if (monitor.tcpMonitor) return monitor.tcpMonitor.host
-        else return null
+    const message = formatNotificationMessage({
+      monitorName: monitor.name,
+      monitorType: monitor.type,
+      monitorConfig,
+      status: checkConfig.status,
+      error: checkConfig.error,
+      responseTime: checkConfig.responseTime,
+      checkedAt: checkConfig.checkedAt,
+    })
 
-      case MonitorType.DNS:
-        if (monitor.dnsMonitor) return monitor.dnsMonitor.host
-        else return null
-    }
+    await this.monitorCheckService.scheduleNotification({
+      chatId: alert.telegramChatId,
+      monitorId,
+      message,
+      statusType: checkConfig.status,
+      monitorName: monitor.name,
+    })
   }
+
+  private readonly strategies: Record<MonitorType, (monitorId: string) => StrategyResult> = {
+    [MonitorType.HTTP]: monitorId => this.httpStrategy.check(monitorId),
+    [MonitorType.DNS]: monitorId => this.dnsStrategy.check(monitorId),
+    [MonitorType.ICMP]: monitorId => this.icmpStrategy.check(monitorId),
+    [MonitorType.TCP]: monitorId => this.tcpStrategy.check(monitorId),
+  }
+}
+
+interface SendNotificationIfNeededOptions {
+  monitor: Pick<Monitor, 'type' | 'name' | 'clientId' | 'lastStatus'>
+  oldLastStatus: StatusEnum | null
+  monitorConfig: { url?: string; host?: string; port?: number }
+  monitorId: string
+  checkConfig: CheckConfig
+}
+
+interface CheckConfig {
+  status: StatusEnum
+  error: string | null
+  responseTime: number | null
+  checkedAt: Date
 }

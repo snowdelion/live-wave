@@ -210,12 +210,12 @@ describe('DnsStrategy', () => {
   describe('error capture', () => {
     it('stores the error message on failure', async () => {
       prisma.monitor.findUnique.mockResolvedValue(buildMonitor())
-      mockResolve.mockRejectedValue(new Error('SERVFAIL'))
+      mockResolve.mockRejectedValue(new Error('NXDOMAIN'))
 
       await strategy.check('monitor-1')
 
       const checkCreate = prisma.check.create.mock.calls[0]?.[0]
-      expect(checkCreate?.data?.error).toBe('SERVFAIL')
+      expect(checkCreate?.data?.error).toMatch(/does not exist/i)
     })
 
     it('stores a generic message for non-Error throws', async () => {
@@ -225,7 +225,7 @@ describe('DnsStrategy', () => {
       await strategy.check('monitor-1')
 
       const checkCreate = prisma.check.create.mock.calls[0]?.[0]
-      expect(checkCreate?.data?.error).toBe('DNS query failed')
+      expect(checkCreate?.data?.error).toMatch(/DNS query failed/i)
     })
   })
 })

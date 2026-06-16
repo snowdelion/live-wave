@@ -1,5 +1,6 @@
 import { InjectQueue } from '@nestjs/bullmq'
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
+import { StatusEnum } from '@prisma/client'
 import { Queue } from 'bullmq'
 
 import { BULL_KEYS, BULL_NAMES } from '@/backend/shared/bull/bull.constants'
@@ -13,6 +14,13 @@ export class MonitorCheckService implements OnModuleInit {
   constructor(
     private prisma: PrismaService,
     @InjectQueue(BULL_NAMES.QUEUE) private checksQueue: Queue<{ monitorId: string }>,
+    @InjectQueue(BULL_NAMES.NOTIFICATION)
+    private notificationQueue: Queue<{
+      chatId: string
+      message: string
+      statusType: StatusEnum
+      monitorName: string
+    }>,
   ) {}
 
   async onModuleInit() {
@@ -68,6 +76,40 @@ export class MonitorCheckService implements OnModuleInit {
       logAndThrow({
         name: MonitorCheckService.name,
         context: 'schedule check',
+        e,
+        shouldThrow: false,
+      })
+    }
+  }
+
+  async scheduleNotification({
+    chatId,
+    monitorId,
+    message,
+    statusType,
+    monitorName,
+  }: {
+    chatId: string
+    monitorId: string
+    message: string
+    statusType: StatusEnum
+    monitorName: string
+  }) {
+    try {
+      await this.notificationQueue.add(
+        BULL_NAMES.SEND_NOTIFICATION,
+        {
+          chatId,
+          message,
+          statusType,
+          monitorName,
+        },
+        { jobId: BULL_KEYS.SEND_NOTIFICATION(chatId, monitorId, statusType) },
+      )
+    } catch (e) {
+      logAndThrow({
+        name: MonitorCheckService.name,
+        context: 'schedule notification',
         e,
         shouldThrow: false,
       })
