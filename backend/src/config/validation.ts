@@ -9,6 +9,7 @@ const envSchema = z.object({
   POSTGRES_USER: z.string().min(1, 'POSTGRES_USER is required'),
   POSTGRES_PASSWORD: z.string().min(1, 'POSTGRES_PASSWORD is required'),
   POSTGRES_DB: z.string().min(1, 'POSTGRES_DB is required'),
+  TELEGRAM_BOT_TOKEN: z.string().min(1, 'TELEGRAM_BOT_TOKEN is required'),
 })
 
 export type EnvironmentVariables = z.infer<typeof envSchema>
