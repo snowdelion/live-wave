@@ -6,22 +6,29 @@ import { RecordType, StatusEnum } from '@prisma/client'
 import { PrismaService } from '@/backend/shared/prisma/prisma.service'
 import { getErrorMessage } from '@/backend/shared/utils/error.utils'
 
+import type { StrategyResult } from './strategy-result.types'
+
 @Injectable()
 export class DnsStrategy {
   private readonly logger = new Logger(DnsStrategy.name)
   constructor(private prisma: PrismaService) {}
 
-  async check(monitorId: string) {
+  async check(monitorId: string): StrategyResult {
     const monitor = await this.prisma.monitor.findUnique({
       where: { id: monitorId },
       include: { dnsMonitor: true },
     })
     if (!monitor?.dnsMonitor) {
       this.logger.warn(`Monitor ${monitorId} or its DnsMonitor not found, skipping check`)
-      return
+      return {
+        status: StatusEnum.down,
+        error: 'Monitor or DnsMonitor not found',
+        responseTime: null,
+        checkedAt: new Date(),
+      }
     }
 
-    await this.performCheck({
+    return await this.performCheck({
       monitorId,
       host: monitor.dnsMonitor.host,
       recordType: monitor.dnsMonitor.recordType,
@@ -56,6 +63,7 @@ export class DnsStrategy {
       recordType,
       resolvedValue,
     })
+    return { status, error, responseTime, checkedAt: new Date() }
   }
 
   private async checkDnsConnection({ host, recordType, timeout }: CheckDnsConnectionOptions) {
@@ -73,7 +81,8 @@ export class DnsStrategy {
       resolvedValue = this.formatDnsRecord(result, recordType)
       success = true
     } catch (e) {
-      error = getErrorMessage(e, 'DNS query failed')
+      const rawError = getErrorMessage(e, `DNS query failed (${host})`)
+      error = this.normalizeDnsError(rawError, host, timeout)
     } finally {
       responseTime = Date.now() - start
     }
@@ -143,6 +152,14 @@ export class DnsStrategy {
         },
       }),
     ])
+  }
+
+  private normalizeDnsError(errorMsg: string, host: string, timeout: number): string {
+    if (/ENOTFOUND|DNS.*lookup|getaddrinfo/i.test(errorMsg))
+      return `DNS lookup failed for ${host} host`
+    if (/timeout/i.test(errorMsg)) return `DNS timeout after ${timeout}ms`
+    if (/NXDOMAIN/i.test(errorMsg)) return `Domain ${host} does not exist`
+    return `DNS query failed (${host})`
   }
 }
 

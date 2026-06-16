@@ -164,7 +164,7 @@ describe('TcpStrategy', () => {
       await strategy.check('monitor-1')
 
       const [[[checkCreate]]] = mockTransaction.mock.calls
-      expect(checkCreate.data.error).toBe('ECONNREFUSED')
+      expect(checkCreate.data.error).toMatch(/connection refused by/i)
     })
 
     it('handles non-Error throws gracefully', async () => {
@@ -182,7 +182,7 @@ describe('TcpStrategy', () => {
       await strategy.check('monitor-1')
 
       const [[[checkCreate]]] = mockTransaction.mock.calls
-      expect(checkCreate.data.error).toMatch(/unknown error/i)
+      expect(checkCreate.data.error).toMatch(/failed to connect/i)
     })
   })
 

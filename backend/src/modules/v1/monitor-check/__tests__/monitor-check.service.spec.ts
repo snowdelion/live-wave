@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common'
+import { StatusEnum } from '@prisma/client'
 import type { Job, Queue } from 'bullmq'
 
 import { BULL_KEYS, BULL_NAMES } from '@/backend/shared/bull/bull.constants'
@@ -8,6 +9,7 @@ import { MonitorCheckService } from '../monitor-check.service'
 
 // --- helpers ---
 const MONITOR_ID = 'monitor-1'
+const CHAT_ID = 'chat-1'
 const CHECK_INTERVAL = 5
 
 const makeMonitorRow = (overrides: { id?: string; checkInterval?: number } = {}) => ({
@@ -15,6 +17,11 @@ const makeMonitorRow = (overrides: { id?: string; checkInterval?: number } = {})
   type: 'http',
   checkInterval: CHECK_INTERVAL,
   ...overrides,
+})
+
+const makeJob = (id: string, startsWith = true): Partial<Job> => ({
+  id: startsWith ? `${BULL_KEYS.RAW_CHECK(MONITOR_ID)}-suffix` : `other-job-${id}`,
+  remove: vi.fn().mockResolvedValue(undefined),
 })
 
 // --- mocks ---
@@ -30,6 +37,10 @@ const mockQueue = {
   getJobs: vi.fn().mockResolvedValue([]),
 } satisfies Partial<Queue> as unknown as Queue
 
+const mockNotificationQueue = {
+  add: vi.fn(),
+} satisfies Partial<Queue> as unknown as Queue
+
 // --- tests ---
 describe('MonitorCheckService', () => {
   let service: MonitorCheckService
@@ -37,9 +48,19 @@ describe('MonitorCheckService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
+    vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined)
+    vi.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined)
 
-    service = new MonitorCheckService(mockPrisma, mockQueue as unknown as Queue)
-    Object.assign(service, { prisma: mockPrisma, checksQueue: mockQueue })
+    service = new MonitorCheckService(
+      mockPrisma,
+      mockQueue as unknown as Queue,
+      mockNotificationQueue as unknown as Queue,
+    )
+    Object.assign(service, {
+      prisma: mockPrisma,
+      checksQueue: mockQueue,
+      notificationQueue: mockNotificationQueue,
+    })
   })
 
   describe('onModuleInit', () => {
@@ -114,7 +135,7 @@ describe('MonitorCheckService', () => {
         BULL_NAMES.CHECK,
         { monitorId: MONITOR_ID },
         expect.objectContaining({
-          jobId: expect.stringContaining(BULL_KEYS.RAW_CHECK(MONITOR_ID)),
+          jobId: expect.stringContaining(BULL_KEYS.CHECK(MONITOR_ID)),
         }),
       )
     })
@@ -194,6 +215,125 @@ describe('MonitorCheckService', () => {
           undefined,
         )
       })
+    })
+  })
+
+  describe('scheduleNotification', () => {
+    const notificationPayload = {
+      chatId: CHAT_ID,
+      monitorId: MONITOR_ID,
+      message: 'Monitor is down',
+      statusType: StatusEnum.down,
+      monitorName: 'My Monitor',
+    }
+
+    beforeEach(() => {
+      vi.mocked(mockNotificationQueue.add).mockResolvedValue(undefined as unknown as Job<any>)
+    })
+
+    it('enqueues with the correct job name, payload, and jobId', async () => {
+      await service.scheduleNotification(notificationPayload)
+
+      expect(mockNotificationQueue.add).toHaveBeenCalledWith(
+        BULL_NAMES.SEND_NOTIFICATION,
+        {
+          chatId: CHAT_ID,
+          message: notificationPayload.message,
+          statusType: StatusEnum.down,
+          monitorName: notificationPayload.monitorName,
+        },
+        {
+          jobId: BULL_KEYS.SEND_NOTIFICATION(CHAT_ID, MONITOR_ID, StatusEnum.down),
+        },
+      )
+    })
+
+    it('does not include monitorId in the queue payload', async () => {
+      await service.scheduleNotification(notificationPayload)
+
+      const [, payload] = vi.mocked(mockNotificationQueue.add).mock.calls[0] as any
+      expect(payload).not.toHaveProperty('monitorId')
+    })
+
+    it('logs an error (with stack) when the queue throws an Error', async () => {
+      const err = new Error('queue unavailable')
+      vi.mocked(mockNotificationQueue.add).mockRejectedValue(err)
+
+      await service.scheduleNotification(notificationPayload)
+
+      expect(Logger.prototype.error).toHaveBeenCalledWith(
+        `Failed to schedule notification: ${err.message}`,
+        err.stack,
+      )
+    })
+
+    it('logs "unknown error" when a non-Error is thrown', async () => {
+      vi.mocked(mockNotificationQueue.add).mockRejectedValue('oops')
+
+      await service.scheduleNotification(notificationPayload)
+
+      expect(Logger.prototype.error).toHaveBeenCalledWith(
+        expect.stringMatching(/failed to schedule notification: unknown error/i),
+        undefined,
+      )
+    })
+  })
+
+  describe('clearScheduledJobs', () => {
+    it('queries both waiting and delayed states', async () => {
+      vi.mocked(mockQueue.getJobs).mockResolvedValue([])
+
+      await service.clearScheduledJobs(MONITOR_ID)
+
+      expect(mockQueue.getJobs).toHaveBeenCalledWith(['waiting'])
+      expect(mockQueue.getJobs).toHaveBeenCalledWith(['delayed'])
+    })
+
+    it('removes jobs whose id starts with the monitor prefix', async () => {
+      const matchingJob = makeJob('1', true) as Job
+      const otherJob = makeJob('2', false) as Job
+      vi.mocked(mockQueue.getJobs).mockResolvedValue([matchingJob, otherJob])
+
+      await service.clearScheduledJobs(MONITOR_ID)
+
+      expect(matchingJob.remove).toHaveBeenCalled()
+      expect(otherJob.remove).not.toHaveBeenCalled()
+    })
+
+    it('does not call remove on jobs whose id does not match the prefix', async () => {
+      const otherJob = makeJob('2', false) as Job
+      vi.mocked(mockQueue.getJobs).mockResolvedValue([otherJob])
+
+      await service.clearScheduledJobs(MONITOR_ID)
+
+      expect(otherJob.remove).not.toHaveBeenCalled()
+    })
+
+    it('skips removal when job has no id', async () => {
+      const noIdJob = { id: undefined, remove: vi.fn() } as unknown as Job
+      vi.mocked(mockQueue.getJobs).mockResolvedValue([noIdJob])
+
+      await service.clearScheduledJobs(MONITOR_ID)
+
+      expect(noIdJob.remove).not.toHaveBeenCalled()
+    })
+
+    it('logs a warning and continues when a single job.remove() throws', async () => {
+      const err = new Error('remove failed')
+      const failingJob = {
+        id: `${BULL_KEYS.RAW_CHECK(MONITOR_ID)}-fail`,
+        remove: vi.fn().mockRejectedValue(err),
+      } as unknown as Job
+      const goodJob = makeJob('good', true) as Job
+      vi.mocked(mockQueue.getJobs).mockResolvedValue([failingJob, goodJob])
+
+      await service.clearScheduledJobs(MONITOR_ID)
+
+      expect(Logger.prototype.warn).toHaveBeenCalledWith(
+        `Failed to remove job: ${err.message}`,
+        err.stack,
+      )
+      expect(goodJob.remove).toHaveBeenCalled()
     })
   })
 })

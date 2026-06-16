@@ -12,10 +12,14 @@ import { IcmpStrategy } from './strategies/icmp-check.strategy'
 import { TcpStrategy } from './strategies/tcp-check.strategy'
 
 @Module({
-  imports: [BullModule.registerQueue({ name: BULL_NAMES.QUEUE })],
+  imports: [
+    BullModule.registerQueue({ name: BULL_NAMES.QUEUE }),
+    BullModule.registerQueue({ name: BULL_NAMES.NOTIFICATION }),
+  ],
   providers: [
     MonitorCheckService,
     MonitorCheckProcessor,
+
     BullShutdownService,
     HttpStrategy,
     TcpStrategy,

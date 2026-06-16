@@ -5,22 +5,29 @@ import { ping, PingResult } from 'node-ping-rs'
 import { PrismaService } from '@/backend/shared/prisma/prisma.service'
 import { getErrorMessage } from '@/backend/shared/utils/error.utils'
 
+import type { StrategyResult } from './strategy-result.types'
+
 @Injectable()
 export class IcmpStrategy {
   private logger = new Logger(IcmpStrategy.name)
   constructor(private prisma: PrismaService) {}
 
-  async check(monitorId: string) {
+  async check(monitorId: string): StrategyResult {
     const monitor = await this.prisma.monitor.findUnique({
       where: { id: monitorId },
       include: { icmpMonitor: true },
     })
     if (!monitor?.icmpMonitor) {
       this.logger.warn(`Monitor ${monitorId} or its IcmpMonitor not found, skipping check`)
-      return
+      return {
+        status: StatusEnum.down,
+        error: 'Monitor or IcmpMonitor not found',
+        responseTime: null,
+        checkedAt: new Date(),
+      }
     }
 
-    await this.performCheck({
+    return await this.performCheck({
       monitorId,
       host: monitor.icmpMonitor.host,
       timeout: monitor.timeout,
@@ -55,6 +62,7 @@ export class IcmpStrategy {
       this.logger.warn(`Monitor ${monitorId} (${host}) is down! Error: ${error}`)
 
     await this.confirmTransaction({ monitorId, status, responseTime, error, checkInterval, host })
+    return { status, error, responseTime, checkedAt: new Date() }
   }
 
   private getTimeout(ms: number) {

@@ -5,12 +5,14 @@ import { PrismaService } from '@/backend/shared/prisma/prisma.service'
 import { getErrorMessage, logAndThrow } from '@/backend/shared/utils/error.utils'
 import { httpFetch } from '@/backend/shared/utils/http-fetch.utils'
 
+import type { StrategyResult } from './strategy-result.types'
+
 @Injectable()
 export class HttpStrategy {
   private readonly logger = new Logger(HttpStrategy.name)
   constructor(private prisma: PrismaService) {}
 
-  async check(monitorId: string) {
+  async check(monitorId: string): StrategyResult {
     const monitor = await this.prisma.monitor.findUnique({
       where: { id: monitorId },
       include: { httpMonitor: true },
@@ -18,12 +20,17 @@ export class HttpStrategy {
 
     if (!monitor || !monitor.httpMonitor) {
       this.logger.warn(`Monitor ${monitorId} or its HttpMonitor not found, skipping check`)
-      return
+      return {
+        status: StatusEnum.down,
+        error: 'Monitor or HttpMonitor not found',
+        responseTime: null,
+        checkedAt: new Date(),
+      }
     }
 
     const { id, checkInterval, timeout, httpMonitor } = monitor
 
-    await this.performCheck(id, checkInterval, timeout, httpMonitor.url, httpMonitor.method)
+    return await this.performCheck(id, checkInterval, timeout, httpMonitor.url, httpMonitor.method)
   }
 
   private async performCheck(
@@ -54,6 +61,8 @@ export class HttpStrategy {
       url,
       method,
     })
+
+    return { status, error, responseTime, checkedAt: new Date() }
   }
 
   private async confirmTransaction({
