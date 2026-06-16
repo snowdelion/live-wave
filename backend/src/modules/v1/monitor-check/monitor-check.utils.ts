@@ -66,13 +66,14 @@ export function formatNotificationMessage({
   let message: string
 
   if (status === StatusEnum.down)
-    message = `<b>Monitor "${monitorName}" is ${status.toUpperCase()}! ${emoji}</b>`
+    message = `<b>Monitor "${monitorName}" (${type}) is ${status.toUpperCase()}! ${emoji}</b>`
   else
     message = `<b>Monitor "${monitorName}" (${type}) is ${status.toUpperCase()} again! ${emoji}</b>`
 
-  message += `\n\nTime: ${time}`
-  if (config) message += `\n${config}`
-  if (status === StatusEnum.up && responseTime) message += `\nResponse time: ${responseTime} ms`
+  message += `\n\n<i>Time: ${time}</i>`
+  if (config) message += `\n<i>${config}</i>`
+  if (status === StatusEnum.up && responseTime)
+    message += `\n<i>Response time: ${responseTime} ms</i>`
   if (status === StatusEnum.down && error) message += `\n<i>Error details: ${error}</i>`
 
   return message
