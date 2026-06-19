@@ -1,0 +1,39 @@
+{
+  "name": "@live-wave/frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build --turbopack",
+    "start": "next start",
+    "lint": "eslint",
+    "format": "prettier --write .",
+    "lint:fix": "eslint --fix",
+    "typecheck": "tsc --noEmit",
+    "format:check": "prettier .",
+    "validate": "pnpm run typecheck && pnpm run format && pnpm run lint:fix",
+    "test": "cross-env NODE_ENV=test vitest",
+    "test:run": "cross-env NODE_ENV=test vitest --no-watch",
+    "test:cov": "cross-env NODE_ENV=test vitest --coverage --no-watch"
+  },
+  "dependencies": {
+    "@conarti/eslint-plugin-feature-sliced": "^1.0.5",
+    "@tailwindcss/postcss": "^4.3.1",
+    "lucide-react": "^1.20.0",
+    "next": "15.5.19",
+    "postcss": "^8.5.15",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "recharts": "^3.8.1",
+    "tailwindcss": "^4.3.1"
+  },
+  "devDependencies": {
+    "@next/eslint-plugin-next": "^16.2.9",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint-config-next": "15.5.19",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1"
+  }
+}

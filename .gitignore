@@ -17,6 +17,7 @@ out/
 .nuxt/
 .cache/
 *.tsbuildinfo
+next-env.d.ts
 
 frontend/.next/
 frontend/out/
@@ -45,7 +46,7 @@ frontend/.env.production
 .settings/
 
 .DS_Store
-.DS_Store?
+*.pem
 ._*
 .Spotlight-V100
 .Trashes
