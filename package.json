@@ -18,7 +18,7 @@
     "validate": "pnpm run validate:backend && pnpm run validate:frontend",
     "validate:backend": "pnpm --filter backend validate",
     "validate:frontend": "pnpm --filter frontend validate",
-    "test": "pnpm run -r test",
+    "test": "pnpm run -r test --no-watch",
     "prepare": "husky"
   },
   "dependencies": {
