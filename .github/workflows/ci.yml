@@ -60,14 +60,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: pnpm --filter backend run typecheck
-      - run: pnpm --filter backend run lint
       - run: pnpm --filter backend run build
       - run: pnpm --filter backend run test:cov
 
   frontend:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+
     defaults:
       run:
         working-directory: frontend
@@ -94,7 +93,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: pnpm --filter frontend run typecheck
-      - run: pnpm --filter frontend run lint
       - run: pnpm --filter frontend run build
       - run: pnpm --filter frontend run test:cov

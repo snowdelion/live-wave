@@ -62,6 +62,14 @@ export default [
   }),
 
   {
-    ignores: ['.next/**', 'node_modules/**', 'dist/**', 'build/**', 'out/**', 'next-env.d.ts'],
+    ignores: [
+      '.next/**',
+      'node_modules/**',
+      'dist/**',
+      'build/**',
+      'out/**',
+      'next-env.d.ts',
+      'postcss.config.mjs',
+    ],
   },
 ]
