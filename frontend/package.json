@@ -3,14 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
-    "start": "next start",
-    "lint": "eslint",
-    "format": "prettier --write .",
+    "dev": "cross-env NODE_ENV=development next dev --turbopack",
+    "build": "cross-env NODE_ENV=production pnpm run validate && next build --turbopack",
+    "start": "cross-env NODE_ENV=production next start",
+    "lint": "eslint .",
+    "format": "prettier --write src/",
     "lint:fix": "eslint --fix",
     "typecheck": "tsc --noEmit",
-    "format:check": "prettier .",
+    "format:check": "prettier src/",
     "validate": "pnpm run typecheck && pnpm run format && pnpm run lint:fix",
     "test": "cross-env NODE_ENV=test vitest",
     "test:run": "cross-env NODE_ENV=test vitest --no-watch",
@@ -19,11 +19,15 @@
   "dependencies": {
     "@conarti/eslint-plugin-feature-sliced": "^1.0.5",
     "@tailwindcss/postcss": "^4.3.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@vitejs/plugin-react": "^6.0.2",
     "lucide-react": "^1.20.0",
     "next": "15.5.19",
     "postcss": "^8.5.15",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-responsive": "^10.0.1",
     "recharts": "^3.8.1",
     "tailwindcss": "^4.3.1"
   },
@@ -34,6 +38,7 @@
     "eslint-config-next": "15.5.19",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^7.1.1"
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "jsdom": "^29.1.1"
   }
 }

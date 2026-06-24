@@ -43,6 +43,11 @@ export default [
     files: ['**/*.test.tsx', '**/*.test.ts'],
     rules: {
       '@next/next/no-img-element': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
     },
   },
 
@@ -57,6 +62,14 @@ export default [
   }),
 
   {
-    ignores: ['.next/**', 'node_modules/**', 'dist/**', 'build/**', 'out/**', 'next-env.d.ts'],
+    ignores: [
+      '.next/**',
+      'node_modules/**',
+      'dist/**',
+      'build/**',
+      'out/**',
+      'next-env.d.ts',
+      'postcss.config.mjs',
+    ],
   },
 ]

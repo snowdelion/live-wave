@@ -1,0 +1,4 @@
+export { Hero } from './ui/Hero'
+export { Features } from './ui/Features'
+export { CTA } from './ui/CTA'
+export { Footer } from './ui/Footer'
