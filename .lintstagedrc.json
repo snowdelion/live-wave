@@ -2,5 +2,10 @@
   "backend/**/*.{ts,tsx}": [
     "pnpm --filter backend lint:fix",
     "cross-env NODE_ENV=test pnpm --filter backend exec vitest related --run --config vitest.config.mts"
+  ],
+
+  "frontend/**/*.{ts,tsx}": [
+    "pnpm --filter frontend lint:fix",
+    "cross-env NODE_ENV=test pnpm --filter frontend exec vitest related --run --config vitest.config.mts"
   ]
 }
