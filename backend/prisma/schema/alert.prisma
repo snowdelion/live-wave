@@ -4,7 +4,7 @@ model Alert {
   telegramChatId String?
   clientId       String  @unique
 
-  enabled Boolean @default(true)
+  enabled Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

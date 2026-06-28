@@ -56,6 +56,7 @@ export class SessionService {
     const session = await this.getSession(clientId)
 
     await this.prisma.monitor.deleteMany({ where: { clientId } })
+    await this.prisma.alert.deleteMany({ where: { clientId } })
 
     await this.redis.del(REDIS_KEYS.session(clientId))
     if (session?.ip) await this.redis.del(REDIS_KEYS.ipSession(session.ip))
