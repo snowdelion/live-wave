@@ -15,6 +15,7 @@ const mockPrisma = {
     deleteMany: vi.fn(),
     findUnique: vi.fn(),
     update: vi.fn(),
+    create: vi.fn(),
   },
 }
 
@@ -215,6 +216,43 @@ describe('TelegramService', () => {
       const ok = await service.sendMessage('42', 'hello', 1)
 
       expect(ok).toBe(false)
+    })
+  })
+
+  describe('getAlertStatus', () => {
+    it('returns existing alert status with hasChat true when a chat is linked', async () => {
+      mockPrisma.alert.findUnique.mockResolvedValue({ enabled: true, telegramChatId: '42' })
+
+      const result = await service.getAlertStatus('c1')
+
+      expect(mockPrisma.alert.findUnique).toHaveBeenCalledWith({
+        where: { clientId: 'c1' },
+        select: { enabled: true, telegramChatId: true },
+      })
+      expect(result).toEqual({ enabled: true, hasChat: true })
+      expect(mockPrisma.alert.create).not.toHaveBeenCalled()
+    })
+
+    it('returns existing alert status with hasChat false when no chat is linked', async () => {
+      mockPrisma.alert.findUnique.mockResolvedValue({ enabled: false, telegramChatId: null })
+
+      const result = await service.getAlertStatus('c1')
+
+      expect(result).toEqual({ enabled: false, hasChat: false })
+      expect(mockPrisma.alert.create).not.toHaveBeenCalled()
+    })
+
+    it('creates a new disabled alert and returns hasChat false when none exists', async () => {
+      mockPrisma.alert.findUnique.mockResolvedValue(null)
+      mockPrisma.alert.create.mockResolvedValue({ enabled: false })
+
+      const result = await service.getAlertStatus('c1')
+
+      expect(mockPrisma.alert.create).toHaveBeenCalledWith({
+        data: { clientId: 'c1', enabled: false },
+        select: { enabled: true },
+      })
+      expect(result).toEqual({ enabled: false, hasChat: false })
     })
   })
 })

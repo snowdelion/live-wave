@@ -114,4 +114,21 @@ export class TelegramService {
     }
     return false
   }
+
+  async getAlertStatus(clientId: string) {
+    const alert = await this.prisma.alert.findUnique({
+      where: { clientId },
+      select: { enabled: true, telegramChatId: true },
+    })
+
+    if (!alert) {
+      const newAlert = await this.prisma.alert.create({
+        data: { clientId, enabled: false },
+        select: { enabled: true },
+      })
+      return { enabled: newAlert.enabled, hasChat: false }
+    }
+
+    return { enabled: alert.enabled, hasChat: !!alert.telegramChatId }
+  }
 }

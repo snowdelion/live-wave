@@ -2,6 +2,7 @@ import { HttpStatus } from '@nestjs/common'
 
 import { TelegramAlertResponseDto } from './dto/telegram-alert-response.dto'
 import { TelegramLinkUnlinkResponseDto } from './dto/telegram-link-unlink-response.dto'
+import { TelegramSettingsResponseDto } from './dto/telegram-settings-response.dto'
 import { TelegramWithChatIdDto } from './dto/telegram-with-chat-id.dto'
 
 export const linkTelegramDocs = {
@@ -40,6 +41,18 @@ export const toggleAlertTelegramDocs = {
       status: HttpStatus.OK,
       description: 'Notification status toggled successfully',
       type: TelegramAlertResponseDto,
+    },
+  ],
+}
+
+export const settingsTelegramDocs = {
+  summary: 'Get current Telegram notification status',
+  description: 'Returns the enabled/disabled state of Telegram alerts for the authenticated client',
+  extraResponses: [
+    {
+      status: HttpStatus.OK,
+      description: 'Returns alert settings successfully',
+      type: TelegramSettingsResponseDto,
     },
   ],
 }
