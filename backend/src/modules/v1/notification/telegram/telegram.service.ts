@@ -28,15 +28,21 @@ export class TelegramService {
         'The bot can\'t send you a message. Send the "@live_wave_bot" bot any message (e.g., /start), and then try binding again.',
       )
 
-    return await this.prisma.alert.upsert({
+    const alert = await this.prisma.alert.upsert({
       where: { clientId },
       update: { telegramChatId: chatId, enabled: true },
       create: { clientId, telegramChatId: chatId, enabled: true },
     })
+
+    this.logger.debug(`Client "${clientId}" linked Telegram successfully`)
+    return alert
   }
 
   async unlinkChatId(clientId: string) {
-    await this.prisma.alert.deleteMany({ where: { clientId } })
+    await this.prisma.alert.update({
+      where: { clientId },
+      data: { telegramChatId: null, enabled: false },
+    })
   }
 
   async toggleAlert(clientId: string) {
@@ -45,7 +51,8 @@ export class TelegramService {
         where: { clientId },
         select: { enabled: true, telegramChatId: true },
       })
-      if (!oldAlert?.telegramChatId) throw new NotFoundException('No alert found')
+      if (!oldAlert?.telegramChatId)
+        throw new NotFoundException('Telegram chat is not linked. Link your chat first')
       const newEnabled = !oldAlert.enabled
 
       const updatedAlert = await this.prisma.alert.update({
@@ -81,9 +88,13 @@ export class TelegramService {
     }
 
     for (let att = 1; att <= retries; att++) {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort, 5000)
+
       try {
         const res = await fetch(`${this.baseUrl}/sendMessage`, {
           method: 'POST',
+          signal: controller.signal,
           headers: {
             'User-Agent': 'LiveWave-Uptime-Monitor/1.0',
             'Content-Type': 'application/json',
@@ -110,6 +121,8 @@ export class TelegramService {
         })
         if (att === retries) return false
         await new Promise(resolve => setTimeout(resolve, att * 1000))
+      } finally {
+        clearTimeout(timeout)
       }
     }
     return false

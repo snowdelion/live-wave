@@ -87,12 +87,15 @@ describe('TelegramService', () => {
   })
 
   describe('unlinkChatId', () => {
-    it('deletes all alerts for the client', async () => {
-      mockPrisma.alert.deleteMany.mockResolvedValue({ count: 1 })
+    it('updates alert for the client', async () => {
+      mockPrisma.alert.update.mockResolvedValue({ telegramChatId: null })
 
       await service.unlinkChatId('c1')
 
-      expect(mockPrisma.alert.deleteMany).toHaveBeenCalledWith({ where: { clientId: 'c1' } })
+      expect(mockPrisma.alert.update).toHaveBeenCalledWith({
+        where: { clientId: 'c1' },
+        data: { enabled: false, telegramChatId: null },
+      })
     })
   })
 
