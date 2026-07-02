@@ -1,17 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { Method, MonitorType, StatusEnum } from '@prisma/client'
+import { MonitorType, StatusEnum } from '@prisma/client'
 
-export class HttpMonitorConfig {
-  @ApiProperty({ example: 'cmq13xw1d0000u1r46c0nvbzd' })
-  monitorId!: string
+import { HttpMonitorConfig } from './create-or-update/http-monitor-response.dto'
+import { MonitorCheckResponseDto } from './monitor-check-response.dto'
 
-  @ApiProperty({ example: 'https://example.com' })
-  url!: string
-
-  @ApiProperty({ enum: Method, example: 'HEAD' })
-  method!: Method
-}
-export class HttpMonitorResponseDto {
+export class DetailedMonitorDto {
   @ApiProperty({ example: 'cmpplwrap0000u1cwddpe8mq8' })
   id!: string
   @ApiProperty({ example: 'example' })
@@ -43,4 +36,10 @@ export class HttpMonitorResponseDto {
   createdAt!: Date
   @ApiProperty({ example: '2026-05-28T17:16:12.045Z' })
   updatedAt!: Date
+
+  @ApiProperty({
+    type: [MonitorCheckResponseDto],
+    required: true,
+  })
+  checks!: MonitorCheckResponseDto[]
 }
