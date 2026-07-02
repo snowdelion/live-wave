@@ -1,14 +1,15 @@
 import { CreateMonitorDto } from './requests/create-monitor.dto'
 import { UpdateMonitorDto } from './requests/update-monitor.dto'
-import { DnsMonitorResponseDto } from './responses/dns-monitor-response.dto'
-import { HttpMonitorResponseDto } from './responses/http-monitor-response.dto'
-import { IcmpMonitorResponseDto } from './responses/icmp-monitor-response.dto'
+import { DnsMonitorResponseDto } from './responses/create-or-update/dns-monitor-response.dto'
+import { HttpMonitorResponseDto } from './responses/create-or-update/http-monitor-response.dto'
+import { IcmpMonitorResponseDto } from './responses/create-or-update/icmp-monitor-response.dto'
+import { TcpMonitorResponseDto } from './responses/create-or-update/tcp-monitor-response.dto'
+import { DetailedMonitorDto } from './responses/detailed-monitor.dto'
+import { MonitorByClientResponseDto } from './responses/monitor-by-client-response.dto'
 import { MonitorCheckResponseDto } from './responses/monitor-check-response.dto'
-import { MonitorResponseWithChecksDto } from './responses/monitor-response-with-checks.dto'
-import { TcpMonitorResponseDto } from './responses/tcp-monitor-response.dto'
 
 export const MONITOR_EXTRA_MODELS = [
-  MonitorResponseWithChecksDto,
+  DetailedMonitorDto,
   MonitorCheckResponseDto,
   HttpMonitorResponseDto,
   IcmpMonitorResponseDto,
@@ -16,4 +17,5 @@ export const MONITOR_EXTRA_MODELS = [
   DnsMonitorResponseDto,
   CreateMonitorDto,
   UpdateMonitorDto,
+  MonitorByClientResponseDto,
 ] as const

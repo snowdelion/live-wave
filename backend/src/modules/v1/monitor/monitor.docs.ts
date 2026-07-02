@@ -1,7 +1,8 @@
 import { HttpStatus } from '@nestjs/common'
 
-import { HttpMonitorResponseDto } from './dto/responses/http-monitor-response.dto'
-import { MonitorResponseWithChecksDto } from './dto/responses/monitor-response-with-checks.dto'
+import { HttpMonitorResponseDto } from './dto/responses/create-or-update/http-monitor-response.dto'
+import { DetailedMonitorDto } from './dto/responses/detailed-monitor.dto'
+import { MonitorByClientResponseDto } from './dto/responses/monitor-by-client-response.dto'
 
 export const createMonitorDocs = {
   summary: 'Creates a new monitoring service',
@@ -24,7 +25,7 @@ export const findByClientIdDocs = {
     {
       status: HttpStatus.OK,
       description: 'Monitoring service has been created successfully',
-      type: [HttpMonitorResponseDto],
+      type: [MonitorByClientResponseDto],
     },
   ],
   hasBody: false,
@@ -38,7 +39,7 @@ export const findMonitorByIdDocs = {
     {
       status: HttpStatus.OK,
       description: 'List of monitoring services',
-      type: MonitorResponseWithChecksDto,
+      type: DetailedMonitorDto,
     },
   ],
   extraParam: {

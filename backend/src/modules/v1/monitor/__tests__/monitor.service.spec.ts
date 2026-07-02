@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common'
-import { Method, MonitorType, RecordType, type PrismaClient } from '@prisma/client'
+import { Method, type Monitor, MonitorType, RecordType, type PrismaClient } from '@prisma/client'
 
 import type { PrismaService } from '@/backend/shared/prisma/prisma.service'
 
@@ -17,6 +17,10 @@ const mockTx = {
   dnsMonitor: { upsert: vi.fn() },
 } as unknown as PrismaClient
 
+const CLIENT_ID = 'client-abc'
+const OTHER_CLIENT_ID = 'client-xyz'
+const MONITOR_ID = 'id'
+
 const mockPrisma = {
   monitor: {
     count: vi.fn(),
@@ -26,6 +30,17 @@ const mockPrisma = {
     update: vi.fn(),
     delete: vi.fn(),
   },
+  $queryRaw: vi.fn().mockResolvedValue([
+    {
+      monitorId: MONITOR_ID,
+      total: 10,
+      up: 10,
+      avgResponse: 30,
+      minResponse: 10,
+      maxResponse: 50,
+      sparkline: [30, 40, 50],
+    },
+  ]),
   $transaction: vi.fn(async (cb: (tx: typeof mockTx) => unknown) => cb(mockTx)),
 } as unknown as PrismaService
 
@@ -37,10 +52,6 @@ const mockMonitorCheckService = {
 const makeService = () => new MonitorService(mockPrisma, mockMonitorCheckService as any)
 
 // --- helpers ---
-const CLIENT_ID = 'client-abc'
-const OTHER_CLIENT_ID = 'client-xyz'
-const MONITOR_ID = 'id'
-
 const baseMonitor = {
   id: MONITOR_ID,
   clientId: CLIENT_ID,
@@ -51,8 +62,9 @@ const baseMonitor = {
   lastStatus: null,
   lastCheckedAt: null,
   nextCheckAt: null,
-  createdAt: new Date(),
-  updatedAt: new Date(),
+  checks: [],
+  createdAt: expect.any(Date),
+  updatedAt: expect.any(Date),
 }
 
 const httpMonitorRelation = {
@@ -63,6 +75,13 @@ const httpMonitorRelation = {
 
 const httpMonitorWithRelation = {
   ...baseMonitor,
+  weekUptime: null,
+  trend: {
+    avgResponseTime: null,
+    minResponseTime: null,
+    maxResponseTime: null,
+    sparkline: [],
+  },
   httpMonitor: httpMonitorRelation,
 }
 
@@ -71,6 +90,7 @@ const existingHttpMonitor = {
   httpMonitor: httpMonitorRelation,
   icmpMonitor: null,
   tcpMonitor: null,
+  dnsMonitor: null,
 }
 
 const icmpMonitorRelation = { monitorId: MONITOR_ID, host: '127.0.0.1' }
@@ -81,6 +101,7 @@ const existingIcmpMonitor = {
   httpMonitor: null,
   icmpMonitor: icmpMonitorRelation,
   tcpMonitor: null,
+  dnsMonitor: null,
 }
 
 const tcpMonitorRelation = { monitorId: MONITOR_ID, host: '127.0.0.1', port: 8080 }
@@ -91,6 +112,22 @@ const existingTcpMonitor = {
   httpMonitor: null,
   icmpMonitor: null,
   tcpMonitor: tcpMonitorRelation,
+  dnsMonitor: null,
+}
+
+const dnsMonitorRelation = {
+  monitorId: MONITOR_ID,
+  host: 'example.com',
+  recordType: RecordType.A,
+}
+
+const existingDnsMonitor = {
+  ...baseMonitor,
+  type: MonitorType.DNS,
+  httpMonitor: null,
+  icmpMonitor: null,
+  tcpMonitor: null,
+  dnsMonitor: dnsMonitorRelation,
 }
 
 const createHttpDto = {
@@ -130,7 +167,7 @@ describe('create', () => {
             },
           },
         },
-        include: { httpMonitor: true },
+        include: expect.objectContaining({ httpMonitor: true }),
       })
       expect(result).toEqual(httpMonitorWithRelation)
     })
@@ -154,7 +191,7 @@ describe('create', () => {
             create: { url: 'https://example.com', method: Method.HEAD },
           },
         }),
-        include: { httpMonitor: true },
+        include: expect.objectContaining({ httpMonitor: true }),
       })
     })
 
@@ -197,7 +234,7 @@ describe('create', () => {
           type: MonitorType.ICMP,
           icmpMonitor: { create: { host: '127.0.0.1' } },
         },
-        include: { icmpMonitor: true },
+        include: expect.objectContaining({ icmpMonitor: true }),
       })
       expect(mockMonitorCheckService.scheduleCheck).toHaveBeenCalledWith({
         monitorId: MONITOR_ID,
@@ -233,7 +270,7 @@ describe('create', () => {
           type: MonitorType.TCP,
           tcpMonitor: { create: { host: '127.0.0.1', port: 8080 } },
         },
-        include: { tcpMonitor: true },
+        include: expect.objectContaining({ tcpMonitor: true }),
       })
       expect(mockMonitorCheckService.scheduleCheck).toHaveBeenCalledWith({
         monitorId: MONITOR_ID,
@@ -268,7 +305,7 @@ describe('create', () => {
           type: MonitorType.DNS,
           dnsMonitor: { create: { host: 'example.com', recordType: RecordType.A } },
         },
-        include: { dnsMonitor: true },
+        include: expect.objectContaining({ dnsMonitor: true }),
       })
       expect(mockMonitorCheckService.scheduleCheck).toHaveBeenCalledWith({
         monitorId: MONITOR_ID,
@@ -277,7 +314,40 @@ describe('create', () => {
       })
     })
 
-    it('passes explicit recordType / interval / timeout', async () => {})
+    it('passes explicit recordType / interval / timeout through', async () => {
+      const dnsMonitor = {
+        ...baseMonitor,
+        type: MonitorType.DNS,
+        checkInterval: 60,
+        timeout: 8000,
+        dnsMonitor: { monitorId: MONITOR_ID, host: 'example.com', recordType: RecordType.AAAA },
+      }
+      vi.mocked(mockPrisma.monitor.create).mockResolvedValue(dnsMonitor as any)
+
+      const service = makeService()
+      await service.create(CLIENT_ID, {
+        type: MonitorType.DNS,
+        name: 'dns monitor',
+        host: 'example.com',
+        recordType: RecordType.AAAA,
+        checkInterval: 60,
+        timeout: 8000,
+      })
+
+      expect(mockPrisma.monitor.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          checkInterval: 60,
+          timeout: 8000,
+          dnsMonitor: { create: { host: 'example.com', recordType: RecordType.AAAA } },
+        }),
+        include: expect.objectContaining({ dnsMonitor: true }),
+      })
+      expect(mockMonitorCheckService.scheduleCheck).toHaveBeenCalledWith({
+        monitorId: MONITOR_ID,
+        checkInterval: 60,
+        immediate: true,
+      })
+    })
   })
 
   it('throws BadRequestException for unknown monitor type', async () => {
@@ -301,18 +371,60 @@ describe('create', () => {
 // --- GET /api/v1/monitor ---
 describe('findAllByClientId', () => {
   it('returns monitors ordered by createdAt desc', async () => {
-    const monitors = [baseMonitor]
-    vi.mocked(mockPrisma.monitor.findMany).mockResolvedValue(monitors)
+    const monitorData = {
+      id: MONITOR_ID,
+      name: 'test',
+      type: 'HTTP',
+      lastStatus: 'up',
+      lastCheckedAt: new Date(),
+      httpMonitor: { url: 'https://example.com' },
+    }
+    vi.mocked(mockPrisma.monitor.findMany).mockResolvedValue([monitorData as unknown as Monitor])
+    vi.mocked(mockPrisma.$queryRaw).mockResolvedValue([
+      {
+        monitorId: MONITOR_ID,
+        total: 10,
+        up: 10,
+        avgResponse: 30,
+        minResponse: 10,
+        maxResponse: 50,
+        sparkline: [30, 40, 50],
+      },
+    ])
 
     const service = makeService()
     const result = await service.findAllByClientId(CLIENT_ID)
 
     expect(mockPrisma.monitor.findMany).toHaveBeenCalledWith({
       where: { clientId: CLIENT_ID },
+      select: {
+        id: true,
+        name: true,
+        lastStatus: true,
+        type: true,
+        lastCheckedAt: true,
+        httpMonitor: { select: { url: true } },
+        icmpMonitor: { select: { host: true } },
+        tcpMonitor: { select: { host: true, port: true } },
+        dnsMonitor: { select: { host: true } },
+      },
       orderBy: { createdAt: 'desc' },
-      include: { httpMonitor: true, icmpMonitor: true, tcpMonitor: true },
     })
-    expect(result).toEqual(monitors)
+
+    expect(mockPrisma.$queryRaw).toHaveBeenCalled()
+
+    expect(result[0]).toMatchObject({
+      id: MONITOR_ID,
+      name: 'test',
+      trend: {
+        avgResponseTime: 30,
+        minResponseTime: 10,
+        maxResponseTime: 50,
+        sparkline: [30, 40, 50],
+      },
+      weekUptime: 100,
+      domain: 'https://example.com',
+    })
   })
 })
 
@@ -336,6 +448,7 @@ describe('findById', () => {
         httpMonitor: true,
         icmpMonitor: true,
         tcpMonitor: true,
+        dnsMonitor: true,
       },
     })
     expect(result).toMatchObject({ id: MONITOR_ID })
@@ -608,30 +721,15 @@ describe('update', () => {
   })
 
   describe('DNS', () => {
-    const existingDnsMonitor = {
-      ...baseMonitor,
-      type: MonitorType.DNS,
-      dnsMonitor: { monitorId: MONITOR_ID, host: 'example.com', recordType: RecordType.A },
-      httpMonitor: null,
-      icmpMonitor: null,
-      tcpMonitor: null,
-    }
-
     it('updates and returns the DNS monitor', async () => {
       const updated = { ...existingDnsMonitor, name: 'Updated DNS' }
       vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(existingDnsMonitor as any)
       vi.mocked(mockTx.monitor.update).mockResolvedValue(updated)
-      vi.mocked(mockTx.dnsMonitor.upsert).mockResolvedValue({
-        monitorId: MONITOR_ID,
-        host: 'new.example.com',
-        recordType: RecordType.AAAA,
-      })
+      vi.mocked(mockTx.dnsMonitor.upsert).mockResolvedValue(dnsMonitorRelation)
       vi.mocked(mockTx.monitor.findUnique).mockResolvedValue(updated as any)
 
       const service = makeService()
-      const result = await service.updateDns(MONITOR_ID, existingDnsMonitor as any, {
-        host: 'new.example.com',
-        recordType: RecordType.AAAA,
+      const result = await service.update(CLIENT_ID, MONITOR_ID, {
         name: 'Updated DNS',
       })
 
@@ -641,27 +739,87 @@ describe('update', () => {
       })
       expect(mockTx.dnsMonitor.upsert).toHaveBeenCalledWith({
         where: { monitorId: MONITOR_ID },
+        update: { host: 'example.com', recordType: RecordType.A },
+        create: { monitorId: MONITOR_ID, host: 'example.com', recordType: RecordType.A },
+      })
+      expect(result).toEqual(updated)
+    })
+
+    it('uses host and recordType from dto when provided', async () => {
+      vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(existingDnsMonitor as any)
+      vi.mocked(mockTx.monitor.update).mockResolvedValue(existingDnsMonitor)
+      vi.mocked(mockTx.dnsMonitor.upsert).mockResolvedValue({
+        monitorId: MONITOR_ID,
+        host: 'new.example.com',
+        recordType: RecordType.AAAA,
+      })
+      vi.mocked(mockTx.monitor.findUnique).mockResolvedValue(existingDnsMonitor as any)
+
+      const service = makeService()
+      await service.update(CLIENT_ID, MONITOR_ID, {
+        host: 'new.example.com',
+        recordType: RecordType.AAAA,
+      })
+
+      expect(mockTx.dnsMonitor.upsert).toHaveBeenCalledWith({
+        where: { monitorId: MONITOR_ID },
         update: { host: 'new.example.com', recordType: RecordType.AAAA },
         create: { monitorId: MONITOR_ID, host: 'new.example.com', recordType: RecordType.AAAA },
       })
-      expect(result).toEqual(updated)
     })
 
     it('reschedules check when checkInterval changes', async () => {
       const updated = { ...existingDnsMonitor, checkInterval: 30 }
       vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(existingDnsMonitor as any)
       vi.mocked(mockTx.monitor.update).mockResolvedValue(updated)
-      vi.mocked(mockTx.dnsMonitor.upsert).mockResolvedValue(existingDnsMonitor.dnsMonitor)
+      vi.mocked(mockTx.dnsMonitor.upsert).mockResolvedValue(dnsMonitorRelation)
       vi.mocked(mockTx.monitor.findUnique).mockResolvedValue(updated as any)
 
       const service = makeService()
-      await service.updateDns(MONITOR_ID, existingDnsMonitor as any, { checkInterval: 30 })
+      await service.update(CLIENT_ID, MONITOR_ID, {
+        checkInterval: 30,
+      })
+
       expect(mockMonitorCheckService.scheduleCheck).toHaveBeenCalledWith({
-        monitorId: MONITOR_ID,
         checkInterval: 30,
         immediate: false,
+        monitorId: MONITOR_ID,
       })
     })
+
+    it('does not reschedule check when checkInterval is unchanged', async () => {
+      vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(existingDnsMonitor as any)
+      vi.mocked(mockTx.monitor.update).mockResolvedValue(existingDnsMonitor)
+      vi.mocked(mockTx.dnsMonitor.upsert).mockResolvedValue(dnsMonitorRelation)
+      vi.mocked(mockTx.monitor.findUnique).mockResolvedValue(existingDnsMonitor as any)
+
+      const service = makeService()
+      await service.update(CLIENT_ID, MONITOR_ID, {
+        name: 'New name',
+      })
+
+      expect(mockMonitorCheckService.scheduleCheck).not.toHaveBeenCalled()
+    })
+
+    it('throws BadRequestException when DNS monitor data is missing', async () => {
+      vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue({
+        ...existingDnsMonitor,
+        dnsMonitor: null,
+      } as any)
+
+      const service = makeService()
+      await expect(service.update(CLIENT_ID, MONITOR_ID, {})).rejects.toThrow(BadRequestException)
+    })
+  })
+
+  it('throws BadRequestException for an unknown monitor type', async () => {
+    vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue({
+      ...existingHttpMonitor,
+      type: 'UNKNOWN',
+    } as any)
+
+    const service = makeService()
+    await expect(service.update(CLIENT_ID, MONITOR_ID, {})).rejects.toThrow(BadRequestException)
   })
 })
 
