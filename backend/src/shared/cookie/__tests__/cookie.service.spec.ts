@@ -86,7 +86,7 @@ describe('CookieService', () => {
       )
     })
 
-    it('sets sameSite to "strict"', () => {
+    it('sets sameSite to "lax"', () => {
       const service = createService('development')
 
       service.setRefreshToken(res as Response, 'token')
@@ -94,7 +94,7 @@ describe('CookieService', () => {
       expect(res.cookie).toHaveBeenCalledWith(
         'refreshToken',
         'token',
-        expect.objectContaining({ sameSite: 'strict' }),
+        expect.objectContaining({ sameSite: 'lax' }),
       )
     })
 

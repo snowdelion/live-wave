@@ -13,7 +13,7 @@ export class CookieService {
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: this.isProduction,
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     })
   }
