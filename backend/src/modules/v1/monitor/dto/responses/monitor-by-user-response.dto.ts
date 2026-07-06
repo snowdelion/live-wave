@@ -12,7 +12,7 @@ class TrendConfig {
   sparkline!: number[]
 }
 
-export class MonitorByClientResponseDto {
+export class MonitorByUserResponseDto {
   @ApiProperty({ example: 'cmpplwrap0000u1cwddpe8mq8' })
   id!: string
   @ApiProperty({ example: 'example' })

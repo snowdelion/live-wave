@@ -27,10 +27,10 @@ import {
 } from './auth.docs'
 import { AuthService } from './auth.service'
 import { AuthDocs } from './decorators/auth-docs.decorator'
-import { SignInEmailDto } from './dto/requests/sign-in.dto'
-import { SignUpEmailDto } from './dto/requests/sign-up.dto'
+import { SignInEmailDto, SignInTelegramDto } from './dto/requests/sign-in.dto'
+import { SignUpEmailDto, SignUpTelegramDto } from './dto/requests/sign-up.dto'
 
-@ApiExtraModels(SignInEmailDto, SignUpEmailDto)
+@ApiExtraModels(SignInEmailDto, SignInTelegramDto, SignUpEmailDto, SignUpTelegramDto)
 @Controller('v1/auth')
 export class AuthController {
   constructor(

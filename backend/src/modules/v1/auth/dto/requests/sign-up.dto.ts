@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
+import { Transform } from 'class-transformer'
 import { IsEmail, IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator'
 
 export class SignUpEmailDto {
@@ -13,4 +14,11 @@ export class SignUpEmailDto {
   @MaxLength(16)
   @IsNotEmpty()
   password!: string
+}
+
+export class SignUpTelegramDto {
+  @Transform(() => String)
+  @MinLength(8)
+  @IsNotEmpty()
+  telegramId!: string
 }

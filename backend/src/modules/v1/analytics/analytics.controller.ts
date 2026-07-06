@@ -1,7 +1,8 @@
-import { Controller, Get, Param, Query } from '@nestjs/common'
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common'
+import { AuthGuard } from '@nestjs/passport'
 import { ApiExtraModels } from '@nestjs/swagger'
 
-import { ClientId } from '@/backend/shared/decorators/client-id.decorator'
+import { UserId } from '@/backend/shared/decorators/user-id.decorator'
 
 import { getIncidentsDocs, getOverviewDocs, getTimelineDocs } from './analytics.docs'
 import { AnalyticsService } from './analytics.service'
@@ -18,35 +19,38 @@ export class AnalyticsController {
 
   @AnalyticsDocs(getOverviewDocs)
   @Get(':monitorId')
+  @UseGuards(AuthGuard('jwt'))
   async getOverview(
-    @ClientId() clientId: string,
+    @UserId() userId: string,
     @Param('monitorId') monitorId: string,
     @Query() query: AnalyticsOverviewQueryDto,
   ) {
-    return await this.analyticsService.getOverview(clientId, monitorId, query.days)
+    return await this.analyticsService.getOverview(userId, monitorId, query.days)
   }
 
   @AnalyticsDocs(getIncidentsDocs)
   @Get('/incidents/:monitorId')
+  @UseGuards(AuthGuard('jwt'))
   async getIncidents(
-    @ClientId() clientId: string,
+    @UserId() userId: string,
     @Param('monitorId') monitorId: string,
     @Query() query: AnalyticsIncidentsQueryDto,
   ) {
     const startDate = this.getStartDate(query)
 
-    return this.analyticsService.getIncidents(clientId, monitorId, startDate)
+    return this.analyticsService.getIncidents(userId, monitorId, startDate)
   }
 
   @AnalyticsDocs(getTimelineDocs)
   @Get('/timeline/:monitorId')
+  @UseGuards(AuthGuard('jwt'))
   async getTimeline(
-    @ClientId() clientId: string,
+    @UserId() userId: string,
     @Param('monitorId') monitorId: string,
     @Query() query: AnalyticsTimelineQueryDto,
   ) {
     const startDate = this.getStartDate(query)
-    return await this.analyticsService.getTimeline(clientId, monitorId, startDate)
+    return await this.analyticsService.getTimeline(userId, monitorId, startDate)
   }
 
   private getStartDate(query: { days?: number }) {

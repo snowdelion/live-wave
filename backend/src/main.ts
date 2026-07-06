@@ -13,7 +13,7 @@ async function bootstrap() {
     .setTitle('LiveWave: Uptime monitor API')
     .setDescription('API for uptime monitoring services')
     .setVersion('1.0')
-    .addCookieAuth('clientId')
+    .addBearerAuth()
     .build()
 
   const document = SwaggerModule.createDocument(app, config)

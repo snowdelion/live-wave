@@ -14,7 +14,7 @@ import type { TcpStrategy } from '../strategies/tcp-check.strategy'
 
 // --- helpers ---
 const MONITOR_ID = 'monitor-1'
-const CLIENT_ID = 'client-1'
+const USER_ID = 'user-1'
 const HTTP_URL = 'https://example.com/health'
 const HTTP_HOSTNAME = 'example.com'
 
@@ -22,7 +22,7 @@ const makeMonitorRow = (
   overrides: Partial<{
     type: MonitorType
     lastStatus: StatusEnum | null
-    clientId: string
+    userId: string
     name: string
     httpMonitor: { url: string } | null
     icmpMonitor: { host: string } | null
@@ -32,7 +32,7 @@ const makeMonitorRow = (
 ) => ({
   type: MonitorType.HTTP,
   lastStatus: StatusEnum.up,
-  clientId: CLIENT_ID,
+  userId: USER_ID,
   name: 'My Monitor',
   httpMonitor: { url: HTTP_URL },
   icmpMonitor: null,
@@ -155,7 +155,7 @@ describe('MonitorCheckProcessor', () => {
         select: {
           type: true,
           name: true,
-          clientId: true,
+          userId: true,
           lastStatus: true,
           httpMonitor: true,
           icmpMonitor: true,

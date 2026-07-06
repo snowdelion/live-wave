@@ -1,6 +1,7 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post } from '@nestjs/common'
+import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, UseGuards } from '@nestjs/common'
+import { AuthGuard } from '@nestjs/passport'
 
-import { ClientId } from '@/backend/shared/decorators/client-id.decorator'
+import { UserId } from '@/backend/shared/decorators/user-id.decorator'
 
 import { TelegramDocs } from './decorators/telegram-docs.decorator'
 import { TelegramWithChatIdDto } from './dto/telegram-with-chat-id.dto'
@@ -19,22 +20,25 @@ export class TelegramController {
   @Post('link-chat')
   @TelegramDocs(linkTelegramDocs)
   @HttpCode(HttpStatus.CREATED)
-  async linkChatId(@ClientId() clientId: string, @Body() dto: TelegramWithChatIdDto) {
-    await this.telegramService.linkChatId(clientId, dto.chatId)
+  @UseGuards(AuthGuard('jwt'))
+  async linkChatId(@UserId() userId: string, @Body() dto: TelegramWithChatIdDto) {
+    await this.telegramService.linkChatId(userId, dto.chatId)
     return { message: 'You have subscribed for Telegram notifications' }
   }
 
   @Post('unlink-chat')
+  @UseGuards(AuthGuard('jwt'))
   @TelegramDocs(unlinkTelegramDocs)
-  async unlinkChatId(@ClientId() clientId: string) {
-    await this.telegramService.unlinkChatId(clientId)
+  async unlinkChatId(@UserId() userId: string) {
+    await this.telegramService.unlinkChatId(userId)
     return { message: 'You have unsubscribed from Telegram notifications' }
   }
 
   @Patch('toggle-alert')
+  @UseGuards(AuthGuard('jwt'))
   @TelegramDocs(toggleAlertTelegramDocs)
-  async toggleAlert(@ClientId() clientId: string) {
-    const enabled = await this.telegramService.toggleAlert(clientId)
+  async toggleAlert(@UserId() userId: string) {
+    const enabled = await this.telegramService.toggleAlert(userId)
     return {
       enabled,
       message: `You have ${enabled ? 'enabled' : 'disabled'} Telegram notifications`,
@@ -42,9 +46,10 @@ export class TelegramController {
   }
 
   @Get('settings')
+  @UseGuards(AuthGuard('jwt'))
   @TelegramDocs(settingsTelegramDocs)
-  async getSettings(@ClientId() clientId: string) {
-    const { enabled, hasChat } = await this.telegramService.getAlertStatus(clientId)
+  async getSettings(@UserId() userId: string) {
+    const { enabled, hasChat } = await this.telegramService.getAlertStatus(userId)
     return { enabled, hasChat }
   }
 }

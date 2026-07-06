@@ -3,7 +3,7 @@ import { ApiProperty } from '@nestjs/swagger'
 export class TelegramSettingsResponseDto {
   @ApiProperty({
     example: false,
-    description: 'Current notification status for the client (enabled/disabled)',
+    description: 'Current notification status for the user (enabled/disabled)',
   })
   enabled!: boolean
 

@@ -5,7 +5,7 @@ import { TelegramLinkUnlinkResponseDto } from './telegram-link-unlink-response.d
 export class TelegramAlertResponseDto extends TelegramLinkUnlinkResponseDto {
   @ApiProperty({
     example: true,
-    description: 'Current notification status for the client (enabled/disabled)',
+    description: 'Current notification status for the user (enabled/disabled)',
   })
   enabled!: boolean
 }

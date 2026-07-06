@@ -10,9 +10,10 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common'
+import { AuthGuard } from '@nestjs/passport'
 import { ApiExtraModels } from '@nestjs/swagger'
 
-import { ClientId } from '@/backend/shared/decorators/client-id.decorator'
+import { UserId } from '@/backend/shared/decorators/user-id.decorator'
 import { RateLimitGuard } from '@/backend/shared/rate-limit/guards/rate-limit.guard'
 
 import { MonitorDocs } from './decorators/monitor-docs.decorator'
@@ -22,7 +23,7 @@ import { UpdateMonitorDto } from './dto/requests/update-monitor.dto'
 import {
   createMonitorDocs,
   deleteMonitorDocs,
-  findByClientIdDocs,
+  findByUserIdDocs,
   findMonitorByIdDocs,
   updateMonitorDocs,
 } from './monitor.docs'
@@ -36,41 +37,41 @@ export class MonitorController {
   @Post()
   @MonitorDocs(createMonitorDocs)
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(RateLimitGuard)
+  @UseGuards(RateLimitGuard, AuthGuard('jwt'))
   async create(
-    @ClientId() clientId: string,
+    @UserId() userId: string,
     @Body()
     dto: CreateMonitorDto,
   ) {
-    return await this.monitorService.create(clientId, dto)
+    return await this.monitorService.create(userId, dto)
   }
 
   @Get(':id')
   @MonitorDocs(findMonitorByIdDocs)
-  async findById(@ClientId() clientId: string, @Param('id') id: string) {
-    return await this.monitorService.findById(clientId, id)
+  @UseGuards(AuthGuard('jwt'))
+  async findById(@UserId() userId: string, @Param('id') id: string) {
+    return await this.monitorService.findById(userId, id)
   }
 
   @Get()
-  @MonitorDocs(findByClientIdDocs)
-  async findAllByClientId(@ClientId() clientId: string) {
-    return await this.monitorService.findAllByClientId(clientId)
+  @MonitorDocs(findByUserIdDocs)
+  @UseGuards(AuthGuard('jwt'))
+  async findAllByUserId(@UserId() userId: string) {
+    return await this.monitorService.findAllByUserId(userId)
   }
 
   @Patch(':id')
   @MonitorDocs(updateMonitorDocs)
-  async update(
-    @ClientId() clientId: string,
-    @Param('id') id: string,
-    @Body() dto: UpdateMonitorDto,
-  ) {
-    return await this.monitorService.update(clientId, id, dto)
+  @UseGuards(AuthGuard('jwt'))
+  async update(@UserId() userId: string, @Param('id') id: string, @Body() dto: UpdateMonitorDto) {
+    return await this.monitorService.update(userId, id, dto)
   }
 
   @Delete(':id')
   @MonitorDocs(deleteMonitorDocs)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@ClientId() clientId: string, @Param('id') id: string) {
-    await this.monitorService.delete(clientId, id)
+  @UseGuards(AuthGuard('jwt'))
+  async delete(@UserId() userId: string, @Param('id') id: string) {
+    await this.monitorService.delete(userId, id)
   }
 }

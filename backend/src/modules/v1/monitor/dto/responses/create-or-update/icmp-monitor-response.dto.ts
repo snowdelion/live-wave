@@ -25,7 +25,7 @@ export class IcmpMonitorResponseDto {
   lastStatus!: StatusEnum | null
 
   @ApiProperty({ example: 'b052a0fc-e3f0-4a7f-8d61-152f585aeea1' })
-  clientId!: string
+  userId!: string
 
   @ApiProperty({
     type: IcmpMonitorConfig,
