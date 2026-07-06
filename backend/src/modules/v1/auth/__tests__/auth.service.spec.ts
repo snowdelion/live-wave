@@ -169,11 +169,109 @@ describe('AuthService', () => {
     })
   })
 
+  describe('telegramAuth', () => {
+    const BOT_TOKEN = 'bot-token'
+    const baseDto = {
+      id: 12345,
+      first_name: 'John',
+      username: 'johnny',
+      auth_date: 0,
+      hash: '',
+    }
+
+    const computeHash = (dto: any, botToken: string) => {
+      const { hash: _, ...rest } = dto
+      const secret = crypto.createHash('sha256').update(botToken).digest()
+      const checkString = Object.keys(rest)
+        .sort()
+        .map(key => `${key}=${rest[key as keyof typeof rest]}`)
+        .join('\n')
+      return crypto.createHmac('sha256', secret).update(checkString).digest('hex')
+    }
+
+    beforeEach(() => {
+      config.get.mockImplementation((key: string) => {
+        if (key === 'JWT_ACCESS_SECRET') return ACCESS_SECRET
+        if (key === 'JWT_REFRESH_SECRET') return REFRESH_SECRET
+        if (key === 'TELEGRAM_BOT_TOKEN') return BOT_TOKEN
+        return undefined
+      })
+      service = new AuthService(prisma, redis, jwtService, config)
+    })
+
+    it('throws UnauthorizedException if telegram hash is invalid', async () => {
+      const dto = { ...baseDto, auth_date: Math.floor(Date.now() / 1000), hash: 'invalid-hash' }
+
+      await expect(service.telegramAuth(dto as any)).rejects.toThrow(UnauthorizedException)
+    })
+
+    it('throws UnauthorizedException if telegram auth_date expired (older than 300s)', async () => {
+      const auth_date = Math.floor(Date.now() / 1000) - 301
+      const dto = { ...baseDto, auth_date }
+      dto.hash = computeHash(dto, BOT_TOKEN)
+
+      await expect(service.telegramAuth(dto as any)).rejects.toThrow(UnauthorizedException)
+    })
+
+    it('creates a new user if telegram user does not exist, then returns tokens', async () => {
+      const auth_date = Math.floor(Date.now() / 1000)
+      const dto = { ...baseDto, auth_date }
+      dto.hash = computeHash(dto, BOT_TOKEN)
+
+      prisma.user.findUnique.mockResolvedValue(null)
+      prisma.user.create.mockResolvedValue({ id: 'user-1', telegramId: String(dto.id) })
+      jwtService.sign.mockReturnValue('signed-token')
+
+      const result = await service.telegramAuth(dto as any)
+
+      expect(prisma.user.create).toHaveBeenCalledWith({
+        data: { telegramId: String(dto.id), username: dto.username },
+        select: { id: true, telegramId: true },
+      })
+      expect(result).toEqual({ accessToken: 'signed-token', refreshToken: 'signed-token' })
+    })
+
+    it('uses first_name as username fallback when username is not provided', async () => {
+      const auth_date = Math.floor(Date.now() / 1000)
+      const dto = { ...baseDto, username: undefined, auth_date }
+      dto.hash = computeHash(dto, BOT_TOKEN)
+
+      prisma.user.findUnique.mockResolvedValue(null)
+      prisma.user.create.mockResolvedValue({ id: 'user-1', telegramId: String(dto.id) })
+      jwtService.sign.mockReturnValue('signed-token')
+
+      await service.telegramAuth(dto as any)
+
+      expect(prisma.user.create).toHaveBeenCalledWith({
+        data: { telegramId: String(dto.id), username: dto.first_name },
+        select: { id: true, telegramId: true },
+      })
+    })
+
+    it('reuses existing user if telegram user already exists', async () => {
+      const auth_date = Math.floor(Date.now() / 1000)
+      const dto = { ...baseDto, auth_date }
+      dto.hash = computeHash(dto, BOT_TOKEN)
+
+      prisma.user.findUnique.mockResolvedValue({ id: 'existing-user', telegramId: String(dto.id) })
+      jwtService.sign.mockReturnValue('signed-token')
+
+      const result = await service.telegramAuth(dto as any)
+
+      expect(prisma.user.create).not.toHaveBeenCalled()
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        { sub: 'existing-user', email: undefined, telegramId: String(dto.id) },
+        expect.objectContaining({ secret: ACCESS_SECRET }),
+      )
+      expect(result).toEqual({ accessToken: 'signed-token', refreshToken: 'signed-token' })
+    })
+  })
+
   describe('generateTokens', () => {
     it('signs access and refresh tokens with correct secrets and expirations', async () => {
       jwtService.sign.mockReturnValueOnce('access-token').mockReturnValueOnce('refresh-token')
 
-      const result = await service.generateTokens('user-1', 'test@example.com')
+      const result = await service.generateTokens({ userId: 'user-1', email: 'test@example.com' })
 
       expect(jwtService.sign).toHaveBeenNthCalledWith(
         1,
@@ -191,7 +289,7 @@ describe('AuthService', () => {
     it('stores sha256 hash of refresh token in redis with correct key and ttl', async () => {
       jwtService.sign.mockReturnValueOnce('access-token').mockReturnValueOnce('refresh-token')
 
-      await service.generateTokens('user-1', 'test@example.com')
+      await service.generateTokens({ userId: 'user-1', email: 'test@example.com' })
 
       const expectedHash = crypto.createHash('sha256').update('refresh-token').digest('hex')
       expect(redis.set).toHaveBeenCalledWith(

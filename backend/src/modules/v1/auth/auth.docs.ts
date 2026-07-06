@@ -2,6 +2,7 @@ import { HttpStatus } from '@nestjs/common'
 
 import { SignInEmailDto } from './dto/requests/sign-in.dto'
 import { SignUpEmailDto } from './dto/requests/sign-up.dto'
+import { TelegramAuthDto } from './dto/requests/telegram-auth.dto'
 import { AccessTokenResponseDto } from './dto/responses/access-token-response.dto'
 
 const FORBIDDEN_EXAMPLE = {
@@ -67,4 +68,19 @@ export const deleteDocs = {
   description: 'Permanently deletes the user account and all associated data',
   extraResponses: [{ status: HttpStatus.NO_CONTENT }],
   isProtected: true,
+}
+
+export const telegramDocs = {
+  summary: 'Sign in an existing account via Telegram',
+  description:
+    'Authenticates a user using Telegram OAuth. Returns access token in response and sets refresh token as httpOnly cookie',
+  extraResponses: [
+    {
+      type: AccessTokenResponseDto,
+      status: HttpStatus.OK,
+    },
+  ],
+  hasBadRequest: true,
+  isProtected: true,
+  bodyType: TelegramAuthDto,
 }

@@ -24,13 +24,15 @@ import {
   refreshTokenDocs,
   signInEmailDocs,
   signUpEmailDocs,
+  telegramDocs,
 } from './auth.docs'
 import { AuthService } from './auth.service'
 import { AuthDocs } from './decorators/auth-docs.decorator'
-import { SignInEmailDto, SignInTelegramDto } from './dto/requests/sign-in.dto'
-import { SignUpEmailDto, SignUpTelegramDto } from './dto/requests/sign-up.dto'
+import { SignInEmailDto } from './dto/requests/sign-in.dto'
+import { SignUpEmailDto } from './dto/requests/sign-up.dto'
+import { TelegramAuthDto } from './dto/requests/telegram-auth.dto'
 
-@ApiExtraModels(SignInEmailDto, SignInTelegramDto, SignUpEmailDto, SignUpTelegramDto)
+@ApiExtraModels(SignInEmailDto, TelegramAuthDto, SignUpEmailDto)
 @Controller('v1/auth')
 export class AuthController {
   constructor(
@@ -59,6 +61,16 @@ export class AuthController {
     return { accessToken }
   }
 
+  @Post('telegram')
+  @AuthDocs(telegramDocs)
+  @Throttle({ short: { ttl: seconds(60), limit: 5 }, long: { ttl: seconds(3600), limit: 20 } })
+  async telegramAuth(@Body() dto: TelegramAuthDto, @Res({ passthrough: true }) res: Response) {
+    const { accessToken, refreshToken } = await this.authService.telegramAuth(dto)
+
+    this.cookieService.setRefreshToken(res, refreshToken)
+    return { accessToken }
+  }
+
   @Post('refresh-token')
   @AuthDocs(refreshTokenDocs)
   @Throttle({ short: { ttl: seconds(60), limit: 20 } })
@@ -81,7 +93,7 @@ export class AuthController {
     this.cookieService.clearRefreshToken(res)
   }
 
-  @Delete()
+  @Delete('me')
   @AuthDocs(deleteDocs)
   @UseGuards(AuthGuard('jwt'))
   @HttpCode(HttpStatus.NO_CONTENT)

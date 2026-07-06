@@ -17,6 +17,7 @@ import { RedisService } from '@/backend/shared/redis/redis.service'
 
 import { SignInEmailDto } from './dto/requests/sign-in.dto'
 import { SignUpEmailDto } from './dto/requests/sign-up.dto'
+import { TelegramAuthDto } from './dto/requests/telegram-auth.dto'
 
 @Injectable()
 export class AuthService {
@@ -46,7 +47,10 @@ export class AuthService {
     if (!newUser.email) throw new BadRequestException('Email not found')
 
     this.logger.debug(`User "${newUser.id}" with "${newUser.email}" registered successfully`)
-    const { accessToken, refreshToken } = await this.generateTokens(newUser.id, newUser.email)
+    const { accessToken, refreshToken } = await this.generateTokens({
+      userId: newUser.id,
+      email: newUser.email,
+    })
     return { accessToken, refreshToken }
   }
 
@@ -61,15 +65,66 @@ export class AuthService {
     if (!isValid) throw new ForbiddenException('Incorrect email or password')
     if (!user.email) throw new ForbiddenException('Incorrect email or password')
 
-    const { accessToken, refreshToken } = await this.generateTokens(
-      user.id,
-      user.email?.toLowerCase(),
-    )
+    const { accessToken, refreshToken } = await this.generateTokens({
+      userId: user.id,
+      email: user.email?.toLowerCase(),
+    })
     return { accessToken, refreshToken }
   }
 
-  async generateTokens(userId: string, email: string) {
-    const payload = { sub: userId, email }
+  async telegramAuth(dto: TelegramAuthDto) {
+    if (!this.verifyTelegramData(dto)) throw new UnauthorizedException('Invalid Telegram data')
+
+    const now = Math.floor(Date.now() / 1000)
+    if (now - dto.auth_date > 300) throw new UnauthorizedException('Telegram login expired')
+
+    let user = await this.prisma.user.findUnique({
+      where: { telegramId: String(dto.id) },
+      select: { id: true, telegramId: true },
+    })
+    if (!user)
+      user = await this.prisma.user.create({
+        data: {
+          telegramId: String(dto.id),
+          username: dto.username || dto.first_name,
+        },
+        select: { id: true, telegramId: true },
+      })
+
+    const { accessToken, refreshToken } = await this.generateTokens({
+      userId: user.id,
+      telegramId: user.telegramId,
+    })
+    return { accessToken, refreshToken }
+  }
+
+  private verifyTelegramData(data: TelegramAuthDto): boolean {
+    const { hash, ...rest } = data
+    const secret = crypto
+      .createHash('sha256')
+      .update(this.config.get<string>('TELEGRAM_BOT_TOKEN') || '')
+      .digest()
+
+    const checkString = Object.keys(rest)
+      .sort()
+      .map(key => `${key}=${rest[key as keyof typeof rest]}`)
+      .join('\n')
+
+    const hmac = crypto.createHmac('sha256', secret).update(checkString).digest('hex')
+
+    return hmac === hash
+  }
+
+  async generateTokens({
+    userId,
+    email,
+    telegramId,
+  }: {
+    userId: string
+    email?: string
+    telegramId?: string | null
+  }) {
+    const payload = { sub: userId, email, telegramId }
 
     const accessToken = this.jwtService.sign(payload, {
       secret: this.accessSecret,
@@ -90,7 +145,7 @@ export class AuthService {
     const payload = this.getPayload(refreshToken)
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, email: true },
+      select: { id: true, email: true, telegramId: true },
     })
     const userRefreshToken = await this.redis.get(REDIS_KEYS.refreshToken(payload.sub))
 
@@ -101,7 +156,7 @@ export class AuthService {
     if (hashed !== userRefreshToken) throw new UnauthorizedException('Invalid refresh token')
 
     const newAccessToken = this.jwtService.sign(
-      { sub: user.id, email: user.email },
+      { sub: user.id, email: user.email, telegramId: user.telegramId },
       { secret: this.accessSecret, expiresIn: '15m' },
     )
 
