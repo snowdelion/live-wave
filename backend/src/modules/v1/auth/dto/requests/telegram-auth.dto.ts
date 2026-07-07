@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { IsNumber, IsOptional, IsString, Min } from 'class-validator'
+import { IsNumber, IsOptional, IsString, IsUrl, Min } from 'class-validator'
 
 export class TelegramAuthDto {
   @ApiProperty({ example: 123456789 })
@@ -26,8 +26,8 @@ export class TelegramAuthDto {
   @IsOptional()
   username?: string
 
-  @ApiProperty({ example: 'https://example.com', required: false })
-  @IsString()
+  @ApiProperty({ example: 'https://example.com/image.jpg', required: false })
+  @IsUrl()
   @IsOptional()
   photo_url?: string
 

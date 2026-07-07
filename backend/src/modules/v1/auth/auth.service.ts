@@ -78,18 +78,19 @@ export class AuthService {
     const now = Math.floor(Date.now() / 1000)
     if (now - dto.auth_date > 300) throw new UnauthorizedException('Telegram login expired')
 
-    let user = await this.prisma.user.findUnique({
+    const user = await this.prisma.user.upsert({
       where: { telegramId: String(dto.id) },
+      update: {
+        username: dto.username || dto.first_name,
+        photoUrl: dto.photo_url,
+      },
+      create: {
+        telegramId: String(dto.id),
+        username: dto.username || dto.first_name,
+        photoUrl: dto.photo_url,
+      },
       select: { id: true, telegramId: true },
     })
-    if (!user)
-      user = await this.prisma.user.create({
-        data: {
-          telegramId: String(dto.id),
-          username: dto.username || dto.first_name,
-        },
-        select: { id: true, telegramId: true },
-      })
 
     const { accessToken, refreshToken } = await this.generateTokens({
       userId: user.id,
