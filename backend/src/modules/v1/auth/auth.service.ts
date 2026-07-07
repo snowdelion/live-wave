@@ -168,11 +168,6 @@ export class AuthService {
     await this.redis.del(REDIS_KEYS.refreshToken(payload.sub))
   }
 
-  async delete(userId: string) {
-    await this.redis.del(REDIS_KEYS.refreshToken(userId))
-    await this.prisma.user.delete({ where: { id: userId } })
-  }
-
   private getPayload(refreshToken: string): { sub: string } {
     try {
       return this.jwtService.verify(refreshToken, {

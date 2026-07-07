@@ -7,6 +7,7 @@ import { MonitorModule } from './monitor/monitor.module'
 import { MonitorCheckModule } from './monitor-check/monitor-check.module'
 import { NotificationModule } from './notification/notification.module'
 import { TelegramModule } from './notification/telegram/telegram.module'
+import { UsersModule } from './users/users.module'
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { TelegramModule } from './notification/telegram/telegram.module'
     TelegramModule,
     NotificationModule,
     AuthModule,
+    UsersModule,
   ],
 })
 export class V1Module {}

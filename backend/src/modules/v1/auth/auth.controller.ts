@@ -1,11 +1,9 @@
 import {
   Body,
   Controller,
-  Delete,
   HttpCode,
   HttpStatus,
   Post,
-  Req,
   Res,
   UnauthorizedException,
   UseGuards,
@@ -13,13 +11,12 @@ import {
 import { AuthGuard } from '@nestjs/passport'
 import { ApiExtraModels } from '@nestjs/swagger'
 import { seconds, Throttle } from '@nestjs/throttler'
-import { Request, Response } from 'express'
+import { Response } from 'express'
 
 import { CookieService } from '@/backend/shared/cookie/cookie.service'
 import { Cookies } from '@/backend/shared/cookie/cookies.decorator'
 
 import {
-  deleteDocs,
   logOutDocs,
   refreshTokenDocs,
   signInEmailDocs,
@@ -91,15 +88,5 @@ export class AuthController {
   ) {
     if (refreshToken) await this.authService.invalidateRefreshToken(refreshToken)
     this.cookieService.clearRefreshToken(res)
-  }
-
-  @Delete('me')
-  @AuthDocs(deleteDocs)
-  @UseGuards(AuthGuard('jwt'))
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Req() req: Request) {
-    const userId = req.user?.userId
-    if (!userId) throw new UnauthorizedException('User not found')
-    await this.authService.delete(userId)
   }
 }
