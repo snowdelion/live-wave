@@ -383,27 +383,4 @@ describe('AuthService', () => {
       expect(redis.del).toHaveBeenCalledWith(REDIS_KEYS.refreshToken('user-1'))
     })
   })
-
-  describe('delete', () => {
-    it('deletes redis refresh token and the user record', async () => {
-      await service.delete('user-1')
-
-      expect(redis.del).toHaveBeenCalledWith(REDIS_KEYS.refreshToken('user-1'))
-      expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: 'user-1' } })
-    })
-
-    it('deletes redis key before deleting the user', async () => {
-      const callOrder: string[] = []
-      redis.del.mockImplementation(async () => {
-        callOrder.push('redis.del')
-      })
-      prisma.user.delete.mockImplementation(async () => {
-        callOrder.push('prisma.user.delete')
-      })
-
-      await service.delete('user-1')
-
-      expect(callOrder).toEqual(['redis.del', 'prisma.user.delete'])
-    })
-  })
 })

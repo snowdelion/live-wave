@@ -144,39 +144,4 @@ describe('AuthController', () => {
       expect(cookieService.clearRefreshToken).not.toHaveBeenCalled()
     })
   })
-
-  describe('delete', () => {
-    function createRequest(userId?: string): Request {
-      return { user: userId ? { userId } : undefined } as unknown as Request
-    }
-
-    it('throws UnauthorizedException if req.user is missing', async () => {
-      const req = createRequest(undefined)
-
-      await expect(controller.delete(req)).rejects.toThrow(UnauthorizedException)
-      expect(authService.delete).not.toHaveBeenCalled()
-    })
-
-    it('throws UnauthorizedException if req.user.userId is missing', async () => {
-      const req = { user: {} } as unknown as Request
-
-      await expect(controller.delete(req)).rejects.toThrow(UnauthorizedException)
-      expect(authService.delete).not.toHaveBeenCalled()
-    })
-
-    it('calls authService.delete with the userId when present', async () => {
-      const req = createRequest('user-1')
-
-      await controller.delete(req)
-
-      expect(authService.delete).toHaveBeenCalledWith('user-1')
-    })
-
-    it('propagates errors from authService.delete', async () => {
-      const req = createRequest('user-1')
-      authService.delete.mockRejectedValue(new Error('delete failed'))
-
-      await expect(controller.delete(req)).rejects.toThrow('delete failed')
-    })
-  })
 })

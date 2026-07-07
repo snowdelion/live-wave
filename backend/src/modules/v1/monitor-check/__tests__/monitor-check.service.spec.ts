@@ -135,7 +135,7 @@ describe('MonitorCheckService', () => {
         BULL_NAMES.CHECK,
         { monitorId: MONITOR_ID },
         expect.objectContaining({
-          jobId: expect.stringContaining(BULL_KEYS.CHECK(MONITOR_ID)),
+          jobId: expect.stringContaining(BULL_KEYS.RAW_CHECK(MONITOR_ID)),
         }),
       )
     })

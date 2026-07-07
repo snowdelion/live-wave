@@ -56,20 +56,6 @@ export const refreshTokenDocs = {
   isProtected: true,
 }
 
-export const logOutDocs = {
-  summary: 'Logs out (clear tokens)',
-  description: 'Invalidates the refresh token in Redis and clears the refresh token cookie',
-  extraResponses: [{ status: HttpStatus.NO_CONTENT }],
-  isProtected: true,
-}
-
-export const deleteDocs = {
-  summary: 'Completely deletes account',
-  description: 'Permanently deletes the user account and all associated data',
-  extraResponses: [{ status: HttpStatus.NO_CONTENT }],
-  isProtected: true,
-}
-
 export const telegramDocs = {
   summary: 'Sign in an existing account via Telegram',
   description:
@@ -83,4 +69,11 @@ export const telegramDocs = {
   hasBadRequest: true,
   isProtected: true,
   bodyType: TelegramAuthDto,
+}
+
+export const logOutDocs = {
+  summary: 'Logs out (clear tokens)',
+  description: 'Invalidates the refresh token in Redis and clears the refresh token cookie',
+  extraResponses: [{ status: HttpStatus.NO_CONTENT }],
+  isProtected: true,
 }
