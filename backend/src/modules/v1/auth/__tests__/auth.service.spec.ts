@@ -32,6 +32,7 @@ describe('AuthService', () => {
       user: {
         count: vi.fn(),
         create: vi.fn(),
+        upsert: vi.fn(),
         findUnique: vi.fn(),
         delete: vi.fn(),
       },
@@ -177,6 +178,7 @@ describe('AuthService', () => {
       username: 'johnny',
       auth_date: 0,
       hash: '',
+      photo_url: '',
     }
 
     const computeHash = (dto: any, botToken: string) => {
@@ -219,13 +221,22 @@ describe('AuthService', () => {
       dto.hash = computeHash(dto, BOT_TOKEN)
 
       prisma.user.findUnique.mockResolvedValue(null)
-      prisma.user.create.mockResolvedValue({ id: 'user-1', telegramId: String(dto.id) })
+      prisma.user.upsert.mockResolvedValue({ id: 'user-1', telegramId: String(dto.id) })
       jwtService.sign.mockReturnValue('signed-token')
 
       const result = await service.telegramAuth(dto as any)
 
-      expect(prisma.user.create).toHaveBeenCalledWith({
-        data: { telegramId: String(dto.id), username: dto.username },
+      expect(prisma.user.upsert).toHaveBeenCalledWith({
+        where: { telegramId: String(dto.id) },
+        update: {
+          username: dto.username || dto.first_name,
+          photoUrl: dto.photo_url,
+        },
+        create: {
+          telegramId: String(dto.id),
+          username: dto.username || dto.first_name,
+          photoUrl: dto.photo_url,
+        },
         select: { id: true, telegramId: true },
       })
       expect(result).toEqual({ accessToken: 'signed-token', refreshToken: 'signed-token' })
@@ -237,13 +248,22 @@ describe('AuthService', () => {
       dto.hash = computeHash(dto, BOT_TOKEN)
 
       prisma.user.findUnique.mockResolvedValue(null)
-      prisma.user.create.mockResolvedValue({ id: 'user-1', telegramId: String(dto.id) })
+      prisma.user.upsert.mockResolvedValue({ id: 'user-1', telegramId: String(dto.id) })
       jwtService.sign.mockReturnValue('signed-token')
 
       await service.telegramAuth(dto as any)
 
-      expect(prisma.user.create).toHaveBeenCalledWith({
-        data: { telegramId: String(dto.id), username: dto.first_name },
+      expect(prisma.user.upsert).toHaveBeenCalledWith({
+        where: { telegramId: String(dto.id) },
+        update: {
+          username: dto.username || dto.first_name,
+          photoUrl: dto.photo_url,
+        },
+        create: {
+          telegramId: String(dto.id),
+          username: dto.username || dto.first_name,
+          photoUrl: dto.photo_url,
+        },
         select: { id: true, telegramId: true },
       })
     })
@@ -253,12 +273,29 @@ describe('AuthService', () => {
       const dto = { ...baseDto, auth_date }
       dto.hash = computeHash(dto, BOT_TOKEN)
 
-      prisma.user.findUnique.mockResolvedValue({ id: 'existing-user', telegramId: String(dto.id) })
+      prisma.user.upsert.mockResolvedValue({
+        id: 'existing-user',
+        telegramId: String(dto.id),
+      })
+
       jwtService.sign.mockReturnValue('signed-token')
 
       const result = await service.telegramAuth(dto as any)
 
-      expect(prisma.user.create).not.toHaveBeenCalled()
+      expect(prisma.user.upsert).toHaveBeenCalledWith({
+        where: { telegramId: String(dto.id) },
+        update: {
+          username: dto.username || dto.first_name,
+          photoUrl: dto.photo_url,
+        },
+        create: {
+          telegramId: String(dto.id),
+          username: dto.username || dto.first_name,
+          photoUrl: dto.photo_url,
+        },
+        select: { id: true, telegramId: true },
+      })
+
       expect(jwtService.sign).toHaveBeenCalledWith(
         { sub: 'existing-user', email: undefined, telegramId: String(dto.id) },
         expect.objectContaining({ secret: ACCESS_SECRET }),

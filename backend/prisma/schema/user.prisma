@@ -6,6 +6,7 @@ model User {
 
   telegramId String? @unique
   username   String?
+  photoUrl   String?
 
   monitors Monitor[]
   alert    Alert?
