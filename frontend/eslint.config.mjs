@@ -1,17 +1,13 @@
 import { dirname } from 'path'
 import { fileURLToPath } from 'url'
-import { FlatCompat } from '@eslint/eslintrc'
 import baseConfig from '../eslint.config.mjs'
 import nextPlugin from '@next/eslint-plugin-next'
 import reactPlugin from 'eslint-plugin-react'
 import hooksPlugin from 'eslint-plugin-react-hooks'
+import featureSlicedPlugin from '@conarti/eslint-plugin-feature-sliced'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-})
 
 export default [
   ...baseConfig,
@@ -22,14 +18,35 @@ export default [
       '@next/next': nextPlugin,
       react: reactPlugin,
       'react-hooks': hooksPlugin,
+      '@conarti/feature-sliced': featureSlicedPlugin,
     },
     rules: {
       'react-hooks/exhaustive-deps': 'warn',
+
+      '@conarti/feature-sliced/layers-slices': 'error',
+      '@conarti/feature-sliced/absolute-relative': 'error',
+      '@conarti/feature-sliced/public-api': 'error',
+
+      'import/order': [
+        'warn',
+        {
+          groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
+          'newlines-between': 'always',
+          alphabetize: { order: 'asc', caseInsensitive: true },
+          pathGroups: [
+            {
+              pattern: '@/**',
+              group: 'internal',
+              position: 'before',
+            },
+          ],
+          pathGroupsExcludedImportTypes: ['builtin'],
+        },
+      ],
+      'import/no-duplicates': 'error',
     },
     settings: {
-      react: {
-        version: 'detect',
-      },
+      react: { version: 'detect' },
       'import/resolver': {
         typescript: {
           alwaysTryTypes: true,
@@ -50,16 +67,6 @@ export default [
       '@typescript-eslint/no-unsafe-argument': 'off',
     },
   },
-
-  ...compat.config({
-    plugins: ['@conarti/feature-sliced'],
-    extends: ['plugin:@conarti/feature-sliced/recommended'],
-    rules: {
-      '@conarti/feature-sliced/layers-slices': 'error',
-      '@conarti/feature-sliced/absolute-relative': 'error',
-      '@conarti/feature-sliced/public-api': 'error',
-    },
-  }),
 
   {
     ignores: [

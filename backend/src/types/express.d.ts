@@ -1,7 +1,11 @@
 import 'express'
 
-declare module 'express' {
-  export interface Request {
-    clientId?: string
+declare global {
+  namespace Express {
+    interface User {
+      userId: string
+      email?: string
+      telegramId?: string
+    }
   }
 }

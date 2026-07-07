@@ -1,13 +1,17 @@
 import { BullModule } from '@nestjs/bullmq'
 import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
+import { APP_GUARD } from '@nestjs/core'
 
 import { validate } from '@/backend/config/validation'
 
 import { V1Module } from './modules/v1/api-v1.module'
+import { CookieModule } from './shared/cookie/cookie.module'
 import { PrismaModule } from './shared/prisma/prisma.module'
 import { RateLimitModule } from './shared/rate-limit/rate-limit.module'
 import { RedisModule } from './shared/redis/redis.module'
+import { CustomThrottlerGuard } from './shared/throttler/custom-throttler.guard'
+import { ThrottlerModule } from './shared/throttler/throttler.module'
 
 @Module({
   imports: [
@@ -32,6 +36,15 @@ import { RedisModule } from './shared/redis/redis.module'
     RedisModule,
     V1Module,
     RateLimitModule,
+    ThrottlerModule,
+    CookieModule,
+  ],
+
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: CustomThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}

@@ -12,12 +12,12 @@ export class AnalyticsService {
     private redis: RedisService,
   ) {}
 
-  async getOverview(clientId: string, monitorId: string, days: number = 7) {
+  async getOverview(userId: string, monitorId: string, days: number = 7) {
     const monitor = await this.prisma.monitor.findUnique({
       where: { id: monitorId },
-      select: { clientId: true, name: true },
+      select: { userId: true, name: true },
     })
-    if (!monitor || monitor.clientId !== clientId) throw new NotFoundException('Monitor not found')
+    if (!monitor || monitor.userId !== userId) throw new NotFoundException('Monitor not found')
 
     const key = REDIS_KEYS.overviewAnalytics(monitorId, days)
     const cached = await this.redis.get(key)
@@ -101,15 +101,15 @@ export class AnalyticsService {
   }
 
   async getIncidents(
-    clientId: string,
+    userId: string,
     monitorId: string,
     startDate: Date,
   ): Promise<{ incidents: Incidents; total: number }> {
     const monitor = await this.prisma.monitor.findUnique({
       where: { id: monitorId },
-      select: { clientId: true },
+      select: { userId: true },
     })
-    if (!monitor || monitor.clientId !== clientId) throw new NotFoundException('Monitor not found')
+    if (!monitor || monitor.userId !== userId) throw new NotFoundException('Monitor not found')
 
     const incidents = await this.getIncidentsList(monitorId, startDate)
     const total = await this.getIncidentsCount(monitorId, startDate)
@@ -204,12 +204,12 @@ export class AnalyticsService {
     }
   }
 
-  async getTimeline(clientId: string, monitorId: string, startDate: Date) {
+  async getTimeline(userId: string, monitorId: string, startDate: Date) {
     const monitor = await this.prisma.monitor.findUnique({
       where: { id: monitorId },
-      select: { clientId: true },
+      select: { userId: true },
     })
-    if (!monitor || monitor.clientId !== clientId) throw new NotFoundException('Monitor not found')
+    if (!monitor || monitor.userId !== userId) throw new NotFoundException('Monitor not found')
 
     return await this.getRawTimeline(monitorId, startDate)
   }

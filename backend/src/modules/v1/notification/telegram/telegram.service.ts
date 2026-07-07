@@ -19,7 +19,7 @@ export class TelegramService {
     else this.baseUrl = `https://api.telegram.org/bot${this.botToken}`
   }
 
-  async linkChatId(clientId: string, chatId: string) {
+  async linkChatId(userId: string, chatId: string) {
     const linkMessage =
       'You have successfully linked Telegram! Notifications will arrive when your monitor status changes (up/down)'
     const canSend = await this.sendMessage(chatId, linkMessage)
@@ -29,26 +29,26 @@ export class TelegramService {
       )
 
     const alert = await this.prisma.alert.upsert({
-      where: { clientId },
+      where: { userId },
       update: { telegramChatId: chatId, enabled: true },
-      create: { clientId, telegramChatId: chatId, enabled: true },
+      create: { userId, telegramChatId: chatId, enabled: true },
     })
 
-    this.logger.debug(`Client "${clientId}" linked Telegram successfully`)
+    this.logger.debug(`User "${userId}" linked Telegram successfully`)
     return alert
   }
 
-  async unlinkChatId(clientId: string) {
+  async unlinkChatId(userId: string) {
     await this.prisma.alert.update({
-      where: { clientId },
+      where: { userId },
       data: { telegramChatId: null, enabled: false },
     })
   }
 
-  async toggleAlert(clientId: string) {
+  async toggleAlert(userId: string) {
     try {
       const oldAlert = await this.prisma.alert.findUnique({
-        where: { clientId },
+        where: { userId },
         select: { enabled: true, telegramChatId: true },
       })
       if (!oldAlert?.telegramChatId)
@@ -56,7 +56,7 @@ export class TelegramService {
       const newEnabled = !oldAlert.enabled
 
       const updatedAlert = await this.prisma.alert.update({
-        where: { clientId },
+        where: { userId },
         data: { enabled: newEnabled },
         select: { enabled: true },
       })
@@ -72,7 +72,7 @@ export class TelegramService {
     } catch (e) {
       throw logAndThrow({
         name: TelegramService.name,
-        context: `toggle alert for ${clientId}`,
+        context: `toggle alert for ${userId}`,
         e,
         exception: Error,
         exceptionContext: 'No active Telegram alert link found',
@@ -128,15 +128,15 @@ export class TelegramService {
     return false
   }
 
-  async getAlertStatus(clientId: string) {
+  async getAlertStatus(userId: string) {
     const alert = await this.prisma.alert.findUnique({
-      where: { clientId },
+      where: { userId },
       select: { enabled: true, telegramChatId: true },
     })
 
     if (!alert) {
       const newAlert = await this.prisma.alert.create({
-        data: { clientId, enabled: false },
+        data: { userId, enabled: false },
         select: { enabled: true },
       })
       return { enabled: newAlert.enabled, hasChat: false }

@@ -18,18 +18,18 @@ describe('TelegramController', () => {
   })
 
   describe('linkChatId', () => {
-    it('should call service with clientId and chatId', async () => {
+    it('should call service with userId and chatId', async () => {
       mockTelegramService.linkChatId.mockResolvedValue(undefined)
 
-      await controller.linkChatId('client-123', { chatId: 'chat-456' })
+      await controller.linkChatId('user-123', { chatId: 'chat-456' })
 
-      expect(mockTelegramService.linkChatId).toHaveBeenCalledWith('client-123', 'chat-456')
+      expect(mockTelegramService.linkChatId).toHaveBeenCalledWith('user-123', 'chat-456')
     })
 
     it('should return success message', async () => {
       mockTelegramService.linkChatId.mockResolvedValue(undefined)
 
-      const result = await controller.linkChatId('client-123', { chatId: 'chat-456' })
+      const result = await controller.linkChatId('user-123', { chatId: 'chat-456' })
 
       expect(result).toEqual({ message: 'You have subscribed for Telegram notifications' })
     })
@@ -37,25 +37,25 @@ describe('TelegramController', () => {
     it('should propagate service errors', async () => {
       mockTelegramService.linkChatId.mockRejectedValue(new Error('Service error'))
 
-      await expect(controller.linkChatId('client-123', { chatId: 'chat-456' })).rejects.toThrow(
+      await expect(controller.linkChatId('user-123', { chatId: 'chat-456' })).rejects.toThrow(
         'Service error',
       )
     })
   })
 
   describe('unlinkChatId', () => {
-    it('should call service with clientId', async () => {
+    it('should call service with userId', async () => {
       mockTelegramService.unlinkChatId.mockResolvedValue(undefined)
 
-      await controller.unlinkChatId('client-123')
+      await controller.unlinkChatId('user-123')
 
-      expect(mockTelegramService.unlinkChatId).toHaveBeenCalledWith('client-123')
+      expect(mockTelegramService.unlinkChatId).toHaveBeenCalledWith('user-123')
     })
 
     it('should return success message', async () => {
       mockTelegramService.unlinkChatId.mockResolvedValue(undefined)
 
-      const result = await controller.unlinkChatId('client-123')
+      const result = await controller.unlinkChatId('user-123')
 
       expect(result).toEqual({ message: 'You have unsubscribed from Telegram notifications' })
     })
@@ -63,23 +63,23 @@ describe('TelegramController', () => {
     it('should propagate service errors', async () => {
       mockTelegramService.unlinkChatId.mockRejectedValue(new Error('Service error'))
 
-      await expect(controller.unlinkChatId('client-123')).rejects.toThrow('Service error')
+      await expect(controller.unlinkChatId('user-123')).rejects.toThrow('Service error')
     })
   })
 
   describe('toggleAlert', () => {
-    it('should call service with clientId', async () => {
+    it('should call service with userId', async () => {
       mockTelegramService.toggleAlert.mockResolvedValue(true)
 
-      await controller.toggleAlert('client-123')
+      await controller.toggleAlert('user-123')
 
-      expect(mockTelegramService.toggleAlert).toHaveBeenCalledWith('client-123')
+      expect(mockTelegramService.toggleAlert).toHaveBeenCalledWith('user-123')
     })
 
     it('should return enabled true with correct message', async () => {
       mockTelegramService.toggleAlert.mockResolvedValue(true)
 
-      const result = await controller.toggleAlert('client-123')
+      const result = await controller.toggleAlert('user-123')
 
       expect(result).toEqual({
         enabled: true,
@@ -90,7 +90,7 @@ describe('TelegramController', () => {
     it('should return enabled false with correct message', async () => {
       mockTelegramService.toggleAlert.mockResolvedValue(false)
 
-      const result = await controller.toggleAlert('client-123')
+      const result = await controller.toggleAlert('user-123')
 
       expect(result).toEqual({
         enabled: false,
@@ -101,7 +101,7 @@ describe('TelegramController', () => {
     it('should propagate service errors', async () => {
       mockTelegramService.toggleAlert.mockRejectedValue(new Error('Service error'))
 
-      await expect(controller.toggleAlert('client-123')).rejects.toThrow('Service error')
+      await expect(controller.toggleAlert('user-123')).rejects.toThrow('Service error')
     })
   })
 })

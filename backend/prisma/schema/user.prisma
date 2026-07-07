@@ -1,0 +1,15 @@
+model User {
+  id String @id @default(cuid())
+
+  email    String? @unique
+  password String?
+
+  telegramId String? @unique
+  username   String?
+
+  monitors Monitor[]
+  alert    Alert?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

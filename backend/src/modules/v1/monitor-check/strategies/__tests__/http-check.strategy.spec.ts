@@ -36,7 +36,7 @@ const makeMonitorRow = (
     checkInterval: CHECK_INTERVAL,
     timeout: TIMEOUT_MS,
     lastStatus: null,
-    clientId: 'client-1',
+    userId: 'user-1',
     lastCheckedAt: null,
     nextCheckAt: null,
     createdAt: new Date('2024-06-01T00:00:00.000Z'),

@@ -9,6 +9,10 @@ import { REDIS_CLIENT } from './redis.constants'
 export class RedisService {
   constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
 
+  getClient(): Redis {
+    return this.redis
+  }
+
   async set(key: string, value: string, ttlSeconds?: number) {
     try {
       if (ttlSeconds) await this.redis.set(key, value, 'EX', ttlSeconds)

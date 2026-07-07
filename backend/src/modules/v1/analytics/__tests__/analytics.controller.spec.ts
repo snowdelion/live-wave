@@ -25,9 +25,9 @@ describe('AnalyticsController', () => {
       mockAnalyticsService.getOverview.mockResolvedValue(expected)
 
       const query: AnalyticsOverviewQueryDto = { days: 14 }
-      const result = await controller.getOverview('client-1', 'monitor-1', query)
+      const result = await controller.getOverview('user-1', 'monitor-1', query)
 
-      expect(mockAnalyticsService.getOverview).toHaveBeenCalledWith('client-1', 'monitor-1', 14)
+      expect(mockAnalyticsService.getOverview).toHaveBeenCalledWith('user-1', 'monitor-1', 14)
       expect(result).toBe(expected)
     })
 
@@ -35,10 +35,10 @@ describe('AnalyticsController', () => {
       mockAnalyticsService.getOverview.mockResolvedValue({})
 
       const query: AnalyticsOverviewQueryDto = {}
-      await controller.getOverview('client-1', 'monitor-1', query)
+      await controller.getOverview('user-1', 'monitor-1', query)
 
       expect(mockAnalyticsService.getOverview).toHaveBeenCalledWith(
-        'client-1',
+        'user-1',
         'monitor-1',
         undefined,
       )
@@ -53,11 +53,11 @@ describe('AnalyticsController', () => {
       vi.spyOn(Date, 'now').mockReturnValue(now)
 
       const query: AnalyticsIncidentsQueryDto = { days: 30 }
-      await controller.getIncidents('client-1', 'monitor-1', query)
+      await controller.getIncidents('user-1', 'monitor-1', query)
 
       const expectedStart = new Date(now - 30 * 24 * 60 * 60 * 1000)
       expect(mockAnalyticsService.getIncidents).toHaveBeenCalledWith(
-        'client-1',
+        'user-1',
         'monitor-1',
         expectedStart,
       )
@@ -72,11 +72,11 @@ describe('AnalyticsController', () => {
       vi.spyOn(Date, 'now').mockReturnValue(now)
 
       const query: AnalyticsIncidentsQueryDto = {}
-      await controller.getIncidents('client-1', 'monitor-1', query)
+      await controller.getIncidents('user-1', 'monitor-1', query)
 
       const expectedStart = new Date(now - 7 * 24 * 60 * 60 * 1000)
       expect(mockAnalyticsService.getIncidents).toHaveBeenCalledWith(
-        'client-1',
+        'user-1',
         'monitor-1',
         expectedStart,
       )
@@ -93,11 +93,11 @@ describe('AnalyticsController', () => {
       vi.spyOn(Date, 'now').mockReturnValue(now)
 
       const query: AnalyticsTimelineQueryDto = { days: 3 }
-      await controller.getTimeline('client-1', 'monitor-1', query)
+      await controller.getTimeline('user-1', 'monitor-1', query)
 
       const expectedStart = new Date(now - 3 * 24 * 60 * 60 * 1000)
       expect(mockAnalyticsService.getTimeline).toHaveBeenCalledWith(
-        'client-1',
+        'user-1',
         'monitor-1',
         expectedStart,
       )
@@ -112,11 +112,11 @@ describe('AnalyticsController', () => {
       vi.spyOn(Date, 'now').mockReturnValue(now)
 
       const query: AnalyticsTimelineQueryDto = {}
-      await controller.getTimeline('client-1', 'monitor-1', query)
+      await controller.getTimeline('user-1', 'monitor-1', query)
 
       const expectedStart = new Date(now - 7 * 24 * 60 * 60 * 1000)
       expect(mockAnalyticsService.getTimeline).toHaveBeenCalledWith(
-        'client-1',
+        'user-1',
         'monitor-1',
         expectedStart,
       )

@@ -8,28 +8,28 @@ enum MonitorType {
 model Monitor {
   id String @id @default(cuid())
 
-  name String
-  type MonitorType @default(HTTP)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  name          String
+  type          MonitorType @default(HTTP)
   checkInterval Int         @default(10) // minutes
   timeout       Int         @default(5000) // milliseconds
   lastStatus    StatusEnum?
 
-  clientId String
-  checks   Check[]
-
-  lastCheckedAt DateTime?
-  nextCheckAt   DateTime?
+  checks Check[]
 
   httpMonitor HttpMonitor?
   icmpMonitor IcmpMonitor?
   tcpMonitor  TcpMonitor?
   dnsMonitor  DnsMonitor?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  lastCheckedAt DateTime?
+  nextCheckAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  @@index([clientId])
+  @@index([userId])
   @@index([type])
 }
 

@@ -40,14 +40,14 @@ export class MonitorService {
     private monitorCheckService: MonitorCheckService,
   ) {}
 
-  async create(clientId: string, dto: CreateMonitorDto) {
-    const monitorCount = await this.prisma.monitor.count({ where: { clientId } })
+  async create(userId: string, dto: CreateMonitorDto) {
+    const monitorCount = await this.prisma.monitor.count({ where: { userId } })
     if (monitorCount >= 5)
       throw new ForbiddenException('You have reached the maximum number of monitors')
 
     const monitorType = dto.type
     const newMonitor = await this.prisma.monitor.create({
-      data: monitorRequestData(clientId, monitorType, dto),
+      data: monitorRequestData(userId, monitorType, dto),
       include: {
         httpMonitor: monitorType === MonitorType.HTTP,
         tcpMonitor: monitorType === MonitorType.TCP,
@@ -65,9 +65,9 @@ export class MonitorService {
     return newMonitor
   }
 
-  async findAllByClientId(clientId: string) {
+  async findAllByUserId(userId: string) {
     const monitors = await this.prisma.monitor.findMany({
-      where: { clientId },
+      where: { userId },
       select: {
         id: true,
         name: true,
@@ -121,7 +121,7 @@ export class MonitorService {
     })
   }
 
-  async findById(clientId: string, id: string) {
+  async findById(userId: string, id: string) {
     const monitor = await this.prisma.monitor.findUnique({
       where: { id },
       include: {
@@ -136,7 +136,7 @@ export class MonitorService {
       },
     })
     if (!monitor) throw new NotFoundException('Uptime monitoring service not found')
-    if (monitor.clientId !== clientId)
+    if (monitor.userId !== userId)
       throw new ForbiddenException('Uptime monitoring service not found')
 
     const { httpMonitor, icmpMonitor, tcpMonitor, dnsMonitor, ...rest } = monitor
@@ -147,13 +147,12 @@ export class MonitorService {
     return rest
   }
 
-  async update(clientId: string, id: string, dto: UpdateMonitorDto) {
+  async update(userId: string, id: string, dto: UpdateMonitorDto) {
     const existing = await this.prisma.monitor.findUnique({
       where: { id },
       include: { httpMonitor: true, icmpMonitor: true, tcpMonitor: true, dnsMonitor: true },
     })
-    if (!existing || existing.clientId !== clientId)
-      throw new NotFoundException('Monitor not found')
+    if (!existing || existing.userId !== userId) throw new NotFoundException('Monitor not found')
 
     const updateData: Partial<Pick<Monitor, 'name' | 'checkInterval' | 'timeout'>> = {}
     if (dto.name !== undefined) updateData.name = dto.name
@@ -228,11 +227,10 @@ export class MonitorService {
     return updatedMonitor
   }
 
-  async delete(clientId: string, id: string) {
+  async delete(userId: string, id: string) {
     try {
       const monitor = await this.prisma.monitor.findUnique({ where: { id } })
-      if (!monitor || monitor?.clientId !== clientId)
-        throw new NotFoundException('Monitor not found')
+      if (!monitor || monitor?.userId !== userId) throw new NotFoundException('Monitor not found')
 
       await this.prisma.monitor.delete({ where: { id } })
       await this.monitorCheckService.clearScheduledJobs(monitor.id)

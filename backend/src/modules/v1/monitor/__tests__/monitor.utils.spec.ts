@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common'
-import { Method, MonitorType, RecordType, type StatusEnum } from '@prisma/client'
+import { Method, MonitorType, RecordType } from '@prisma/client'
 
 import {
   monitorRequestData,
@@ -16,17 +16,17 @@ const MONITOR_ID = 'id'
 
 // tests
 describe('monitorRequestData', () => {
-  const CLIENT_ID = 'client-1'
+  const USER_ID = 'user-1'
 
   it('builds HTTP create data with defaults', () => {
-    const result = monitorRequestData(CLIENT_ID, MonitorType.HTTP, {
+    const result = monitorRequestData(USER_ID, MonitorType.HTTP, {
       type: MonitorType.HTTP,
       name: 'name',
       url: 'https://example.com',
     } as any)
 
     expect(result).toEqual({
-      clientId: CLIENT_ID,
+      userId: USER_ID,
       name: 'name',
       checkInterval: 10,
       timeout: 5000,
@@ -36,26 +36,26 @@ describe('monitorRequestData', () => {
   })
 
   it('throws BadRequestException for HTTP when url is missing', () => {
-    expect(() => monitorRequestData(CLIENT_ID, MonitorType.HTTP, { name: 'name' } as any)).toThrow(
+    expect(() => monitorRequestData(USER_ID, MonitorType.HTTP, { name: 'name' } as any)).toThrow(
       BadRequestException,
     )
   })
 
   it('throws BadRequestException for ICMP when host is missing', () => {
-    expect(() => monitorRequestData(CLIENT_ID, MonitorType.ICMP, { name: 'name' } as any)).toThrow(
+    expect(() => monitorRequestData(USER_ID, MonitorType.ICMP, { name: 'name' } as any)).toThrow(
       BadRequestException,
     )
   })
 
   it('throws BadRequestException for TCP when host is missing', () => {
     expect(() =>
-      monitorRequestData(CLIENT_ID, MonitorType.TCP, { name: 'name', port: 8080 } as any),
+      monitorRequestData(USER_ID, MonitorType.TCP, { name: 'name', port: 8080 } as any),
     ).toThrow(BadRequestException)
   })
 
   it('throws BadRequestException for TCP when port is missing', () => {
     expect(() =>
-      monitorRequestData(CLIENT_ID, MonitorType.TCP, {
+      monitorRequestData(USER_ID, MonitorType.TCP, {
         name: 'name',
         host: '127.0.0.1',
       } as any),
@@ -63,13 +63,13 @@ describe('monitorRequestData', () => {
   })
 
   it('throws BadRequestException for DNS when host is missing', () => {
-    expect(() => monitorRequestData(CLIENT_ID, MonitorType.DNS, { name: 'name' } as any)).toThrow(
+    expect(() => monitorRequestData(USER_ID, MonitorType.DNS, { name: 'name' } as any)).toThrow(
       BadRequestException,
     )
   })
 
   it('defaults DNS recordType to A when not provided', () => {
-    const result = monitorRequestData(CLIENT_ID, MonitorType.DNS, {
+    const result = monitorRequestData(USER_ID, MonitorType.DNS, {
       name: 'name',
       host: 'example.com',
     } as any)
@@ -81,7 +81,7 @@ describe('monitorRequestData', () => {
 
   it('throws BadRequestException for an unknown monitor type', () => {
     expect(() =>
-      monitorRequestData(CLIENT_ID, 'UNKNOWN' as MonitorType, { name: 'name' } as any),
+      monitorRequestData(USER_ID, 'UNKNOWN' as MonitorType, { name: 'name' } as any),
     ).toThrow(BadRequestException)
   })
 })

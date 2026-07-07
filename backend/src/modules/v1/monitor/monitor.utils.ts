@@ -71,9 +71,9 @@ export function getTrendSql(monitorIds: string[]) {
         `
 }
 
-export function monitorRequestData(clientId: string, type: MonitorType, dto: CreateMonitorDto) {
+export function monitorRequestData(userId: string, type: MonitorType, dto: CreateMonitorDto) {
   const data = {
-    clientId,
+    userId,
     name: dto.name,
     checkInterval: dto.checkInterval ?? 10,
     timeout: dto.timeout ?? 5000,

@@ -8,7 +8,7 @@ import { TelegramWithChatIdDto } from './dto/telegram-with-chat-id.dto'
 export const linkTelegramDocs = {
   summary: 'Link Telegram chat to receive notifications',
   description:
-    'Associates a Telegram chat ID with the current client session. After linking, the user will receive notifications about monitor status changes',
+    'Associates a Telegram chat ID with the current user. After linking, the user will receive notifications about monitor status changes',
   bodyType: TelegramWithChatIdDto,
   extraResponses: [
     {
@@ -22,7 +22,7 @@ export const linkTelegramDocs = {
 export const unlinkTelegramDocs = {
   summary: 'Unlink Telegram chat',
   description:
-    'Removes the association between the current client and a Telegram chat. Notifications will no longer be sent to this chat',
+    'Removes the association between the current user and a Telegram chat. Notifications will no longer be sent to this chat',
   extraResponses: [
     {
       status: HttpStatus.OK,
@@ -35,7 +35,7 @@ export const unlinkTelegramDocs = {
 export const toggleAlertTelegramDocs = {
   summary: 'Enable or disable Telegram notifications',
   description:
-    'Toggles notification delivery for the current client. If enabled, the user will receive alerts when monitor status changes (up/down)',
+    'Toggles notification delivery for the current user. If enabled, the user will receive alerts when monitor status changes (up/down)',
   extraResponses: [
     {
       status: HttpStatus.OK,
@@ -47,7 +47,7 @@ export const toggleAlertTelegramDocs = {
 
 export const settingsTelegramDocs = {
   summary: 'Get current Telegram notification status',
-  description: 'Returns the enabled/disabled state of Telegram alerts for the authenticated client',
+  description: 'Returns the enabled/disabled state of Telegram alerts for the authenticated user',
   extraResponses: [
     {
       status: HttpStatus.OK,

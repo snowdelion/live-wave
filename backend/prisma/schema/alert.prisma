@@ -1,10 +1,11 @@
 model Alert {
   id String @id @default(cuid())
 
-  telegramChatId String?
-  clientId       String  @unique
-
+  userId  String  @unique
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   enabled Boolean @default(false)
+
+  telegramChatId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

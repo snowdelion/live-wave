@@ -42,7 +42,7 @@ export class MonitorCheckProcessor extends WorkerHost {
         select: {
           type: true,
           name: true,
-          clientId: true,
+          userId: true,
           lastStatus: true,
           httpMonitor: true,
           icmpMonitor: true,
@@ -129,7 +129,7 @@ export class MonitorCheckProcessor extends WorkerHost {
     if (!oldLastStatus || oldLastStatus === checkConfig.status) return
 
     const alert = await this.prisma.alert.findUnique({
-      where: { clientId: monitor.clientId },
+      where: { userId: monitor.userId },
       select: { enabled: true, telegramChatId: true },
     })
     if (!alert?.enabled || !alert.telegramChatId) return
@@ -162,7 +162,7 @@ export class MonitorCheckProcessor extends WorkerHost {
 }
 
 interface SendNotificationIfNeededOptions {
-  monitor: Pick<Monitor, 'type' | 'name' | 'clientId' | 'lastStatus'>
+  monitor: Pick<Monitor, 'type' | 'name' | 'userId' | 'lastStatus'>
   oldLastStatus: StatusEnum | null
   monitorConfig: { url?: string; host?: string; port?: number }
   monitorId: string

@@ -7,6 +7,8 @@ const validConfig = {
   POSTGRES_PASSWORD: 'password',
   POSTGRES_DB: 'db',
   TELEGRAM_BOT_TOKEN: 'token',
+  JWT_ACCESS_SECRET: 'access',
+  JWT_REFRESH_SECRET: 'refresh',
 }
 
 describe('validate', () => {
