@@ -1,5 +1,6 @@
 import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
+
 import { useInView } from '../model/useInView'
 
 export function CTA() {

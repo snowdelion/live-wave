@@ -1,4 +1,5 @@
 import { Globe, Bell, BarChart2, Shield, Zap, Code2 } from 'lucide-react'
+
 import { useInView } from '../model/useInView'
 
 export function Features() {

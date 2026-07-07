@@ -1,5 +1,6 @@
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
+
 import { useHero } from '../model/useHero'
 
 export function Hero() {

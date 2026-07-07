@@ -1,4 +1,5 @@
 import { act, render, renderHook, waitFor } from '@testing-library/react'
+
 import { useHero } from '../useHero'
 
 function setViewportWidth(width: number) {

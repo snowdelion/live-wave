@@ -1,5 +1,6 @@
 import { act, render, renderHook } from '@testing-library/react'
 import { useMediaQuery } from 'react-responsive'
+
 import { useInView } from '../useInView'
 
 // --- mocks ---
