@@ -1,29 +1,37 @@
 import {
   Controller,
   Delete,
+  Get,
   HttpCode,
   HttpStatus,
-  Req,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
-import { Request } from 'express'
+
+import { UserId } from '@/backend/shared/decorators/user-id.decorator'
 
 import { UsersDocs } from './decorators/users-docs.decorator'
-import { deleteDocs } from './users.docs'
+import { deleteDocs, getMeDocs } from './users.docs'
 import { UsersService } from './users.service'
 
 @Controller('v1/users')
 export class UsersController {
   constructor(private usersService: UsersService) {}
 
+  @Get('me')
+  @UsersDocs(getMeDocs)
+  @UseGuards(AuthGuard('jwt'))
+  @HttpCode(HttpStatus.OK)
+  async getMe(@UserId() userId: string) {
+    return this.usersService.getMe(userId)
+  }
+
   @Delete('me')
   @UsersDocs(deleteDocs)
   @UseGuards(AuthGuard('jwt'))
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Req() req: Request) {
-    const userId = req.user?.userId
+  async delete(@UserId() userId: string) {
     if (!userId) throw new UnauthorizedException('User not found')
     await this.usersService.delete(userId)
   }
