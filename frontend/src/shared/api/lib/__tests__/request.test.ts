@@ -58,7 +58,7 @@ describe('request', () => {
       } as NextResponse)
 
       await expect(
-        request({ url: '/fetch', errorCode: 'UNKNOWN_ERROR', schema: SCHEMA }),
+        request({ url: '/fetch', errorCode: ERROR_CODES.UNKNOWN, schema: SCHEMA }),
       ).rejects.toBeInstanceOf(AppError)
     })
   })
