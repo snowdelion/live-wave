@@ -1,7 +1,7 @@
 import { Activity } from 'lucide-react'
 import Link from 'next/link'
 
-export function Navbar() {
+export function LandingNavbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[rgb(8,10,8)]/92 backdrop-blur-sm border-b border-b-[rgb(0,230,118)]/8">
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">

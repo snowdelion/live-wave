@@ -1,11 +1,10 @@
 'use client'
-import { Features, Hero, CTA, Footer } from '@/widgets/landing'
-import { Navbar } from '@/widgets/navbar'
+import { Features, Hero, CTA, Footer, LandingNavbar } from '@/widgets/landing'
 
 export default function LandingPage() {
   return (
     <>
-      <Navbar />
+      <LandingNavbar />
       <Hero />
       <Features />
       <CTA />

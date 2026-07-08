@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 
 import '@testing-library/jest-dom'
-import { Navbar } from './Navbar'
+import { LandingNavbar } from './LandingNavbar'
 
 // --- mocks ---
 vi.mock('next/link', () => ({
@@ -25,37 +25,37 @@ vi.mock('lucide-react', () => ({
 }))
 
 // --- tests ---
-describe('Navbar', () => {
+describe('LandingLandingNavbar', () => {
   it('renders the nav landmark', () => {
-    render(<Navbar />)
+    render(<LandingNavbar />)
     expect(screen.getByRole('navigation')).toBeInTheDocument()
   })
 
   it('renders the LIVEWAVE brand link pointing to home', () => {
-    render(<Navbar />)
+    render(<LandingNavbar />)
     const brandLink = screen.getByRole('link', { name: /livewave/i })
     expect(brandLink).toHaveAttribute('href', '/')
   })
 
   it('renders the brand icon inside the brand link', () => {
-    render(<Navbar />)
+    render(<LandingNavbar />)
     const brandLink = screen.getByRole('link', { name: /livewave/i })
     expect(brandLink).toContainElement(screen.getByTestId('activity-icon'))
   })
 
   it('renders the "Get started" link pointing to /dashboard', () => {
-    render(<Navbar />)
+    render(<LandingNavbar />)
     const ctaLink = screen.getByRole('link', { name: /get started/i })
     expect(ctaLink).toHaveAttribute('href', '/dashboard')
   })
 
   it('renders exactly two links', () => {
-    render(<Navbar />)
+    render(<LandingNavbar />)
     expect(screen.getAllByRole('link')).toHaveLength(2)
   })
 
   it('renders the brand text as "LIVEWAVE"', () => {
-    render(<Navbar />)
+    render(<LandingNavbar />)
     expect(screen.getByText('LIVEWAVE')).toBeInTheDocument()
   })
 })
