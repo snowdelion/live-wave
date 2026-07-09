@@ -30,6 +30,7 @@ export default defineConfig({
         'vitest.config.mts',
         'vitest.setup.ts',
         '**/*.{test,spec}.{ts,tsx}',
+        'src/app/**',
       ],
     },
 
