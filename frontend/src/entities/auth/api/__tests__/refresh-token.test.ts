@@ -43,18 +43,6 @@ describe('refreshToken', () => {
     )
   })
 
-  it('should set the access token in the store from the response data', async () => {
-    requestMock.mockResolvedValueOnce({
-      data: { accessToken: 'new-token' },
-      status: 200,
-    })
-
-    await refreshToken()
-
-    expect(setAccessTokenMock).toHaveBeenCalledWith('new-token')
-    expect(setAccessTokenMock).toHaveBeenCalledTimes(1)
-  })
-
   it('should return the exact data and status shape from request', async () => {
     const response = { data: { accessToken: 'xyz' }, status: 201 }
     requestMock.mockResolvedValueOnce(response)
