@@ -3,7 +3,6 @@ import {
   API_URL,
   ERROR_CODES,
   request,
-  useAuthStore,
   type AccessTokenResponse,
 } from '@/shared/api'
 
@@ -25,6 +24,5 @@ export async function signInViaTelegram(
     errorCode: ERROR_CODES.SIGN_IN_TELEGRAM,
   })
 
-  useAuthStore.getState().setAccessToken(res.data.accessToken)
   return res.data
 }

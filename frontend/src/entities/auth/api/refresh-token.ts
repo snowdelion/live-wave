@@ -3,7 +3,6 @@ import {
   API_URL,
   ERROR_CODES,
   request,
-  useAuthStore,
   type AccessTokenResponse,
 } from '@/shared/api'
 
@@ -15,6 +14,5 @@ export async function refreshToken(): Promise<AccessTokenResponse> {
     errorCode: ERROR_CODES.REFRESH_TOKEN,
   })
 
-  useAuthStore.getState().setAccessToken(res.data.accessToken)
   return res.data
 }

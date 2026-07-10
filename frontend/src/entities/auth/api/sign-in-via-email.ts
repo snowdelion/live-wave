@@ -3,7 +3,6 @@ import {
   API_URL,
   ERROR_CODES,
   request,
-  useAuthStore,
   type AccessTokenResponse,
 } from '@/shared/api'
 
@@ -20,6 +19,5 @@ export async function signInViaEmail(body: AuthViaEmailRequest): Promise<AccessT
     errorCode: ERROR_CODES.SIGN_IN_EMAIL,
   })
 
-  useAuthStore.getState().setAccessToken(res.data.accessToken)
   return res.data
 }
