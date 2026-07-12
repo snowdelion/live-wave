@@ -36,9 +36,9 @@ export function handleApiError(
 
 const ERROR_MESSAGES: Record<number, string> = {
   400: 'Invalid search query',
-  401: 'API authentication failed. Try again later',
-  403: 'API authentication failed. Try again later',
-  429: 'Too many requests. Wait a moment and try again',
+  401: 'API authentication failed',
+  403: 'API authentication failed',
+  429: 'Too many requests',
   499: 'Request was aborted by client',
 }
 
@@ -49,9 +49,9 @@ export function throwResponseErrors(
 ) {
   if (customMessage) throw new AppError(errorCode, customMessage)
   if (status >= 500 && status <= 504)
-    throw new AppError(errorCode, 'Service is temporarily unavailable. Try again later')
+    throw new AppError(errorCode, 'Service is temporarily unavailable')
 
-  const message = ERROR_MESSAGES[status] ?? `Failed to fetch data (status: ${status}).`
+  const message = ERROR_MESSAGES[status] ?? `Failed to fetch data`
   throw new AppError(errorCode, message)
 }
 
@@ -59,5 +59,5 @@ function throwZodErrors(error: ZodError) {
   const messages = error.issues
     .map(({ path, message }) => `${path.join('.')}: ${message}`)
     .join('; ')
-  throw new AppError(ERROR_CODES.VALIDATION, `Data validation failed: ${messages}`)
+  throw new AppError(ERROR_CODES.VALIDATION, `Validation failed: ${messages}`)
 }
