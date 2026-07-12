@@ -67,7 +67,17 @@ export async function request<T>({
 
       if (!response.ok) {
         if (response.status === 499) throw new DOMException('Aborted', 'AbortError')
-        throwResponseErrors(response.status, errorCode)
+        let errorMessage: string | undefined
+        try {
+          const errorBody: unknown = await response.json()
+          if (errorBody && typeof errorBody === 'object') {
+            if ('message' in errorBody) errorMessage = String(errorBody.message)
+            else if ('error' in errorBody) errorMessage = String(errorBody.error)
+          }
+        } catch {
+          errorMessage = undefined
+        }
+        throwResponseErrors(response.status, errorCode, errorMessage)
       }
       if (response.status === 204) return { data: null as T, status: response.status }
 
