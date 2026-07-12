@@ -42,7 +42,12 @@ const ERROR_MESSAGES: Record<number, string> = {
   499: 'Request was aborted by client',
 }
 
-export function throwResponseErrors(status: number, errorCode: ErrorCode = ERROR_CODES.UNKNOWN) {
+export function throwResponseErrors(
+  status: number,
+  errorCode: ErrorCode = ERROR_CODES.UNKNOWN,
+  customMessage?: string,
+) {
+  if (customMessage) throw new AppError(errorCode, customMessage)
   if (status >= 500 && status <= 504)
     throw new AppError(errorCode, 'Service is temporarily unavailable. Try again later')
 
