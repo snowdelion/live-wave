@@ -27,7 +27,7 @@ export function AuthPage() {
       <div className="relative z-2 w-full h-dvh sm:h-auto max-w-115 bg-[#0d120d] border-0 sm:border border-[rgb(0,230,118)]/15 sm:rounded-xl overflow-hidden shadow-2xl">
         <div className="p-8">
           <AuthHeader isLogin={isLogin} />
-          <OAuthButtons onClick={() => {}} />
+          <OAuthButtons />
           <AuthForm
             register={register}
             errors={errors}

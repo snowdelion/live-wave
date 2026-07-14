@@ -211,6 +211,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.101.1
         version: 5.101.1(react@19.1.0)
+      '@telegram-auth/react':
+        specifier: ^1.0.4
+        version: 1.0.4(react@19.1.0)
       '@testing-library/jest-dom':
         specifier: ^6.9.1
         version: 6.9.1
@@ -1696,6 +1699,11 @@ packages:
     resolution: {integrity: sha512-ZnONUuQKJe1bJMStXUL1s5uKN9FcfC28j5cK+iDZcdSHtUv1wtin1cGc/Oewhf2Oc4eKY7lggtpvT/AbMmhHew==}
     peerDependencies:
       react: ^18 || ^19
+
+  '@telegram-auth/react@1.0.4':
+    resolution: {integrity: sha512-VPCIrA6h5+w69S1QvB/k2PphmAA9E8BSqEX4WMSE1P7KxexKl/VRdoTRKSsSx1/In94S+R7FufbjLrRMnEGEKg==}
+    peerDependencies:
+      react: '>=18'
 
   '@testing-library/dom@10.4.1':
     resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}
@@ -6659,6 +6667,10 @@ snapshots:
   '@tanstack/react-query@5.101.1(react@19.1.0)':
     dependencies:
       '@tanstack/query-core': 5.101.1
+      react: 19.1.0
+
+  '@telegram-auth/react@1.0.4(react@19.1.0)':
+    dependencies:
       react: 19.1.0
 
   '@testing-library/dom@10.4.1':
