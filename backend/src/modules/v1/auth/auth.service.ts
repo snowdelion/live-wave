@@ -101,14 +101,21 @@ export class AuthService {
 
   private verifyTelegramData(data: TelegramAuthDto): boolean {
     const { hash, ...rest } = data
-    const secret = crypto
-      .createHash('sha256')
-      .update(this.config.get<string>('TELEGRAM_BOT_TOKEN') || '')
-      .digest()
 
-    const checkString = Object.keys(rest)
+    const filtered = Object.fromEntries(
+      Object.entries(rest).filter(([_, value]) => value !== undefined && value !== null),
+    )
+
+    const token = this.config.get<string>('TELEGRAM_BOT_TOKEN')
+    if (!token) {
+      this.logger.error('TELEGRAM_BOT_TOKEN is not set')
+      return false
+    }
+
+    const secret = crypto.createHash('sha256').update(token).digest()
+    const checkString = Object.keys(filtered)
       .sort()
-      .map(key => `${key}=${rest[key as keyof typeof rest]}`)
+      .map(key => `${key}=${filtered[key as keyof typeof filtered]}`)
       .join('\n')
 
     const hmac = crypto.createHmac('sha256', secret).update(checkString).digest('hex')

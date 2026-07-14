@@ -181,13 +181,16 @@ describe('AuthService', () => {
       photo_url: '',
     }
 
-    const computeHash = (dto: any, botToken: string) => {
-      const { hash: _, ...rest } = dto
-      const secret = crypto.createHash('sha256').update(botToken).digest()
-      const checkString = Object.keys(rest)
+    function computeHash(data: any, botToken: string) {
+      const { hash: _, ...rest } = data
+      const filtered = Object.fromEntries(
+        Object.entries(rest).filter(([_, value]) => value !== undefined && value !== null),
+      )
+      const checkString = Object.keys(filtered)
         .sort()
-        .map(key => `${key}=${rest[key as keyof typeof rest]}`)
+        .map(key => `${key}=${filtered[key]}`)
         .join('\n')
+      const secret = crypto.createHash('sha256').update(botToken).digest()
       return crypto.createHmac('sha256', secret).update(checkString).digest('hex')
     }
 
