@@ -10,8 +10,8 @@ export const updateMonitorRequestSchema = z
     url: z.url().optional(),
     method: z.enum(['HEAD']).optional(),
     host: z.string().min(1).optional(),
-    port: z.coerce.number().min(1).max(65535),
-    recordType: z.enum(DnsRecordType),
+    port: z.coerce.number().min(1).max(65535).optional(),
+    recordType: z.enum(DnsRecordType).optional(),
   })
   .strict()
 
