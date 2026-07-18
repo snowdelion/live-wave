@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom'
+import { mockAnimationsApi } from 'jsdom-testing-mocks'
 import React from 'react'
 
 globalThis.React = React
@@ -111,3 +112,5 @@ HTMLCanvasElement.prototype.getBoundingClientRect = vi.fn(() => ({
   y: 0,
   toJSON() {},
 }))
+
+mockAnimationsApi()
