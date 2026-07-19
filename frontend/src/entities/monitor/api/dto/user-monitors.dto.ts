@@ -8,7 +8,6 @@ const trendConfigSchema = z
     minResponseTime: z.coerce.number().nullable(),
     maxResponseTime: z.coerce.number().nullable(),
     sparkline: z.array(z.coerce.number()),
-    weekUptime: z.number().min(0).max(100).nullable(),
   })
   .strict()
 
@@ -21,10 +20,14 @@ export const userMonitorSchema = z
     lastStatus: z.enum(MonitorStatus).nullable(),
     lastCheckedAt: z.coerce.date(),
     trend: trendConfigSchema,
+    weekUptime: z.number().min(0).max(100).nullable(),
   })
   .strict()
 
-export const userMonitorsSchema = z.array(userMonitorSchema)
+export const userMonitorsSchema = z.object({
+  monitors: z.array(userMonitorSchema),
+  incidentsCount: z.number().min(0),
+})
 
 export type UserMonitor = z.infer<typeof userMonitorSchema>
 export type UserMonitors = z.infer<typeof userMonitorsSchema>

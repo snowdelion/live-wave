@@ -413,7 +413,7 @@ describe('findAllByUserId', () => {
 
     expect(mockPrisma.$queryRaw).toHaveBeenCalled()
 
-    expect(result[0]).toMatchObject({
+    expect(result.monitors[0]).toMatchObject({
       id: MONITOR_ID,
       name: 'test',
       trend: {

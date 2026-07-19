@@ -12,7 +12,7 @@ class TrendConfig {
   sparkline!: number[]
 }
 
-export class MonitorByUserResponseDto {
+class UserMonitor {
   @ApiProperty({ example: 'cmpplwrap0000u1cwddpe8mq8' })
   id!: string
   @ApiProperty({ example: 'example' })
@@ -36,4 +36,20 @@ export class MonitorByUserResponseDto {
   trend!: TrendConfig
   @ApiProperty({ example: 99.45, minimum: 0, maximum: 100, nullable: true })
   weekUptime!: number | null
+}
+
+export class MonitorsByUserResponseDto {
+  @ApiProperty({
+    type: UserMonitor,
+    isArray: true,
+    description: 'List of monitors belonging to the user',
+  })
+  monitors!: UserMonitor[]
+
+  @ApiProperty({
+    example: 4,
+    minimum: 0,
+    description: 'Total incidents across all monitors in the last 7 days',
+  })
+  incidentsCount!: number
 }
