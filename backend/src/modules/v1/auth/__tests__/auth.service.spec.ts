@@ -4,7 +4,7 @@ import { ForbiddenException, BadRequestException, UnauthorizedException } from '
 import bcrypt from 'bcrypt'
 import type { Mock } from 'vitest'
 
-import { REDIS_KEYS } from '@/backend/shared/redis/redis.constants'
+import { REDIS_KEYS } from '@/shared/redis/redis.constants'
 
 import { AuthService } from '../auth.service'
 

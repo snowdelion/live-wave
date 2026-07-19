@@ -10,9 +10,7 @@
     "noEmit": false,
     "emitDeclarationOnly": false,
     "ignoreDeprecations": "6.0",
-    "paths": {
-      "@/backend/*": ["./src/*"]
-    },
+    "paths": { "@/*": ["./src/*"] },
     "types": ["vitest/globals"]
   },
   "include": ["src/**/*"],

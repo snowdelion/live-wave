@@ -1,8 +1,8 @@
 import { HttpStatus, Injectable } from '@nestjs/common'
 
-import { PrismaService } from '@/backend/shared/prisma/prisma.service'
-import { RedisService } from '@/backend/shared/redis/redis.service'
-import { getErrorMessage } from '@/backend/shared/utils/error.utils'
+import { PrismaService } from '@/shared/prisma/prisma.service'
+import { RedisService } from '@/shared/redis/redis.service'
+import { getErrorMessage } from '@/shared/utils/error.utils'
 
 @Injectable()
 export class HealthService {

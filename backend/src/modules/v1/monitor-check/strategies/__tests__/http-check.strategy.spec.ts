@@ -3,12 +3,12 @@ import { Method, StatusEnum } from '@prisma/client'
 import type { Prisma } from '@prisma/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { PrismaService } from '@/backend/shared/prisma/prisma.service'
-import { httpFetch } from '@/backend/shared/utils/http-fetch.utils'
+import type { PrismaService } from '@/shared/prisma/prisma.service'
+import { httpFetch } from '@/shared/utils/http-fetch.utils'
 
 import { HttpStrategy } from '../http-check.strategy'
 
-vi.mock('@/backend/shared/utils/http-fetch.utils', () => ({
+vi.mock('@/shared/utils/http-fetch.utils', () => ({
   httpFetch: vi.fn(),
 }))
 

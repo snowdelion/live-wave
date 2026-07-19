@@ -11,9 +11,9 @@ import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
 import bcrypt from 'bcrypt'
 
-import { PrismaService } from '@/backend/shared/prisma/prisma.service'
-import { REDIS_KEYS } from '@/backend/shared/redis/redis.constants'
-import { RedisService } from '@/backend/shared/redis/redis.service'
+import { PrismaService } from '@/shared/prisma/prisma.service'
+import { REDIS_KEYS } from '@/shared/redis/redis.constants'
+import { RedisService } from '@/shared/redis/redis.service'
 
 import { SignInEmailDto } from './dto/requests/sign-in.dto'
 import { SignUpEmailDto } from './dto/requests/sign-up.dto'

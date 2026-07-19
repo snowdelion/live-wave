@@ -1,7 +1,7 @@
 import { BullModule } from '@nestjs/bullmq'
 import { Module } from '@nestjs/common'
 
-import { BULL_NAMES } from '@/backend/shared/bull/bull.constants'
+import { BULL_NAMES } from '@/shared/bull/bull.constants'
 
 import { NotificationProcessor } from './notification.processor'
 import { TelegramService } from './telegram/telegram.service'

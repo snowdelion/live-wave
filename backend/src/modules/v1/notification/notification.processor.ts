@@ -2,7 +2,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Logger } from '@nestjs/common'
 import { Job } from 'bullmq'
 
-import { BULL_NAMES } from '@/backend/shared/bull/bull.constants'
+import { BULL_NAMES } from '@/shared/bull/bull.constants'
 
 import { TelegramService } from './telegram/telegram.service'
 

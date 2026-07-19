@@ -1,7 +1,7 @@
 import { applyDecorators, HttpStatus, type Type } from '@nestjs/common'
 import { ApiBody, ApiOperation, ApiParam, type ApiParamOptions, ApiResponse } from '@nestjs/swagger'
 
-import type { ExtraResponse } from '@/backend/shared/decorators/docs.types'
+import type { ExtraResponse } from '@/shared/decorators/docs.types'
 
 import { CreateMonitorDto } from '../dto/requests/create-monitor.dto'
 import { UpdateMonitorDto } from '../dto/requests/update-monitor.dto'

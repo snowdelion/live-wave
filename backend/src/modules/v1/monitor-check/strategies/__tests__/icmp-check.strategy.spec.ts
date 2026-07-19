@@ -3,7 +3,7 @@ import { StatusEnum } from '@prisma/client'
 import { ping } from 'node-ping-rs'
 import { beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 
-import type { PrismaService } from '@/backend/shared/prisma/prisma.service'
+import type { PrismaService } from '@/shared/prisma/prisma.service'
 
 import { IcmpStrategy } from '../icmp-check.strategy'
 

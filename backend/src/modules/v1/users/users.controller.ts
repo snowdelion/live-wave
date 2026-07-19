@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
 
-import { UserId } from '@/backend/shared/decorators/user-id.decorator'
+import { UserId } from '@/shared/decorators/user-id.decorator'
 
 import { UsersDocs } from './decorators/users-docs.decorator'
 import { deleteDocs, getMeDocs } from './users.docs'

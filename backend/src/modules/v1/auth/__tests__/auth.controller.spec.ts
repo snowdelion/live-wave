@@ -1,7 +1,7 @@
 import { UnauthorizedException } from '@nestjs/common'
 import type { Request, Response } from 'express'
 
-import type { CookieService } from '@/backend/shared/cookie/cookie.service'
+import type { CookieService } from '@/shared/cookie/cookie.service'
 
 import { AuthController } from '../auth.controller'
 import type { AuthService } from '../auth.service'

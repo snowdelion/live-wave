@@ -3,9 +3,9 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
 import { StatusEnum } from '@prisma/client'
 import { Queue } from 'bullmq'
 
-import { BULL_KEYS, BULL_NAMES } from '@/backend/shared/bull/bull.constants'
-import { PrismaService } from '@/backend/shared/prisma/prisma.service'
-import { logAndThrow } from '@/backend/shared/utils/error.utils'
+import { BULL_KEYS, BULL_NAMES } from '@/shared/bull/bull.constants'
+import { PrismaService } from '@/shared/prisma/prisma.service'
+import { logAndThrow } from '@/shared/utils/error.utils'
 
 @Injectable()
 export class MonitorCheckService implements OnModuleInit {

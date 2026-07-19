@@ -1,6 +1,6 @@
 import { Logger, NotFoundException } from '@nestjs/common'
 
-import type { RedisService } from '@/backend/shared/redis/redis.service'
+import type { RedisService } from '@/shared/redis/redis.service'
 
 import { AnalyticsService } from '../analytics.service'
 
