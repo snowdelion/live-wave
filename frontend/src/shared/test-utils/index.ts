@@ -1,1 +1,1 @@
-export { createWrapper, renderWithClient } from './render-client-wrapper'
+export { createWrapper, renderWithClient, renderHookWithClient } from './render-client-wrapper'

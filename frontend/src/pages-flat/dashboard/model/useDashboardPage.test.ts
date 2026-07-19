@@ -1,6 +1,7 @@
-import { renderHook, act } from '@testing-library/react'
+import { act } from '@testing-library/react'
 
 import { MonitorType, useDetailedMonitor, type DetailedMonitor } from '@/entities/monitor'
+import { renderHookWithClient } from '@/shared/test-utils'
 
 import { useDashboardPage } from './useDashboardPage'
 
@@ -20,19 +21,19 @@ describe('useDashboardPage', () => {
 
   describe('initial state', () => {
     it('should default showModal to false', () => {
-      const { result } = renderHook(() => useDashboardPage())
+      const { result } = renderHookWithClient(() => useDashboardPage())
 
       expect(result.current.showModal).toBe(false)
     })
 
     it('should default editId to null', () => {
-      const { result } = renderHook(() => useDashboardPage())
+      const { result } = renderHookWithClient(() => useDashboardPage())
 
       expect(result.current.editId).toBeNull()
     })
 
     it('should call useDetailedMonitor with an empty string when editId is null', () => {
-      renderHook(() => useDashboardPage())
+      renderHookWithClient(() => useDashboardPage())
 
       expect(useDetailedMonitor).toHaveBeenCalledWith('')
     })
@@ -40,7 +41,7 @@ describe('useDashboardPage', () => {
 
   describe('modal open/close', () => {
     it('should set showModal to true when openModal is called', () => {
-      const { result } = renderHook(() => useDashboardPage())
+      const { result } = renderHookWithClient(() => useDashboardPage())
 
       act(() => {
         result.current.openModal()
@@ -50,7 +51,7 @@ describe('useDashboardPage', () => {
     })
 
     it('should set showModal to false when closeModal is called', () => {
-      const { result } = renderHook(() => useDashboardPage())
+      const { result } = renderHookWithClient(() => useDashboardPage())
 
       act(() => {
         result.current.openModal()
@@ -65,7 +66,7 @@ describe('useDashboardPage', () => {
 
   describe('editId / detailedMonitor', () => {
     it('should call useDetailedMonitor with the given editId once set', () => {
-      const { result, rerender } = renderHook(() => useDashboardPage())
+      const { result, rerender } = renderHookWithClient(() => useDashboardPage())
 
       act(() => {
         result.current.setEditId('mon_1')
@@ -79,7 +80,7 @@ describe('useDashboardPage', () => {
       const monitor = { id: 'mon_1', name: 'Test', type: MonitorType.HTTP } as DetailedMonitor
       vi.mocked(useDetailedMonitor).mockReturnValue({ data: monitor } as never)
 
-      const { result } = renderHook(() => useDashboardPage())
+      const { result } = renderHookWithClient(() => useDashboardPage())
 
       expect(result.current.detailedMonitor).toBe(monitor)
     })
@@ -87,7 +88,7 @@ describe('useDashboardPage', () => {
 
   describe('getInitial', () => {
     it('should build HTTP initial values with url and method', () => {
-      const { result } = renderHook(() => useDashboardPage())
+      const { result } = renderHookWithClient(() => useDashboardPage())
 
       const monitor = {
         id: 'mon_1',
@@ -112,7 +113,7 @@ describe('useDashboardPage', () => {
     })
 
     it('should build TCP initial values with host and port', () => {
-      const { result } = renderHook(() => useDashboardPage())
+      const { result } = renderHookWithClient(() => useDashboardPage())
 
       const monitor = {
         id: 'mon_2',
@@ -137,7 +138,7 @@ describe('useDashboardPage', () => {
     })
 
     it('should build ICMP initial values with only host', () => {
-      const { result } = renderHook(() => useDashboardPage())
+      const { result } = renderHookWithClient(() => useDashboardPage())
 
       const monitor = {
         id: 'mon_3',
@@ -161,7 +162,7 @@ describe('useDashboardPage', () => {
     })
 
     it('should build DNS initial values with host and recordType', () => {
-      const { result } = renderHook(() => useDashboardPage())
+      const { result } = renderHookWithClient(() => useDashboardPage())
 
       const monitor = {
         id: 'mon_4',
@@ -186,7 +187,7 @@ describe('useDashboardPage', () => {
     })
 
     it('should return only base fields for an unknown monitor type', () => {
-      const { result } = renderHook(() => useDashboardPage())
+      const { result } = renderHookWithClient(() => useDashboardPage())
 
       const monitor = {
         id: 'mon_5',

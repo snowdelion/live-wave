@@ -81,7 +81,7 @@ export class MonitorService {
       },
       orderBy: { createdAt: 'desc' },
     })
-    if (monitors.length === 0) return []
+    if (monitors.length === 0) return { monitors: [], incidentsCount: 0 }
 
     const monitorIds = monitors.map(m => m.id)
     const stats = await this.prisma.$queryRaw<
@@ -98,27 +98,54 @@ export class MonitorService {
 
     const statsMap = new Map(stats.map(s => [s.monitorId, s]))
 
-    return monitors.map(({ httpMonitor, icmpMonitor, tcpMonitor, dnsMonitor, ...rest }) => {
-      const stat = statsMap.get(rest.id)
-      const total = stat?.total ? Number(stat.total) : 0
-      const up = stat?.up ? Number(stat.up) : 0
-      const weekUptime = total > 0 ? (up / total) * 100 : null
+    const formattedMonitors = monitors.map(
+      ({ httpMonitor, icmpMonitor, tcpMonitor, dnsMonitor, ...rest }) => {
+        const stat = statsMap.get(rest.id)
+        const total = stat?.total ? Number(stat.total) : 0
+        const up = stat?.up ? Number(stat.up) : 0
+        const weekUptime = total > 0 ? Math.round((up / total) * 100 * 100) / 100 : null
 
-      const avgResponseTime = stat?.avgResponse ? Number(stat.avgResponse) : null
-      const minResponseTime = stat?.minResponse ? Number(stat.minResponse) : null
-      const maxResponseTime = stat?.maxResponse ? Number(stat.maxResponse) : null
-      const sparkline = stat?.sparkline.map(s => Number(s)) ?? []
+        const avgResponseTime = stat?.avgResponse ? Number(stat.avgResponse) : null
+        const minResponseTime = stat?.minResponse ? Number(stat.minResponse) : null
+        const maxResponseTime = stat?.maxResponse ? Number(stat.maxResponse) : null
+        const sparkline = stat?.sparkline.map(s => Number(s)) ?? []
 
-      const trend = { avgResponseTime, minResponseTime, maxResponseTime, sparkline }
-      const data = { ...rest, trend, weekUptime }
+        const trend = { avgResponseTime, minResponseTime, maxResponseTime, sparkline }
+        const data = { ...rest, trend, weekUptime }
 
-      if (rest.type === MonitorType.HTTP) return { ...data, domain: httpMonitor?.url }
-      if (rest.type === MonitorType.ICMP) return { ...data, domain: icmpMonitor?.host }
-      if (rest.type === MonitorType.TCP)
-        return { ...data, domain: `${tcpMonitor?.host}:${tcpMonitor?.port}` }
-      if (rest.type === MonitorType.DNS) return { ...data, domain: dnsMonitor?.host }
-      return data
-    })
+        if (rest.type === MonitorType.HTTP) return { ...data, domain: httpMonitor?.url }
+        if (rest.type === MonitorType.ICMP) return { ...data, domain: icmpMonitor?.host }
+        if (rest.type === MonitorType.TCP)
+          return { ...data, domain: `${tcpMonitor?.host}:${tcpMonitor?.port}` }
+        if (rest.type === MonitorType.DNS) return { ...data, domain: dnsMonitor?.host }
+        return data
+      },
+    )
+
+    return {
+      monitors: formattedMonitors,
+      incidentsCount: await this.getIncidentsCountForMonitors(monitorIds),
+    }
+  }
+
+  private async getIncidentsCountForMonitors(monitorIds: string[]) {
+    const result = await this.prisma.$queryRaw<{ monitorId: string; count: bigint }[]>`
+      SELECT "monitorId", COUNT(*) AS count FROM (
+        WITH with_prev AS (
+          SELECT
+            "monitorId",
+            status,
+            LAG(status) OVER (PARTITION BY "monitorId" ORDER BY "checkedAt") AS prev_status
+            FROM "Check"
+            WHERE "monitorId" = ANY(${monitorIds}) AND "checkedAt" >= ${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)}
+        )
+        SELECT "monitorId", 1
+        FROM with_prev
+        WHERE status = 'down' AND (prev_status IS NULL OR prev_status != status)
+      ) AS down_starts
+      GROUP BY "monitorId"
+    `
+    return result.reduce((a, b) => a + Number(b.count), 0)
   }
 
   async findById(userId: string, id: string) {
