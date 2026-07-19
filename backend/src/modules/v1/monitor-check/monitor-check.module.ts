@@ -1,8 +1,8 @@
 import { BullModule } from '@nestjs/bullmq'
 import { Module } from '@nestjs/common'
 
-import { BullShutdownService } from '@/backend/shared/bull/bull-shutdown.service'
-import { BULL_NAMES } from '@/backend/shared/bull/bull.constants'
+import { BullShutdownService } from '@/shared/bull/bull-shutdown.service'
+import { BULL_NAMES } from '@/shared/bull/bull.constants'
 
 import { MonitorCheckProcessor } from './monitor-check.processor'
 import { MonitorCheckService } from './monitor-check.service'

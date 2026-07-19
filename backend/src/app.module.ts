@@ -3,7 +3,7 @@ import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { APP_GUARD } from '@nestjs/core'
 
-import { validate } from '@/backend/config/validation'
+import { validate } from '@/config/validation'
 
 import { V1Module } from './modules/v1/api-v1.module'
 import { CookieModule } from './shared/cookie/cookie.module'

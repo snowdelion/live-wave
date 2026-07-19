@@ -1,7 +1,7 @@
 import { applyDecorators, HttpStatus, type Type } from '@nestjs/common'
 import { ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger'
 
-import type { ExtraResponse } from '@/backend/shared/decorators/docs.types'
+import type { ExtraResponse } from '@/shared/decorators/docs.types'
 
 export function AuthDocs({
   summary,

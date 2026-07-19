@@ -1,6 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common'
 
-import { REDIS_KEYS } from '@/backend/shared/redis/redis.constants'
+import { REDIS_KEYS } from '@/shared/redis/redis.constants'
 
 import { UsersService } from '../users.service'
 

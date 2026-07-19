@@ -3,8 +3,8 @@ import net from 'net'
 import { Injectable, Logger } from '@nestjs/common'
 import { StatusEnum } from '@prisma/client'
 
-import { PrismaService } from '@/backend/shared/prisma/prisma.service'
-import { getErrorMessage } from '@/backend/shared/utils/error.utils'
+import { PrismaService } from '@/shared/prisma/prisma.service'
+import { getErrorMessage } from '@/shared/utils/error.utils'
 
 import type { StrategyResult } from './strategy-result.types'
 

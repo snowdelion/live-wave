@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common'
 import { Method, type Monitor, MonitorType, RecordType, type PrismaClient } from '@prisma/client'
 
-import type { PrismaService } from '@/backend/shared/prisma/prisma.service'
+import type { PrismaService } from '@/shared/prisma/prisma.service'
 
 import { MonitorService } from '../monitor.service'
 

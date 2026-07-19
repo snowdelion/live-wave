@@ -2,8 +2,8 @@ import { Logger } from '@nestjs/common'
 import { StatusEnum } from '@prisma/client'
 import type { Job, Queue } from 'bullmq'
 
-import { BULL_KEYS, BULL_NAMES } from '@/backend/shared/bull/bull.constants'
-import type { PrismaService } from '@/backend/shared/prisma/prisma.service'
+import { BULL_KEYS, BULL_NAMES } from '@/shared/bull/bull.constants'
+import type { PrismaService } from '@/shared/prisma/prisma.service'
 
 import { MonitorCheckService } from '../monitor-check.service'
 

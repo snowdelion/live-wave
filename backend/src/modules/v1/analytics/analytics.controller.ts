@@ -2,7 +2,7 @@ import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
 import { ApiExtraModels } from '@nestjs/swagger'
 
-import { UserId } from '@/backend/shared/decorators/user-id.decorator'
+import { UserId } from '@/shared/decorators/user-id.decorator'
 
 import { getIncidentsDocs, getOverviewDocs, getTimelineDocs } from './analytics.docs'
 import { AnalyticsService } from './analytics.service'

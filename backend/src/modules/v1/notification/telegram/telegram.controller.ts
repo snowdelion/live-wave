@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, UseGuards } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
 
-import { UserId } from '@/backend/shared/decorators/user-id.decorator'
+import { UserId } from '@/shared/decorators/user-id.decorator'
 
 import { TelegramDocs } from './decorators/telegram-docs.decorator'
 import { TelegramWithChatIdDto } from './dto/telegram-with-chat-id.dto'

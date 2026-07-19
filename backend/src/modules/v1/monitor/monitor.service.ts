@@ -14,8 +14,8 @@ import {
   TcpMonitor,
 } from '@prisma/client'
 
-import { PrismaService } from '@/backend/shared/prisma/prisma.service'
-import { logAndThrow } from '@/backend/shared/utils/error.utils'
+import { PrismaService } from '@/shared/prisma/prisma.service'
+import { logAndThrow } from '@/shared/utils/error.utils'
 
 import { MonitorCheckService } from '../monitor-check/monitor-check.service'
 

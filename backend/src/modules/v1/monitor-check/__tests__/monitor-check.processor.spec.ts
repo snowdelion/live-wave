@@ -2,8 +2,8 @@ import { Logger } from '@nestjs/common'
 import { MonitorType, StatusEnum } from '@prisma/client'
 import type { Job } from 'bullmq'
 
-import type { PrismaService } from '@/backend/shared/prisma/prisma.service'
-import type { RateLimitService } from '@/backend/shared/rate-limit/rate-limit.service'
+import type { PrismaService } from '@/shared/prisma/prisma.service'
+import type { RateLimitService } from '@/shared/rate-limit/rate-limit.service'
 
 import { MonitorCheckProcessor } from '../monitor-check.processor'
 import type { MonitorCheckService } from '../monitor-check.service'

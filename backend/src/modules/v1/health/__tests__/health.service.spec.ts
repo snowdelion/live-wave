@@ -1,7 +1,7 @@
 import { HttpStatus } from '@nestjs/common'
 
-import type { PrismaService } from '@/backend/shared/prisma/prisma.service'
-import type { RedisService } from '@/backend/shared/redis/redis.service'
+import type { PrismaService } from '@/shared/prisma/prisma.service'
+import type { RedisService } from '@/shared/redis/redis.service'
 
 import { HealthService } from '../health.service'
 

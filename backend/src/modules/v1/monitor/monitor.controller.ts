@@ -13,8 +13,8 @@ import {
 import { AuthGuard } from '@nestjs/passport'
 import { ApiExtraModels } from '@nestjs/swagger'
 
-import { UserId } from '@/backend/shared/decorators/user-id.decorator'
-import { RateLimitGuard } from '@/backend/shared/rate-limit/guards/rate-limit.guard'
+import { UserId } from '@/shared/decorators/user-id.decorator'
+import { RateLimitGuard } from '@/shared/rate-limit/guards/rate-limit.guard'
 
 import { MonitorDocs } from './decorators/monitor-docs.decorator'
 import { MONITOR_EXTRA_MODELS } from './dto/monitor-extra-models'

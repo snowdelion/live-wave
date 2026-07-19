@@ -13,8 +13,8 @@ import { ApiExtraModels } from '@nestjs/swagger'
 import { seconds, Throttle } from '@nestjs/throttler'
 import { Response } from 'express'
 
-import { CookieService } from '@/backend/shared/cookie/cookie.service'
-import { Cookies } from '@/backend/shared/cookie/cookies.decorator'
+import { CookieService } from '@/shared/cookie/cookie.service'
+import { Cookies } from '@/shared/cookie/cookies.decorator'
 
 import {
   logOutDocs,

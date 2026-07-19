@@ -12,7 +12,7 @@ vi.mock('@nestjs/common', () => ({
   },
 }))
 
-vi.mock('@/backend/shared/prisma/prisma.service', () => ({ PrismaService: class {} }))
+vi.mock('@/shared/prisma/prisma.service', () => ({ PrismaService: class {} }))
 vi.mock('@prisma/client', () => ({
   RecordType: {},
   StatusEnum: { up: 'up', down: 'down' },

@@ -1,8 +1,8 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common'
 
-import { PrismaService } from '@/backend/shared/prisma/prisma.service'
-import { REDIS_KEYS } from '@/backend/shared/redis/redis.constants'
-import { RedisService } from '@/backend/shared/redis/redis.service'
+import { PrismaService } from '@/shared/prisma/prisma.service'
+import { REDIS_KEYS } from '@/shared/redis/redis.constants'
+import { RedisService } from '@/shared/redis/redis.service'
 
 @Injectable()
 export class UsersService {
