@@ -4,7 +4,7 @@ import { createWrapper } from '@/shared/test-utils'
 
 import { createMonitor } from '../api/create-monitor'
 import { deleteMonitor } from '../api/delete-monitor'
-import type { UserMonitor } from '../api/dto/user-monitors.dto'
+import type { UserMonitor, UserMonitors } from '../api/dto/user-monitors.dto'
 import { fetchDetailedMonitor } from '../api/fetch-detailed-monitor'
 import { fetchMonitors } from '../api/fetch-monitors'
 import { updateMonitor } from '../api/update-monitor'
@@ -231,7 +231,7 @@ describe('useUpdateMonitor', () => {
     const existingList = [makeMonitor({ id: 'mon-1', name: 'Old Name' })]
     const existingDetail = makeMonitor({ id: 'mon-1', name: 'Old Name' })
 
-    queryClient.setQueryData(MONITOR_QUERY_KEYS.list(), existingList)
+    queryClient.setQueryData(MONITOR_QUERY_KEYS.list(), { monitors: existingList })
     queryClient.setQueryData(MONITOR_QUERY_KEYS.detail('mon-1'), existingDetail)
 
     const { result } = renderHook(() => useUpdateMonitor(), { wrapper: Wrapper })
@@ -241,7 +241,7 @@ describe('useUpdateMonitor', () => {
     })
 
     await waitFor(() => {
-      const list = queryClient.getQueryData<UserMonitor[]>(MONITOR_QUERY_KEYS.list())
+      const list = queryClient.getQueryData<UserMonitors>(MONITOR_QUERY_KEYS.list())?.monitors
       expect(list).toBeDefined()
       expect(list?.length).toBeGreaterThan(0)
       expect(list?.[0]?.name).toBe('New Name')
@@ -334,7 +334,7 @@ describe('useUpdateMonitor', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
     const list = queryClient.getQueryData(MONITOR_QUERY_KEYS.list())
-    expect(list).toEqual([])
+    expect(list).toEqual({ monitors: [], incidentsCount: 0 })
   })
 })
 
@@ -350,7 +350,7 @@ describe('useDeleteMonitor', () => {
     const { result } = renderHook(() => useDeleteMonitor(), { wrapper: Wrapper })
 
     act(() => {
-      result.current.mutate({ monitorId: 'mon-1' })
+      result.current.mutate('mon-1')
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
@@ -368,20 +368,20 @@ describe('useDeleteMonitor', () => {
 
     const { Wrapper, queryClient } = createWrapper()
     const existingList = [makeMonitor({ id: 'mon-1' }), makeMonitor({ id: 'mon-2' })]
-    queryClient.setQueryData(MONITOR_QUERY_KEYS.list(), existingList)
+    queryClient.setQueryData(MONITOR_QUERY_KEYS.list(), { monitors: existingList })
 
     const { result } = renderHook(() => useDeleteMonitor(), { wrapper: Wrapper })
 
     act(() => {
-      result.current.mutate({ monitorId: 'mon-1' })
+      result.current.mutate('mon-1')
     })
 
     await waitFor(() => {
-      const list = queryClient.getQueryData<UserMonitor[]>(MONITOR_QUERY_KEYS.list())
+      const list = queryClient.getQueryData<UserMonitors>(MONITOR_QUERY_KEYS.list())?.monitors
       expect(list).toHaveLength(1)
     })
 
-    const list = queryClient.getQueryData<UserMonitor[]>(MONITOR_QUERY_KEYS.list())
+    const list = queryClient.getQueryData<UserMonitors>(MONITOR_QUERY_KEYS.list())?.monitors
     expect(list).toBeDefined()
     expect(list?.length).toBeGreaterThan(0)
     expect(list?.[0]?.id).toBe('mon-2')
@@ -400,7 +400,7 @@ describe('useDeleteMonitor', () => {
     const { result } = renderHook(() => useDeleteMonitor(), { wrapper: Wrapper })
 
     act(() => {
-      result.current.mutate({ monitorId: 'mon-1' })
+      result.current.mutate('mon-1')
     })
 
     await waitFor(() => expect(result.current.isError).toBe(true))
@@ -418,7 +418,7 @@ describe('useDeleteMonitor', () => {
     const { result } = renderHook(() => useDeleteMonitor(), { wrapper: Wrapper })
 
     act(() => {
-      result.current.mutate({ monitorId: 'mon-1' })
+      result.current.mutate('mon-1')
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
@@ -436,12 +436,12 @@ describe('useDeleteMonitor', () => {
     const { result } = renderHook(() => useDeleteMonitor(), { wrapper: Wrapper })
 
     act(() => {
-      result.current.mutate({ monitorId: 'mon-1' })
+      result.current.mutate('mon-1')
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
     const list = queryClient.getQueryData(MONITOR_QUERY_KEYS.list())
-    expect(list).toEqual([])
+    expect(list).toEqual({ monitors: [], incidentsCount: 0 })
   })
 })
