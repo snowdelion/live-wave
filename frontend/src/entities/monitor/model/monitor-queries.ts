@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createMonitor } from '../api/create-monitor'
 import { deleteMonitor } from '../api/delete-monitor'
 import type { UpdateMonitorRequest } from '../api/dto/update-monitor-request.dto'
-import type { UserMonitor } from '../api/dto/user-monitors.dto'
+import type { UserMonitor, UserMonitors } from '../api/dto/user-monitors.dto'
 import { fetchDetailedMonitor } from '../api/fetch-detailed-monitor'
 import { fetchMonitors } from '../api/fetch-monitors'
 import { updateMonitor } from '../api/update-monitor'
@@ -50,15 +50,18 @@ export function useUpdateMonitor() {
       await queryClient.cancelQueries({ queryKey: MONITOR_QUERY_KEYS.list() })
       await queryClient.cancelQueries({ queryKey: MONITOR_QUERY_KEYS.detail(monitorId) })
 
-      const prevMonitors = queryClient.getQueryData<UserMonitor[]>(MONITOR_QUERY_KEYS.list())
-      const prevMonitor = queryClient.getQueryData<UserMonitor>(
-        MONITOR_QUERY_KEYS.detail(monitorId),
-      )
+      const prevMonitors = queryClient.getQueryData<UserMonitors>(MONITOR_QUERY_KEYS.list())
+      const prevMonitor = queryClient.getQueryData(MONITOR_QUERY_KEYS.detail(monitorId))
 
-      queryClient.setQueryData<UserMonitor[]>(
-        MONITOR_QUERY_KEYS.list(),
-        prev => prev?.map(m => (m.id === monitorId ? ({ ...m, ...body } as UserMonitor) : m)) ?? [],
-      )
+      queryClient.setQueryData<UserMonitors>(MONITOR_QUERY_KEYS.list(), prev => {
+        if (!prev?.monitors) return { monitors: [], incidentsCount: 0 }
+        return {
+          incidentsCount: prev.incidentsCount ?? 0,
+          monitors: prev.monitors.map(m =>
+            m.id === monitorId ? ({ ...m, ...body } as UserMonitor) : m,
+          ),
+        }
+      })
       queryClient.setQueryData(
         MONITOR_QUERY_KEYS.detail(monitorId),
         (prev: UserMonitor | undefined) => (prev ? { ...prev, ...body } : prev),
@@ -82,16 +85,18 @@ export function useDeleteMonitor() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ monitorId }: { monitorId: string }) => deleteMonitor(monitorId),
-
-    onMutate: async ({ monitorId }) => {
+    mutationFn: (monitorId: string) => deleteMonitor(monitorId),
+    onMutate: async monitorId => {
       await queryClient.cancelQueries({ queryKey: MONITOR_QUERY_KEYS.list() })
-      const prevMonitors = queryClient.getQueryData(MONITOR_QUERY_KEYS.list())
+      const prevMonitors = queryClient.getQueryData<UserMonitors>(MONITOR_QUERY_KEYS.list())
 
-      queryClient.setQueryData(
-        MONITOR_QUERY_KEYS.list(),
-        (prev: UserMonitor[] | undefined) => prev?.filter(m => m.id !== monitorId) ?? [],
-      )
+      queryClient.setQueryData<UserMonitors>(MONITOR_QUERY_KEYS.list(), prev => {
+        if (!prev?.monitors) return { monitors: [], incidentsCount: 0 }
+        return {
+          incidentsCount: prev.incidentsCount ?? 0,
+          monitors: prev.monitors.filter(m => m.id !== monitorId) ?? [],
+        }
+      })
 
       return { prevMonitors }
     },
@@ -99,7 +104,7 @@ export function useDeleteMonitor() {
     onError: (_, __, context) =>
       queryClient.setQueryData(MONITOR_QUERY_KEYS.list(), context?.prevMonitors),
 
-    onSettled: (_, __, { monitorId }) => {
+    onSettled: (_, __, monitorId) => {
       void queryClient.invalidateQueries({ queryKey: MONITOR_QUERY_KEYS.detail(monitorId) })
       void queryClient.invalidateQueries({ queryKey: MONITOR_QUERY_KEYS.list() })
     },
