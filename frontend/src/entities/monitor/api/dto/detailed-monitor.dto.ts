@@ -23,8 +23,7 @@ const baseDetailedMonitorSchema = z
     timeout: z.number().min(5000).max(30_000),
     lastStatus: z.enum(MonitorStatus).nullable(),
     userId: z.string(),
-
-    lastCheckedAt: z.coerce.date(),
+    lastCheckedAt: z.coerce.date().nullable(),
     nextCheckAt: z.coerce.date(),
     createdAt: z.coerce.date(),
     updatedAt: z.coerce.date(),

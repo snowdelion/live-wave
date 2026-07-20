@@ -18,7 +18,7 @@ export const userMonitorSchema = z
     domain: z.string(),
     type: z.enum(MonitorType),
     lastStatus: z.enum(MonitorStatus).nullable(),
-    lastCheckedAt: z.coerce.date(),
+    lastCheckedAt: z.coerce.date().nullable(),
     trend: trendConfigSchema,
     weekUptime: z.number().min(0).max(100).nullable(),
   })
