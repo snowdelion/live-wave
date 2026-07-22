@@ -2,7 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 
 import { MonitorType, useMonitors } from '@/entities/monitor'
 
-import { FiltersBar } from './FiltersBar'
+import { FiltersBar } from '../FiltersBar'
 
 vi.mock('lucide-react', () => ({
   Search: (props: any) => <svg data-testid="search-icon" {...props} />,
