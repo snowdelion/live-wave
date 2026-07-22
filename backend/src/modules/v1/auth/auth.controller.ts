@@ -81,6 +81,7 @@ export class AuthController {
   @Post('log-out')
   @AuthDocs(logOutDocs)
   @UseGuards(AuthGuard('jwt'))
+  @Throttle({ short: { ttl: seconds(60), limit: 20 } })
   @HttpCode(HttpStatus.NO_CONTENT)
   async logOut(
     @Cookies('refreshToken') refreshToken: string,

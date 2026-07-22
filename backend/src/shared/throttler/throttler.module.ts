@@ -13,8 +13,8 @@ import { RedisService } from '../redis/redis.service'
       inject: [RedisService],
       useFactory: (redisService: RedisService) => ({
         throttlers: [
-          { name: 'short', ttl: seconds(60), limit: 10 },
-          { name: 'long', ttl: seconds(3600), limit: 20 },
+          { name: 'short', ttl: seconds(60), limit: 100 },
+          { name: 'long', ttl: seconds(3600), limit: 1000 },
         ],
         storage: new ThrottlerStorageRedisService(redisService.getClient()),
       }),
