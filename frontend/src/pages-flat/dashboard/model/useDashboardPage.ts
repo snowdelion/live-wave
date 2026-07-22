@@ -1,11 +1,20 @@
 import { useState } from 'react'
 
-import { MonitorType, useDetailedMonitor, type DetailedMonitor } from '@/entities/monitor'
+import {
+  MonitorType,
+  useDetailedMonitor,
+  useMonitors,
+  type DetailedMonitor,
+} from '@/entities/monitor'
 
 export function useDashboardPage() {
   const [showModal, setShowModal] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState<MonitorType | 'ALL'>('ALL')
+
   const { data: detailedMonitor } = useDetailedMonitor(editId ?? '')
+  const { isPending: isMonitorsPending } = useMonitors()
 
   const getInitial = (monitor: DetailedMonitor) => {
     const base = {
@@ -53,5 +62,10 @@ export function useDashboardPage() {
     setEditId,
     detailedMonitor,
     editId,
+    search,
+    setSearch,
+    typeFilter,
+    setTypeFilter,
+    isMonitorsPending,
   }
 }

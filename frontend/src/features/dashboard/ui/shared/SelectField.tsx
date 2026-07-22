@@ -15,8 +15,8 @@ import {
   type PathValue,
 } from 'react-hook-form'
 
-import { errorStyle, inputStyle, labelStyle } from '../lib/modal.constants'
-import type { MonitorForm } from '../model/monitor-form.schema'
+import { errorStyle, inputStyle, labelStyle } from '../../lib/modal.constants'
+import type { MonitorForm } from '../../model/monitor-form.schema'
 
 export function SelectField({
   name,
