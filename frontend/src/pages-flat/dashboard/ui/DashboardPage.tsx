@@ -9,6 +9,7 @@ import {
   MonitorTableDesktop,
   MonitorTableDesktopSkeleton,
   MonitorTableMobileSkeleton,
+  StatsCards,
 } from '@/features/dashboard'
 
 import { useDashboardPage } from '../model/useDashboardPage'
@@ -42,6 +43,8 @@ export function DashboardPage() {
             Real-time monitoring for your servers, APIs, websites
           </span>
         </div>
+
+        <StatsCards />
 
         <FiltersBar
           search={search}

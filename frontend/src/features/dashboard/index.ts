@@ -5,3 +5,4 @@ export { MonitorTableDesktop } from './ui/monitor-list/desktop/MonitorTableDeskt
 export { MonitorTableMobile } from './ui/monitor-list/mobile/MonitorTableMobile'
 export { MonitorTableDesktopSkeleton } from './ui/monitor-list/desktop/MonitorTableDesktopSkeleton'
 export { MonitorTableMobileSkeleton } from './ui/monitor-list/mobile/MonitorTableMobileSkeleton'
+export { StatsCards } from './ui/StatsCards'
