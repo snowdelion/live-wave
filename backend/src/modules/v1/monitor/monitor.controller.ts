@@ -12,9 +12,9 @@ import {
 } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
 import { ApiExtraModels } from '@nestjs/swagger'
+import { seconds, Throttle } from '@nestjs/throttler'
 
 import { UserId } from '@/shared/decorators/user-id.decorator'
-import { RateLimitGuard } from '@/shared/rate-limit/guards/rate-limit.guard'
 
 import { MonitorDocs } from './decorators/monitor-docs.decorator'
 import { MONITOR_EXTRA_MODELS } from './dto/monitor-extra-models'
@@ -37,7 +37,8 @@ export class MonitorController {
   @Post()
   @MonitorDocs(createMonitorDocs)
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(RateLimitGuard, AuthGuard('jwt'))
+  @Throttle({ short: { ttl: seconds(60), limit: 20 } })
+  @UseGuards(AuthGuard('jwt'))
   async create(
     @UserId() userId: string,
     @Body()
@@ -62,6 +63,7 @@ export class MonitorController {
 
   @Patch(':id')
   @MonitorDocs(updateMonitorDocs)
+  @Throttle({ short: { ttl: seconds(60), limit: 20 } })
   @UseGuards(AuthGuard('jwt'))
   async update(@UserId() userId: string, @Param('id') id: string, @Body() dto: UpdateMonitorDto) {
     return await this.monitorService.update(userId, id, dto)
@@ -69,6 +71,7 @@ export class MonitorController {
 
   @Delete(':id')
   @MonitorDocs(deleteMonitorDocs)
+  @Throttle({ short: { ttl: seconds(60), limit: 20 } })
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AuthGuard('jwt'))
   async delete(@UserId() userId: string, @Param('id') id: string) {

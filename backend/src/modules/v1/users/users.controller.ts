@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
+import { seconds, Throttle } from '@nestjs/throttler'
 
 import { UserId } from '@/shared/decorators/user-id.decorator'
 
@@ -30,6 +31,7 @@ export class UsersController {
   @Delete('me')
   @UsersDocs(deleteDocs)
   @UseGuards(AuthGuard('jwt'))
+  @Throttle({ short: { ttl: seconds(60), limit: 20 } })
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@UserId() userId: string) {
     if (!userId) throw new UnauthorizedException('User not found')

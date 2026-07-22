@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, UseGuards } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
+import { seconds, Throttle } from '@nestjs/throttler'
 
 import { UserId } from '@/shared/decorators/user-id.decorator'
 
@@ -19,6 +20,7 @@ export class TelegramController {
 
   @Post('link-chat')
   @TelegramDocs(linkTelegramDocs)
+  @Throttle({ short: { ttl: seconds(60), limit: 20 } })
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AuthGuard('jwt'))
   async linkChatId(@UserId() userId: string, @Body() dto: TelegramWithChatIdDto) {
@@ -28,6 +30,7 @@ export class TelegramController {
 
   @Post('unlink-chat')
   @UseGuards(AuthGuard('jwt'))
+  @Throttle({ short: { ttl: seconds(60), limit: 20 } })
   @TelegramDocs(unlinkTelegramDocs)
   async unlinkChatId(@UserId() userId: string) {
     await this.telegramService.unlinkChatId(userId)
@@ -35,6 +38,7 @@ export class TelegramController {
   }
 
   @Patch('toggle-alert')
+  @Throttle({ short: { ttl: seconds(60), limit: 20 } })
   @UseGuards(AuthGuard('jwt'))
   @TelegramDocs(toggleAlertTelegramDocs)
   async toggleAlert(@UserId() userId: string) {
