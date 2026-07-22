@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 
 import { DnsRecordType, MonitorType, useCreateMonitor, useUpdateMonitor } from '@/entities/monitor'
 
-import { useMonitorModal } from './useMonitorModal'
+import { useMonitorModal } from '../useMonitorModal'
 
 vi.mock('@/entities/monitor', async () => {
   const actual = await vi.importActual('@/entities/monitor')

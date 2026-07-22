@@ -12,11 +12,10 @@ import {
   MODAL_LABELS,
   MODAL_PLACEHOLDERS,
   MODAL_TIMEOUTS,
-} from '../lib/modal.constants'
-import { MONITOR_TYPES } from '../lib/monitor.constants'
-import { useMonitorModal } from '../model/useMonitorModal'
-
-import { SelectField } from './SelectField'
+} from '../../lib/modal.constants'
+import { MONITOR_TYPES } from '../../lib/monitor.constants'
+import { useMonitorModal } from '../../model/useMonitorModal'
+import { SelectField } from '../shared/SelectField'
 
 export function MonitorModal({ mode, onClose, initial }: MonitorModalProps) {
   const {
@@ -88,31 +87,33 @@ export function MonitorModal({ mode, onClose, initial }: MonitorModalProps) {
                   onSubmit={e => void handleSubmit(onSubmit)(e)}
                   className="p-6 flex flex-col gap-[1.1rem]"
                 >
-                  <div>
-                    <label className={labelStyle}>MONITOR TYPE</label>
-                    <div className="flex gap-2">
-                      {MONITOR_TYPES.map(t => (
-                        <button
-                          key={t}
-                          onClick={() => {
-                            setValues({
-                              type: t,
-                              url: '',
-                              host: '',
-                              port: undefined,
-                              method: 'HEAD',
-                            })
-                            clearErrors()
-                          }}
-                          type="button"
-                          className={`flex-1 p-2 font-jet-brains text-[0.72rem] tracking-[0.06em] focus:outline-none font-medium rounded-sm tranition-all duration-200 border
+                  {mode === 'create' && (
+                    <div>
+                      <label className={labelStyle}>MONITOR TYPE</label>
+                      <div className="flex gap-2">
+                        {MONITOR_TYPES.map(t => (
+                          <button
+                            key={t}
+                            onClick={() => {
+                              setValues({
+                                type: t,
+                                url: '',
+                                host: '',
+                                port: undefined,
+                                method: 'HEAD',
+                              })
+                              clearErrors()
+                            }}
+                            type="button"
+                            className={`flex-1 p-2 font-jet-brains text-[0.72rem] tracking-[0.06em] focus:outline-none font-medium rounded-sm tranition-all duration-200 border
                             ${type === t ? 'text-[#080a08] bg-[#00e676] border-[#00e676]' : 'text-[#4caf50] bg-transparent border-[rgb(0,230,118)]/15'}`}
-                        >
-                          {t}
-                        </button>
-                      ))}
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="h-20">
                     <label className={labelStyle}>DISPLAY NAME</label>

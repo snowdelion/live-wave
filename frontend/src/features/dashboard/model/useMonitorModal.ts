@@ -11,7 +11,7 @@ import {
   type UpdateMonitorRequest,
 } from '@/entities/monitor'
 
-import type { MonitorModalProps } from '../ui/MonitorModal'
+import type { MonitorModalProps } from '../ui/modals/MonitorModal'
 
 import { monitorFormSchema, type MonitorForm } from './monitor-form.schema'
 

@@ -3,14 +3,14 @@ import userEvent from '@testing-library/user-event'
 
 import { MonitorType } from '@/entities/monitor'
 
-import { useMonitorModal } from '../../model/useMonitorModal'
+import { useMonitorModal } from '../../../model/useMonitorModal'
 import { MonitorModal } from '../MonitorModal'
 
-vi.mock('../../model/useMonitorModal', () => ({
+vi.mock('../../../model/useMonitorModal', () => ({
   useMonitorModal: vi.fn(),
 }))
 
-vi.mock('../SelectField', () => ({
+vi.mock('../../shared/SelectField', () => ({
   SelectField: ({
     name,
     label,
@@ -27,11 +27,11 @@ vi.mock('../SelectField', () => ({
   ),
 }))
 
-vi.mock('../../lib/monitor.constants', () => ({
+vi.mock('../../../lib/monitor.constants', () => ({
   MONITOR_TYPES: [MonitorType.HTTP, MonitorType.TCP, MonitorType.ICMP, MonitorType.DNS],
 }))
 
-vi.mock('../../lib/modal.constants', () => ({
+vi.mock('../../../lib/modal.constants', () => ({
   labelStyle: 'label-style',
   errorStyle: 'error-style',
   inputStyle: () => 'input-style',
@@ -123,11 +123,11 @@ describe('MonitorModal', () => {
 
       await renderModal(<MonitorModal mode="create" onClose={onClose} initial={undefined} />)
 
-      const closeButtons = screen.getAllByRole('button')
-      const xButton = closeButtons.find(btn => btn.querySelector('svg.lucide-x'))
-      expect(xButton).toBeTruthy()
+      const buttons = screen.getAllByRole('button')
+      const closeButton = buttons.find(btn => btn.querySelector('svg.lucide-x'))
+      expect(closeButton).toBeTruthy()
 
-      await user.click(xButton as HTMLButtonElement)
+      await user.click(closeButton!)
 
       expect(onClose).toHaveBeenCalledTimes(1)
     })
@@ -143,6 +143,26 @@ describe('MonitorModal', () => {
       expect(screen.getByRole('button', { name: MonitorType.TCP })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: MonitorType.ICMP })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: MonitorType.DNS })).toBeInTheDocument()
+    })
+
+    it('should not render monitor type selector when mode is update', async () => {
+      mockUseMonitorModal()
+
+      await renderModal(
+        <MonitorModal
+          mode="update"
+          onClose={onClose}
+          initial={{
+            id: 'mon_1',
+            name: 'x',
+            type: MonitorType.HTTP,
+            checkInterval: 5,
+            timeout: 1000,
+          }}
+        />,
+      )
+
+      expect(screen.queryByText('MONITOR TYPE')).not.toBeInTheDocument()
     })
 
     it('should call setValues and clearErrors when a monitor type button is clicked', async () => {
@@ -191,6 +211,17 @@ describe('MonitorModal', () => {
       expect(screen.getByPlaceholderText('https://example.com')).toBeInTheDocument()
     })
 
+    it('should show the url field error when present', async () => {
+      mockUseMonitorModal({
+        type: MonitorType.HTTP,
+        errors: { url: { message: 'URL is required' } } as never,
+      })
+
+      await renderModal(<MonitorModal mode="create" onClose={onClose} initial={undefined} />)
+
+      expect(screen.getByText('URL is required')).toBeInTheDocument()
+    })
+
     it('should show a host field (not URL) when type is TCP', async () => {
       mockUseMonitorModal({ type: MonitorType.TCP })
 
@@ -206,6 +237,17 @@ describe('MonitorModal', () => {
       await renderModal(<MonitorModal mode="create" onClose={onClose} initial={undefined} />)
 
       expect(screen.getByPlaceholderText('5432')).toBeInTheDocument()
+    })
+
+    it('should show the port field error when present', async () => {
+      mockUseMonitorModal({
+        type: MonitorType.TCP,
+        errors: { port: { message: 'Port is required' } } as never,
+      })
+
+      await renderModal(<MonitorModal mode="create" onClose={onClose} initial={undefined} />)
+
+      expect(screen.getByText('Port is required')).toBeInTheDocument()
     })
 
     it('should not show a port field when type is ICMP', async () => {
