@@ -6,7 +6,7 @@ export const settingsSchema = z.object({
   enabled: z.boolean(),
   hasChat: z.boolean(),
 })
-type Settings = z.infer<typeof settingsSchema>
+export type Settings = z.infer<typeof settingsSchema>
 
 export async function fetchSettings(): Promise<Settings> {
   const res = await request({
