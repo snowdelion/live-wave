@@ -1,6 +1,6 @@
 export { MonitorModal } from './ui/modals/MonitorModal'
 export { DashHeader } from './ui/DashHeader'
-export { FiltersBar } from './ui/FiltersBar'
+export { FiltersBar } from './ui/monitor-filter/FiltersBar'
 export { MonitorTableDesktop } from './ui/monitor-list/desktop/MonitorTableDesktop'
 export { MonitorTableMobile } from './ui/monitor-list/mobile/MonitorTableMobile'
 export { MonitorTableDesktopSkeleton } from './ui/monitor-list/desktop/MonitorTableDesktopSkeleton'

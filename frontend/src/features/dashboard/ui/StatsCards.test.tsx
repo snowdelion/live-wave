@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 
 import { useMonitors, MonitorStatus } from '@/entities/monitor'
 
-import { StatsCards } from '../StatsCards'
+import { StatsCards } from './StatsCards'
 
 vi.mock('lucide-react', () => ({
   Monitor: (props: any) => <svg data-testid="icon-monitor" {...props} />,
@@ -11,7 +11,7 @@ vi.mock('lucide-react', () => ({
   Gauge: (props: any) => <svg data-testid="icon-gauge" {...props} />,
 }))
 
-vi.mock('../StatsCardsSkeleton', () => ({
+vi.mock('./StatsCardsSkeleton', () => ({
   StatsCardsSkeleton: () => <div data-testid="skeleton">Loading stats...</div>,
 }))
 
