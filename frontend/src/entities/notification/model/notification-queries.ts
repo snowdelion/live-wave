@@ -1,7 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { useAuthStore } from '@/shared/api'
-
 import { fetchSettings, type Settings } from '../api/fetch-settings'
 import { linkTelegram } from '../api/link-telegram'
 import { toggleAlert } from '../api/toggle-alert'
@@ -13,12 +11,9 @@ export const NOTIFICATION_QUERY_KEYS = {
 }
 
 export function useNotificationSettings() {
-  const accessToken = useAuthStore(s => s.accessToken)
-
   return useQuery<Settings>({
     queryKey: NOTIFICATION_QUERY_KEYS.settings(),
     queryFn: fetchSettings,
-    enabled: !!accessToken,
   })
 }
 

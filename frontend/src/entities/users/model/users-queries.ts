@@ -12,12 +12,9 @@ export const USERS_QUERY_KEYS = {
 }
 
 export function useUser() {
-  const accessToken = useAuthStore(s => s.accessToken)
-
   return useQuery({
     queryKey: USERS_QUERY_KEYS.me(),
     queryFn: fetchMe,
-    enabled: !!accessToken,
   })
 }
 

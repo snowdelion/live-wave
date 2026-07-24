@@ -64,24 +64,6 @@ describe('users-queries', () => {
 
       expect(fetchMe).toHaveBeenCalledTimes(1)
     })
-
-    it('does not fetch if accessToken is missing', async () => {
-      mockUseAuthStore.mockImplementation((selector: any) =>
-        selector({
-          accessToken: null,
-          clearAccessToken: vi.fn(),
-        }),
-      )
-
-      const { result } = renderHookWithClient(() => useUser())
-
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false)
-        expect(result.current.data).toBeUndefined()
-      })
-
-      expect(fetchMe).not.toHaveBeenCalled()
-    })
   })
 
   describe('useDeleteUser', () => {

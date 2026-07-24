@@ -1,7 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { useAuthStore } from '@/shared/api'
-
 import { createMonitor } from '../api/create-monitor'
 import { deleteMonitor } from '../api/delete-monitor'
 import type { UpdateMonitorRequest } from '../api/dto/update-monitor-request.dto'
@@ -18,22 +16,17 @@ export const MONITOR_QUERY_KEYS = {
 }
 
 export function useMonitors() {
-  const accessToken = useAuthStore(s => s.accessToken)
-
   return useQuery({
     queryKey: MONITOR_QUERY_KEYS.list(),
     queryFn: fetchMonitors,
-    enabled: !!accessToken,
   })
 }
 
 export function useDetailedMonitor(monitorId: string) {
-  const accessToken = useAuthStore(s => s.accessToken)
-
   return useQuery({
     queryKey: MONITOR_QUERY_KEYS.detail(monitorId),
     queryFn: () => fetchDetailedMonitor(monitorId),
-    enabled: !!monitorId && !!accessToken,
+    enabled: !!monitorId,
   })
 }
 
