@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 
 import { useAuthStore } from '@/shared/api'
 
@@ -40,12 +41,14 @@ export function useSignInTelegram() {
 export function useLogout() {
   const queryClient = useQueryClient()
   const clearAccessToken = useAuthStore(s => s.clearAccessToken)
+  const router = useRouter()
 
   return useMutation({
     mutationFn: logout,
     onSuccess: () => {
       clearAccessToken()
       queryClient.clear()
+      router.push('/auth')
     },
   })
 }

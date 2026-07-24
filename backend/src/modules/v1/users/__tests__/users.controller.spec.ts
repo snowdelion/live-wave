@@ -1,4 +1,5 @@
 import { UnauthorizedException } from '@nestjs/common'
+import type { Response } from 'express'
 
 import { UsersController } from '../users.controller'
 
@@ -7,18 +8,19 @@ const USER_ID = 'user-1'
 describe('UsersController', () => {
   let controller: UsersController
   let usersService: any
+  let cookieService: any
 
   beforeEach(() => {
     usersService = {
-      signUpEmail: vi.fn(),
-      signInEmail: vi.fn(),
-      refreshAccessToken: vi.fn(),
-      invalidateRefreshToken: vi.fn(),
       getMe: vi.fn(),
       delete: vi.fn(),
     }
 
-    controller = new UsersController(usersService)
+    cookieService = {
+      clearRefreshToken: vi.fn(),
+    }
+
+    controller = new UsersController(usersService, cookieService)
   })
 
   describe('getMe', () => {
@@ -49,22 +51,34 @@ describe('UsersController', () => {
 
   describe('delete', () => {
     it('throws UnauthorizedException if userId is missing', async () => {
-      await expect(controller.delete(undefined as unknown as string)).rejects.toThrow(
-        UnauthorizedException,
+      const mockRes = {} as Response
+
+      await expect(controller.delete(undefined as unknown as string, mockRes)).rejects.toThrow(
+        new UnauthorizedException('User not found'),
       )
+
       expect(usersService.delete).not.toHaveBeenCalled()
+      expect(cookieService.clearRefreshToken).not.toHaveBeenCalled()
     })
 
-    it('calls usersService.delete with the userId when present', async () => {
-      await controller.delete(USER_ID)
+    it('calls usersService.delete and clears refresh token when userId is present', async () => {
+      const mockRes = {} as Response
+      usersService.delete.mockResolvedValue(undefined)
+
+      await controller.delete(USER_ID, mockRes)
 
       expect(usersService.delete).toHaveBeenCalledWith(USER_ID)
+      expect(cookieService.clearRefreshToken).toHaveBeenCalledWith(mockRes)
     })
 
-    it('propagates errors from usersService.delete', async () => {
+    it('propagates errors from usersService.delete and does not clear refresh token', async () => {
+      const mockRes = {} as Response
       usersService.delete.mockRejectedValue(new Error('delete failed'))
 
-      await expect(controller.delete(USER_ID)).rejects.toThrow('delete failed')
+      await expect(controller.delete(USER_ID, mockRes)).rejects.toThrow('delete failed')
+
+      expect(usersService.delete).toHaveBeenCalledWith(USER_ID)
+      expect(cookieService.clearRefreshToken).not.toHaveBeenCalled()
     })
   })
 })
