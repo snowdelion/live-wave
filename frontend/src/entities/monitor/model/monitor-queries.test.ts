@@ -26,6 +26,10 @@ vi.mock('../api/fetch-monitors', () => ({
   fetchMonitors: vi.fn(),
 }))
 vi.mock('../api/update-monitor', () => ({ updateMonitor: vi.fn() }))
+vi.mock('@/shared/api', async () => {
+  const actual = await vi.importActual('@/shared/api')
+  return { ...actual, useAuthStore: vi.fn().mockReturnValue('token') }
+})
 
 function makeMonitor(overrides: Partial<UserMonitor> = {}): UserMonitor {
   return {

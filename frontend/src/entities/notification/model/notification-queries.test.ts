@@ -19,6 +19,10 @@ vi.mock('../api/fetch-settings')
 vi.mock('../api/link-telegram')
 vi.mock('../api/unlink-telegram')
 vi.mock('../api/toggle-alert')
+vi.mock('@/shared/api', async () => {
+  const actual = await vi.importActual('@/shared/api')
+  return { ...actual, useAuthStore: vi.fn().mockReturnValue('token') }
+})
 
 describe('Notification Queries', () => {
   beforeEach(() => {
