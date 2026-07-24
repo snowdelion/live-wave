@@ -104,21 +104,33 @@ export async function request<T>({
 }
 
 async function tryRefreshToken(): Promise<boolean> {
-  try {
-    const response = await fetch(API_URL.AUTH.REFRESH_TOKEN, {
-      method: 'POST',
-      credentials: 'include',
-    })
-    if (!response.ok) return false
+  if (useAuthStore.getState().refreshPromise)
+    return useAuthStore.getState().refreshPromise as Promise<boolean>
 
-    const rawData: unknown = await response.json()
-    const data = AccessTokenResponseSchema.parse(rawData)
+  const promise = (async () => {
+    try {
+      const response = await fetch(API_URL.AUTH.REFRESH_TOKEN, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      if (!response.ok) {
+        useAuthStore.getState().clearAccessToken()
+        return false
+      }
 
-    useAuthStore.getState().setAccessToken(data.accessToken)
-    return true
-  } catch {
-    return false
-  }
+      const rawData: unknown = await response.json()
+      const data = AccessTokenResponseSchema.parse(rawData)
+
+      useAuthStore.getState().setAccessToken(data.accessToken)
+      return true
+    } catch {
+      useAuthStore.getState().clearAccessToken()
+      return false
+    }
+  })()
+
+  useAuthStore.getState().refreshPromise = promise
+  return promise
 }
 
 type RequestProps<T> = {
