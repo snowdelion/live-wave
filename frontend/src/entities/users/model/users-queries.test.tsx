@@ -11,9 +11,28 @@ import { useUser, useDeleteUser, USERS_QUERY_KEYS } from './users-queries'
 vi.mock('../api/fetch-me')
 vi.mock('../api/delete-me')
 
+const mockUseAuthStore = vi.fn()
+vi.mock('@/shared/api', () => ({
+  useAuthStore: (...args: any[]) => mockUseAuthStore(...args),
+}))
+
+const mockRouter = {
+  push: vi.fn(),
+}
+vi.mock('next/navigation', () => ({
+  useRouter: () => mockRouter,
+}))
+
 describe('users-queries', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+
+    mockUseAuthStore.mockImplementation((selector: any) =>
+      selector({
+        accessToken: 'mock-token',
+        clearAccessToken: vi.fn(),
+      }),
+    )
   })
 
   describe('useUser', () => {
@@ -45,11 +64,37 @@ describe('users-queries', () => {
 
       expect(fetchMe).toHaveBeenCalledTimes(1)
     })
+
+    it('does not fetch if accessToken is missing', async () => {
+      mockUseAuthStore.mockImplementation((selector: any) =>
+        selector({
+          accessToken: null,
+          clearAccessToken: vi.fn(),
+        }),
+      )
+
+      const { result } = renderHookWithClient(() => useUser())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+        expect(result.current.data).toBeUndefined()
+      })
+
+      expect(fetchMe).not.toHaveBeenCalled()
+    })
   })
 
   describe('useDeleteUser', () => {
-    it('calls deleteMe and clears the query client on success', async () => {
+    it('calls deleteMe, clears auth, clears query client, and redirects on success', async () => {
       vi.mocked(deleteMe).mockResolvedValue({ success: true })
+
+      const mockClearAccessToken = vi.fn()
+      mockUseAuthStore.mockImplementation((selector: any) =>
+        selector({
+          accessToken: 'mock-token',
+          clearAccessToken: mockClearAccessToken,
+        }),
+      )
 
       const { result, queryClient } = renderHookWithClient(() => useDeleteUser())
       const clearSpy = vi.spyOn(queryClient, 'clear')
@@ -62,10 +107,20 @@ describe('users-queries', () => {
 
       expect(deleteMe).toHaveBeenCalledTimes(1)
       expect(clearSpy).toHaveBeenCalledTimes(1)
+      expect(mockClearAccessToken).toHaveBeenCalledTimes(1)
+      expect(mockRouter.push).toHaveBeenCalledWith('/auth')
     })
 
-    it('handles mutation errors without clearing the client', async () => {
+    it('handles mutation errors without clearing the client, auth, or redirecting', async () => {
       vi.mocked(deleteMe).mockRejectedValue(new Error('Deletion failed'))
+
+      const mockClearAccessToken = vi.fn()
+      mockUseAuthStore.mockImplementation((selector: any) =>
+        selector({
+          accessToken: 'mock-token',
+          clearAccessToken: mockClearAccessToken,
+        }),
+      )
 
       const { result, queryClient } = renderHookWithClient(() => useDeleteUser())
       const clearSpy = vi.spyOn(queryClient, 'clear')
@@ -78,7 +133,10 @@ describe('users-queries', () => {
       })
 
       expect(deleteMe).toHaveBeenCalledTimes(1)
+
       expect(clearSpy).not.toHaveBeenCalled()
+      expect(mockClearAccessToken).not.toHaveBeenCalled()
+      expect(mockRouter.push).not.toHaveBeenCalled()
     })
   })
 
