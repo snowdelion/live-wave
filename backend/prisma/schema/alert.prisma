@@ -5,7 +5,7 @@ model Alert {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   enabled Boolean @default(false)
 
-  telegramChatId String?
+  telegramChatId String? @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
