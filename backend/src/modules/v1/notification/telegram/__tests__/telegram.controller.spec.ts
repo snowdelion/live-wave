@@ -1,12 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
+import type { TelegramWebhookDto } from '../dto/telegram-webhook.dto'
 import { TelegramController } from '../telegram.controller'
 import type { TelegramService } from '../telegram.service'
 
 const mockTelegramService = {
   linkChatId: vi.fn(),
+  handleWebhook: vi.fn(),
   unlinkChatId: vi.fn(),
   toggleAlert: vi.fn(),
+  getAlertStatus: vi.fn(),
 }
 
 describe('TelegramController', () => {
@@ -18,27 +19,45 @@ describe('TelegramController', () => {
   })
 
   describe('linkChatId', () => {
-    it('should call service with userId and chatId', async () => {
-      mockTelegramService.linkChatId.mockResolvedValue(undefined)
+    it('should call service with userId', async () => {
+      mockTelegramService.linkChatId.mockResolvedValue('https://t.me/bot?start=token')
 
-      await controller.linkChatId('user-123', { chatId: 'chat-456' })
+      await controller.linkChatId('user-123')
 
-      expect(mockTelegramService.linkChatId).toHaveBeenCalledWith('user-123', 'chat-456')
+      expect(mockTelegramService.linkChatId).toHaveBeenCalledWith('user-123')
     })
 
-    it('should return success message', async () => {
-      mockTelegramService.linkChatId.mockResolvedValue(undefined)
+    it('should return the deep link', async () => {
+      mockTelegramService.linkChatId.mockResolvedValue('https://t.me/bot?start=token')
 
-      const result = await controller.linkChatId('user-123', { chatId: 'chat-456' })
+      const result = await controller.linkChatId('user-123')
 
-      expect(result).toEqual({ message: 'You have subscribed for Telegram notifications' })
+      expect(result).toEqual({ link: 'https://t.me/bot?start=token' })
     })
 
     it('should propagate service errors', async () => {
       mockTelegramService.linkChatId.mockRejectedValue(new Error('Service error'))
 
-      await expect(controller.linkChatId('user-123', { chatId: 'chat-456' })).rejects.toThrow(
-        'Service error',
+      await expect(controller.linkChatId('user-123')).rejects.toThrow('Service error')
+    })
+  })
+
+  describe('handleWebhook', () => {
+    it('should call service with the webhook update', async () => {
+      const mockUpdate = { message: { text: '/start token', chat: { id: 123 } } }
+      mockTelegramService.handleWebhook.mockResolvedValue(undefined)
+
+      await controller.handleWebhook(mockUpdate as TelegramWebhookDto)
+
+      expect(mockTelegramService.handleWebhook).toHaveBeenCalledWith(mockUpdate)
+    })
+
+    it('should propagate service errors', async () => {
+      const mockUpdate = { message: { text: '/start token', chat: { id: 123 } } }
+      mockTelegramService.handleWebhook.mockRejectedValue(new Error('Webhook error'))
+
+      await expect(controller.handleWebhook(mockUpdate as TelegramWebhookDto)).rejects.toThrow(
+        'Webhook error',
       )
     })
   })
@@ -102,6 +121,30 @@ describe('TelegramController', () => {
       mockTelegramService.toggleAlert.mockRejectedValue(new Error('Service error'))
 
       await expect(controller.toggleAlert('user-123')).rejects.toThrow('Service error')
+    })
+  })
+
+  describe('getSettings', () => {
+    it('should call service with userId', async () => {
+      mockTelegramService.getAlertStatus.mockResolvedValue({ enabled: true, hasChat: true })
+
+      await controller.getSettings('user-123')
+
+      expect(mockTelegramService.getAlertStatus).toHaveBeenCalledWith('user-123')
+    })
+
+    it('should return enabled and hasChat status', async () => {
+      mockTelegramService.getAlertStatus.mockResolvedValue({ enabled: false, hasChat: true })
+
+      const result = await controller.getSettings('user-123')
+
+      expect(result).toEqual({ enabled: false, hasChat: true })
+    })
+
+    it('should propagate service errors', async () => {
+      mockTelegramService.getAlertStatus.mockRejectedValue(new Error('Service error'))
+
+      await expect(controller.getSettings('user-123')).rejects.toThrow('Service error')
     })
   })
 })

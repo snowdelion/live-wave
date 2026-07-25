@@ -1,20 +1,33 @@
 import { HttpStatus } from '@nestjs/common'
 
 import { TelegramAlertResponseDto } from './dto/telegram-alert-response.dto'
-import { TelegramLinkUnlinkResponseDto } from './dto/telegram-link-unlink-response.dto'
+import {
+  TelegramLinkResponseDto,
+  TelegramUnlinkResponseDto,
+} from './dto/telegram-link-unlink-response.dto'
 import { TelegramSettingsResponseDto } from './dto/telegram-settings-response.dto'
-import { TelegramWithChatIdDto } from './dto/telegram-with-chat-id.dto'
 
 export const linkTelegramDocs = {
   summary: 'Link Telegram chat to receive notifications',
   description:
     'Associates a Telegram chat ID with the current user. After linking, the user will receive notifications about monitor status changes',
-  bodyType: TelegramWithChatIdDto,
   extraResponses: [
     {
       status: HttpStatus.CREATED,
       description: 'Chat linked successfully',
-      type: TelegramLinkUnlinkResponseDto,
+      type: TelegramLinkResponseDto,
+    },
+  ],
+}
+
+export const webhookDocs = {
+  summary: 'Telegram webhook endpoint for receiving bot updates',
+  description:
+    'Called by Telegram automatically when users interact with the bot. It processes commands like `/start` and updates user settings',
+  extraResponses: [
+    {
+      status: HttpStatus.OK,
+      description: 'Update processed successfully',
     },
   ],
 }
@@ -27,7 +40,7 @@ export const unlinkTelegramDocs = {
     {
       status: HttpStatus.OK,
       description: 'Chat unlinked successfully',
-      type: TelegramLinkUnlinkResponseDto,
+      type: TelegramUnlinkResponseDto,
     },
   ],
 }

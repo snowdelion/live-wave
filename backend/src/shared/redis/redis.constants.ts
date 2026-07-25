@@ -6,6 +6,8 @@ export const REDIS_KEYS = {
 
   overviewAnalytics: (monitorId: string, days: number) =>
     `live-wave:analytics:overview:${monitorId}:${days}`,
+
+  telegramToken: (token: string) => `live-wave:telegram:link:${token}`,
 } as const
 
 export const REDIS_CLIENT = 'REDIS_CLIENT'
