@@ -5,12 +5,13 @@ import { seconds, Throttle } from '@nestjs/throttler'
 import { UserId } from '@/shared/decorators/user-id.decorator'
 
 import { TelegramDocs } from './decorators/telegram-docs.decorator'
-import { TelegramWithChatIdDto } from './dto/telegram-with-chat-id.dto'
+import { TelegramWebhookDto } from './dto/telegram-webhook.dto'
 import {
   linkTelegramDocs,
   settingsTelegramDocs,
   toggleAlertTelegramDocs,
   unlinkTelegramDocs,
+  webhookDocs,
 } from './telegram.docs'
 import { TelegramService } from './telegram.service'
 
@@ -23,9 +24,16 @@ export class TelegramController {
   @Throttle({ short: { ttl: seconds(60), limit: 20 } })
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AuthGuard('jwt'))
-  async linkChatId(@UserId() userId: string, @Body() dto: TelegramWithChatIdDto) {
-    await this.telegramService.linkChatId(userId, dto.chatId)
-    return { message: 'You have subscribed for Telegram notifications' }
+  async linkChatId(@UserId() userId: string) {
+    const link = await this.telegramService.linkChatId(userId)
+    return { link }
+  }
+
+  @Post('webhook')
+  @TelegramDocs(webhookDocs)
+  @Throttle({ short: { ttl: seconds(60), limit: 20 } })
+  async handleWebhook(@Body() update: TelegramWebhookDto) {
+    await this.telegramService.handleWebhook(update)
   }
 
   @Post('unlink-chat')
