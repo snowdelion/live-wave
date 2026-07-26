@@ -14,6 +14,7 @@ export function useNotificationSettings() {
   return useQuery<Settings>({
     queryKey: NOTIFICATION_QUERY_KEYS.settings(),
     queryFn: fetchSettings,
+    refetchOnWindowFocus: 'always',
   })
 }
 
@@ -21,8 +22,11 @@ export function useLinkTelegram() {
   const client = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ chatId }: { chatId: string }) => linkTelegram({ chatId }),
-    onSuccess: () => client.invalidateQueries({ queryKey: NOTIFICATION_QUERY_KEYS.settings() }),
+    mutationFn: linkTelegram,
+    onSuccess: ({ link }) => {
+      void client.invalidateQueries({ queryKey: NOTIFICATION_QUERY_KEYS.settings() })
+      window.open(link, '_blank')
+    },
   })
 }
 
@@ -41,5 +45,15 @@ export function useToggleAlert() {
   return useMutation({
     mutationFn: toggleAlert,
     onSuccess: () => client.invalidateQueries({ queryKey: NOTIFICATION_QUERY_KEYS.settings() }),
+    onMutate: async () => {
+      await client.cancelQueries({ queryKey: NOTIFICATION_QUERY_KEYS.settings() })
+      const prev = client.getQueryData<Settings>(NOTIFICATION_QUERY_KEYS.settings())
+
+      if (prev)
+        client.setQueryData(NOTIFICATION_QUERY_KEYS.settings(), { ...prev, enabled: !prev.enabled })
+      return { prev }
+    },
+    onError: (_, __, ctx) =>
+      ctx?.prev && client.setQueryData(NOTIFICATION_QUERY_KEYS.settings(), ctx.prev),
   })
 }

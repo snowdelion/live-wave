@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { ReactNode } from 'react'
 
 import { useMonitorTable } from '../../../../model/useMonitorTable'
 import { MonitorTableMobile } from '../MonitorTableMobile'
@@ -16,7 +17,7 @@ vi.mock('@/shared/ui', () => ({
   }: {
     title: string
     description: string
-    action?: React.ReactNode
+    action?: ReactNode
   }) => (
     <div data-testid="empty-state">
       <span data-testid="empty-state-title">{title}</span>
@@ -36,21 +37,13 @@ vi.mock('../MonitorCard', () => ({
   ),
 }))
 
-vi.mock('../../../modals/DeleteConfirmModal', () => ({
-  DeleteConfirmModal: ({
-    monitor,
-    onConfirm,
-    onCancel,
-    open,
-  }: {
-    monitor: { id: string; name: string }
-    onConfirm: () => void
-    onCancel: () => void
-    open: boolean
-  }) =>
+vi.mock('../../../modals/ConfirmModal', () => ({
+  ConfirmModal: ({ onConfirm, onCancel, open, title, description, itemName }: any) =>
     open ? (
-      <div data-testid="delete-confirm-modal">
-        <span>{monitor.name}</span>
+      <div data-testid="confirm-modal">
+        <span>{title}</span>
+        <span>{description}</span>
+        {itemName && <span data-testid="item-name">{itemName}</span>}
         <button onClick={onConfirm}>Confirm delete</button>
         <button onClick={onCancel}>Cancel delete</button>
       </div>
@@ -275,7 +268,7 @@ describe('MonitorTableMobile', () => {
         />,
       )
 
-      expect(screen.queryByTestId('delete-confirm-modal')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('confirm-modal')).not.toBeInTheDocument()
     })
 
     it('should render the modal when deleteTarget is set', () => {
@@ -291,7 +284,7 @@ describe('MonitorTableMobile', () => {
         />,
       )
 
-      const modal = screen.getByTestId('delete-confirm-modal')
+      const modal = screen.getByTestId('confirm-modal')
       expect(modal).toBeInTheDocument()
       expect(within(modal).getByText('Target Server')).toBeInTheDocument()
     })
@@ -313,7 +306,7 @@ describe('MonitorTableMobile', () => {
         />,
       )
 
-      const modal = screen.getByTestId('delete-confirm-modal')
+      const modal = screen.getByTestId('confirm-modal')
       await user.click(within(modal).getByRole('button', { name: 'Confirm delete' }))
 
       expect(deleteMonitor).toHaveBeenCalledWith('mon_1')
@@ -337,7 +330,7 @@ describe('MonitorTableMobile', () => {
         />,
       )
 
-      const modal = screen.getByTestId('delete-confirm-modal')
+      const modal = screen.getByTestId('confirm-modal')
       await user.click(within(modal).getByRole('button', { name: 'Cancel delete' }))
 
       expect(setDeleteTarget).toHaveBeenCalledWith(null)

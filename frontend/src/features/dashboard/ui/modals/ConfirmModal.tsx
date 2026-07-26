@@ -9,14 +9,17 @@ import {
 import { AlertTriangle, X } from 'lucide-react'
 import { Fragment } from 'react'
 
-import type { UserMonitor } from '@/entities/monitor'
-
-export function DeleteConfirmModal({
+export function ConfirmModal({
   open,
-  monitor,
   onConfirm,
   onCancel,
-}: DeleteConfirmModalProps) {
+  title,
+  description,
+  confirmLabel = 'Delete',
+  cancelLabel = 'Cancel',
+  danger = true,
+  itemName,
+}: ConfirmModalProps) {
   return (
     <Transition appear show={open} as={Fragment}>
       <Dialog as="div" className="relative z-200" onClose={onCancel}>
@@ -45,7 +48,7 @@ export function DeleteConfirmModal({
             <DialogPanel className="bg-[#0d120d] border border-[rgba(244,67,54,0.25)] rounded-[10px] p-8 w-full max-w-95 shadow">
               <div className="flex items-start justify-between mb-5">
                 <div className="w-10 h-10 rounded-lg bg-[rgba(244,67,54,0.1)] border border-[rgba(244,67,54,0.2)] flex items-center justify-center">
-                  <AlertTriangle size={18} color="#f44336" />
+                  <AlertTriangle size={18} color={danger ? '#f44336' : '#00e676'} />
                 </div>
                 <button
                   onClick={onCancel}
@@ -60,32 +63,38 @@ export function DeleteConfirmModal({
                 as="h3"
                 className="font-barlow font-bold text-[1.3rem] text-[#e8f5e8] mb-2 tracking-wide"
               >
-                DELETE MONITOR
+                {title}
               </DialogTitle>
 
               <Description
                 as="p"
                 className="font-inter text-sm text-[#4caf50] mb-[0.4rem] leading-6"
               >
-                This will permanently delete the monitor and all its historical data
+                {description}
               </Description>
 
-              <p className="font-jet-brains text-[0.78rem] text-[#e8f5e8] bg-[rgba(0,230,118,0.05)] border border-[rgba(0,230,118,0.1)] rounded-sm py-2 px-3 mb-6 truncate">
-                {monitor.name}
-              </p>
+              {itemName && (
+                <div className="h-9 font-jet-brains text-[0.78rem] text-[#e8f5e8] bg-[rgba(0,230,118,0.05)] border border-[rgba(0,230,118,0.1)] rounded-sm py-2 px-3 mb-6 truncate">
+                  {itemName}
+                </div>
+              )}
 
               <div className="flex gap-3">
                 <button
                   onClick={onCancel}
                   className="flex-1 p-[0.65rem] font-inter font-medium text-sm text-[#a5d6a7] bg-transparent border border-[rgba(0,230,118,0.15)] rounded-sm transition-colors duration-200 hover:bg-white/2 active:bg-white/5"
                 >
-                  Cancel
+                  {cancelLabel}
                 </button>
                 <button
                   onClick={onConfirm}
-                  className="flex-1 p-[0.65rem] font-inter font-medium text-sm text-white bg-[#f44336] border-none rounded-sm transition-colors duration-200 hover:bg-[#d32f2f] active:bg-[#b71c1c]"
+                  className={`flex-1 p-[0.65rem] font-inter font-medium text-sm text-white rounded-sm transition-colors duration-200 ${
+                    danger
+                      ? 'bg-[#f44336] hover:bg-[#d32f2f] active:bg-[#b71c1c]'
+                      : 'bg-[#00e676] text-[#080a08] hover:bg-[#00c853] active:bg-[#00b248]'
+                  }`}
                 >
-                  Delete
+                  {confirmLabel}
                 </button>
               </div>
             </DialogPanel>
@@ -96,9 +105,15 @@ export function DeleteConfirmModal({
   )
 }
 
-interface DeleteConfirmModalProps {
-  monitor: UserMonitor
+export interface ConfirmModalProps {
+  open: boolean
   onConfirm: () => void
   onCancel: () => void
-  open: boolean
+
+  title: string
+  description: string
+  confirmLabel?: string
+  cancelLabel?: string
+  danger?: boolean
+  itemName?: string
 }

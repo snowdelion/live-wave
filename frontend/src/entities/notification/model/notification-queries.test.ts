@@ -69,18 +69,17 @@ describe('Notification Queries', () => {
 
   describe('useLinkTelegram', () => {
     it('calls linkTelegram and invalidates settings query on success', async () => {
-      vi.mocked(linkTelegram).mockResolvedValue({ message: 'success' })
+      vi.mocked(linkTelegram).mockResolvedValue({ link: 'https://example.com' })
 
       const { result, queryClient } = renderHookWithClient(() => useLinkTelegram())
       const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
-      result.current.mutate({ chatId: '12345' })
+      result.current.mutate()
 
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true)
       })
 
-      expect(linkTelegram).toHaveBeenCalledWith({ chatId: '12345' })
       expect(invalidateSpy).toHaveBeenCalledWith({
         queryKey: NOTIFICATION_QUERY_KEYS.settings(),
       })
@@ -92,7 +91,7 @@ describe('Notification Queries', () => {
       const { result, queryClient } = renderHookWithClient(() => useLinkTelegram())
       const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
-      result.current.mutate({ chatId: '12345' })
+      result.current.mutate()
 
       await waitFor(() => {
         expect(result.current.isError).toBe(true)
