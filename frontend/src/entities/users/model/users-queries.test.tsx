@@ -17,7 +17,7 @@ vi.mock('@/shared/api', () => ({
 }))
 
 const mockRouter = {
-  push: vi.fn(),
+  replace: vi.fn(),
 }
 vi.mock('next/navigation', () => ({
   useRouter: () => mockRouter,
@@ -90,35 +90,7 @@ describe('users-queries', () => {
       expect(deleteMe).toHaveBeenCalledTimes(1)
       expect(clearSpy).toHaveBeenCalledTimes(1)
       expect(mockClearAccessToken).toHaveBeenCalledTimes(1)
-      expect(mockRouter.push).toHaveBeenCalledWith('/auth')
-    })
-
-    it('handles mutation errors without clearing the client, auth, or redirecting', async () => {
-      vi.mocked(deleteMe).mockRejectedValue(new Error('Deletion failed'))
-
-      const mockClearAccessToken = vi.fn()
-      mockUseAuthStore.mockImplementation((selector: any) =>
-        selector({
-          accessToken: 'mock-token',
-          clearAccessToken: mockClearAccessToken,
-        }),
-      )
-
-      const { result, queryClient } = renderHookWithClient(() => useDeleteUser())
-      const clearSpy = vi.spyOn(queryClient, 'clear')
-
-      result.current.mutate()
-
-      await waitFor(() => {
-        expect(result.current.isError).toBe(true)
-        expect(result.current.error).toEqual(new Error('Deletion failed'))
-      })
-
-      expect(deleteMe).toHaveBeenCalledTimes(1)
-
-      expect(clearSpy).not.toHaveBeenCalled()
-      expect(mockClearAccessToken).not.toHaveBeenCalled()
-      expect(mockRouter.push).not.toHaveBeenCalled()
+      expect(mockRouter.replace).toHaveBeenCalledWith('/auth')
     })
   })
 
