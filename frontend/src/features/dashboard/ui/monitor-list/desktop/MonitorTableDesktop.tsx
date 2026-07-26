@@ -5,7 +5,7 @@ import { EmptyState } from '@/shared/ui'
 
 import type { MonitorTableProps } from '../../../model/dashboard.types'
 import { useMonitorTable } from '../../../model/useMonitorTable'
-import { DeleteConfirmModal } from '../../modals/DeleteConfirmModal'
+import { ConfirmModal } from '../../modals/ConfirmModal'
 
 import { MonitorRow } from './MonitorRow'
 
@@ -88,15 +88,16 @@ export function MonitorTableDesktop({
       </div>
 
       {deleteTarget && (
-        <DeleteConfirmModal
-          monitor={deleteTarget}
+        <ConfirmModal
+          open={!!deleteTarget}
           onConfirm={() => {
             deleteMonitor(deleteTarget.id)
-
             setDeleteTarget(null)
           }}
           onCancel={() => setDeleteTarget(null)}
-          open={!!deleteTarget}
+          title="DELETE MONITOR"
+          description="This will permanently delete the monitor and all its historical data"
+          itemName={deleteTarget?.name}
         />
       )}
     </>
