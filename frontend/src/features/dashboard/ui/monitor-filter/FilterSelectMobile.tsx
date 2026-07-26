@@ -40,7 +40,10 @@ export function FilterSelectMobile({ value, options, onChange }: FilterSelectMob
           leaveFrom="opacity-100 scale-100"
           leaveTo="opacity-0 scale-95"
         >
-          <ListboxOptions className="absolute z-10 w-full mt-1 overflow-auto bg-[#0d120d] border border-[rgba(0,230,118,0.1)] rounded-md shadow-lg max-h-60">
+          <ListboxOptions
+            modal={false}
+            className="absolute z-10 w-full mt-1 overflow-auto bg-[#0d120d] border border-[rgba(0,230,118,0.1)] rounded-md shadow-lg max-h-60"
+          >
             {options.map(o => (
               <ListboxOption
                 key={o}
