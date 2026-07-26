@@ -45,10 +45,10 @@ export function useLogout() {
 
   return useMutation({
     mutationFn: logout,
-    onSuccess: () => {
+    onSettled: () => {
       clearAccessToken()
       queryClient.clear()
-      router.push('/auth')
+      router.replace('/auth')
     },
   })
 }

@@ -40,7 +40,7 @@ vi.mock('next/navigation', () => ({
 describe('auth mutations', () => {
   const mockSetAccessToken = vi.fn()
   const mockClearAccessToken = vi.fn()
-  const mockRouter = { push: vi.fn() }
+  const mockRouter = { replace: vi.fn() }
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -151,22 +151,7 @@ describe('auth mutations', () => {
 
       expect(mockClearAccessToken).toHaveBeenCalledTimes(1)
       expect(clearSpy).toHaveBeenCalledTimes(1)
-      expect(mockRouter.push).toHaveBeenCalledWith('/auth')
-    })
-
-    it('should not clear the access token, query client, or redirect when the mutation fails', async () => {
-      vi.mocked(logout).mockRejectedValueOnce(new Error('failed'))
-
-      const { result, queryClient } = renderHookWithClient(() => useLogout())
-      const clearSpy = vi.spyOn(queryClient, 'clear')
-
-      result.current.mutate()
-
-      await waitFor(() => expect(result.current.isError).toBe(true))
-
-      expect(mockClearAccessToken).not.toHaveBeenCalled()
-      expect(clearSpy).not.toHaveBeenCalled()
-      expect(mockRouter.push).not.toHaveBeenCalled()
+      expect(mockRouter.replace).toHaveBeenCalledWith('/auth')
     })
   })
 

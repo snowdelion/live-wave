@@ -25,10 +25,10 @@ export function useDeleteUser() {
 
   return useMutation({
     mutationFn: deleteMe,
-    onSuccess: () => {
+    onSettled: () => {
       clearAccessToken()
       client.clear()
-      router.push('/auth')
+      router.replace('/auth')
     },
   })
 }
