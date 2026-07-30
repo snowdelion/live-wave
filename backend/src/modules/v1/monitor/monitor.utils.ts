@@ -257,3 +257,21 @@ export type Tx = Omit<
   '$connect' | '$disconnect' | '$on' | '$transaction' | '$extends'
 >
 export type UpdateData = Partial<Pick<Monitor, 'name' | 'checkInterval' | 'timeout'>>
+
+export const getDomainByType = ({
+  type,
+  host,
+  port,
+  url,
+}: {
+  type: MonitorType
+  host?: string
+  port?: number
+  url?: string
+}) => {
+  if (type === MonitorType.HTTP && url) return url
+  if (type === MonitorType.ICMP && host) return host
+  if (type === MonitorType.TCP && host && port) return `${host}:${port}`
+  if (type === MonitorType.DNS && host) return host
+  throw new BadRequestException(`invalid domain setup for ${type}`)
+}

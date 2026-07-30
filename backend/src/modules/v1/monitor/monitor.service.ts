@@ -30,6 +30,7 @@ import {
   Tx,
   UpdateData,
   getTrendSql,
+  getDomainByType,
 } from './monitor.utils'
 
 @Injectable()
@@ -113,12 +114,15 @@ export class MonitorService {
         const trend = { avgResponseTime, minResponseTime, maxResponseTime, sparkline }
         const data = { ...rest, trend, weekUptime }
 
-        if (rest.type === MonitorType.HTTP) return { ...data, domain: httpMonitor?.url }
-        if (rest.type === MonitorType.ICMP) return { ...data, domain: icmpMonitor?.host }
-        if (rest.type === MonitorType.TCP)
-          return { ...data, domain: `${tcpMonitor?.host}:${tcpMonitor?.port}` }
-        if (rest.type === MonitorType.DNS) return { ...data, domain: dnsMonitor?.host }
-        return data
+        return {
+          ...data,
+          domain: getDomainByType({
+            type: rest.type,
+            url: httpMonitor?.url,
+            host: icmpMonitor?.host || tcpMonitor?.host || dnsMonitor?.host,
+            port: tcpMonitor?.port,
+          }),
+        }
       },
     )
 
@@ -167,11 +171,17 @@ export class MonitorService {
       throw new ForbiddenException('Uptime monitoring service not found')
 
     const { httpMonitor, icmpMonitor, tcpMonitor, dnsMonitor, ...rest } = monitor
-    if (rest.type === MonitorType.HTTP) return { ...rest, httpMonitor }
-    if (rest.type === MonitorType.ICMP) return { ...rest, icmpMonitor }
-    if (rest.type === MonitorType.TCP) return { ...rest, tcpMonitor }
-    if (rest.type === MonitorType.DNS) return { ...rest, dnsMonitor }
-    return rest
+    const domain = getDomainByType({
+      type: rest.type,
+      url: httpMonitor?.url,
+      host: icmpMonitor?.host || tcpMonitor?.host || dnsMonitor?.host,
+      port: tcpMonitor?.port,
+    })
+    if (rest.type === MonitorType.HTTP) return { ...rest, httpMonitor, domain }
+    if (rest.type === MonitorType.ICMP) return { ...rest, icmpMonitor, domain }
+    if (rest.type === MonitorType.TCP) return { ...rest, tcpMonitor, domain }
+    if (rest.type === MonitorType.DNS) return { ...rest, dnsMonitor, domain }
+    return { rest, domain }
   }
 
   async update(userId: string, id: string, dto: UpdateMonitorDto) {
