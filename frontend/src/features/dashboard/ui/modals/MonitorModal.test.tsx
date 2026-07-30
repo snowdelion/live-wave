@@ -3,14 +3,15 @@ import userEvent from '@testing-library/user-event'
 
 import { MonitorType } from '@/entities/monitor'
 
-import { useMonitorModal } from '../../../model/useMonitorModal'
-import { MonitorModal } from '../MonitorModal'
+import { useMonitorModal } from '../../model/useMonitorModal'
 
-vi.mock('../../../model/useMonitorModal', () => ({
+import { MonitorModal } from './MonitorModal'
+
+vi.mock('../../model/useMonitorModal', () => ({
   useMonitorModal: vi.fn(),
 }))
 
-vi.mock('../../shared/SelectField', () => ({
+vi.mock('../shared/SelectField', () => ({
   SelectField: ({
     name,
     label,
@@ -43,8 +44,8 @@ vi.mock('../../../lib/modal.constants', () => ({
     [MonitorType.DNS]: 'host',
   },
   MODAL_PLACEHOLDERS: {
-    [MonitorType.HTTP]: 'https://example.com',
-    [MonitorType.TCP]: '10.0.0.1',
+    [MonitorType.HTTP]: 'https://api.example.com/health',
+    [MonitorType.TCP]: 'db.example.com:5432',
     [MonitorType.ICMP]: '8.8.8.8',
     [MonitorType.DNS]: 'example.com',
   },
@@ -208,7 +209,7 @@ describe('MonitorModal', () => {
 
       await renderModal(<MonitorModal mode="create" onClose={onClose} initial={undefined} />)
 
-      expect(screen.getByPlaceholderText('https://example.com')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('https://api.example.com/health')).toBeInTheDocument()
     })
 
     it('should show the url field error when present', async () => {
@@ -227,8 +228,10 @@ describe('MonitorModal', () => {
 
       await renderModal(<MonitorModal mode="create" onClose={onClose} initial={undefined} />)
 
-      expect(screen.queryByPlaceholderText('https://example.com')).not.toBeInTheDocument()
-      expect(screen.getByPlaceholderText('10.0.0.1')).toBeInTheDocument()
+      expect(
+        screen.queryByPlaceholderText('https://api.example.com/health'),
+      ).not.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('db.example.com:5432')).toBeInTheDocument()
     })
 
     it('should show a port field only when type is TCP', async () => {

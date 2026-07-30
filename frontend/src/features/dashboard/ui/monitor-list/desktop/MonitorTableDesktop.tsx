@@ -1,11 +1,10 @@
 import { FilePlus, SearchX } from 'lucide-react'
 import React from 'react'
 
-import { EmptyState } from '@/shared/ui'
+import { EmptyState, ConfirmModal } from '@/shared/ui'
 
 import type { MonitorTableProps } from '../../../model/dashboard.types'
 import { useMonitorTable } from '../../../model/useMonitorTable'
-import { ConfirmModal } from '../../modals/ConfirmModal'
 
 import { MonitorRow } from './MonitorRow'
 

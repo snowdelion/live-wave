@@ -1,8 +1,9 @@
 import { Popover, PopoverButton, PopoverPanel, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
 
+import { ConfirmModal } from '@/shared/ui'
+
 import { useUserPopover } from '../../model/useUserPopover'
-import { ConfirmModal } from '../modals/ConfirmModal'
 
 export function UserPopover() {
   const {
