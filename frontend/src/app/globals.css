@@ -15,9 +15,15 @@ button {
 
 body {
   background-color: black;
+  width: 100vw;
+  overflow-x: hidden;
 }
 
 @utility custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #2e7d32 rgba(0, 230, 118, 0.05);
+  -ms-overflow-style: auto;
+
   &::-webkit-scrollbar-track {
     background: rgba(0, 230, 118, 0.05);
     border-radius: 10px;
@@ -32,10 +38,6 @@ body {
   &::-webkit-scrollbar-thumb:hover {
     background-color: #00e676;
   }
-
-  scrollbar-width: thin;
-  scrollbar-color: #2e7d32 rgba(0, 230, 118, 0.05);
-  -ms-overflow-style: auto;
 }
 
 input[type='number']::-webkit-inner-spin-button,
