@@ -25,19 +25,6 @@ vi.mock('@/shared/ui', () => ({
       {action}
     </div>
   ),
-}))
-
-vi.mock('../MonitorCard', () => ({
-  MonitorCard: ({ monitor, onEdit, setDeleteTarget }: any) => (
-    <div data-testid={`monitor-card-${monitor.id}`}>
-      <span>{monitor.name}</span>
-      <button onClick={() => onEdit(monitor.id)}>Edit {monitor.id}</button>
-      <button onClick={() => setDeleteTarget(monitor)}>Delete {monitor.id}</button>
-    </div>
-  ),
-}))
-
-vi.mock('../../../modals/ConfirmModal', () => ({
   ConfirmModal: ({ onConfirm, onCancel, open, title, description, itemName }: any) =>
     open ? (
       <div data-testid="confirm-modal">
@@ -48,6 +35,16 @@ vi.mock('../../../modals/ConfirmModal', () => ({
         <button onClick={onCancel}>Cancel delete</button>
       </div>
     ) : null,
+}))
+
+vi.mock('../MonitorCard', () => ({
+  MonitorCard: ({ monitor, onEdit, setDeleteTarget }: any) => (
+    <div data-testid={`monitor-card-${monitor.id}`}>
+      <span>{monitor.name}</span>
+      <button onClick={() => onEdit(monitor.id)}>Edit {monitor.id}</button>
+      <button onClick={() => setDeleteTarget(monitor)}>Delete {monitor.id}</button>
+    </div>
+  ),
 }))
 
 function makeMonitor(overrides: Partial<{ id: string; name: string }> = {}) {

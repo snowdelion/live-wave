@@ -9,7 +9,7 @@ vi.mock('../../model/useUserPopover', () => ({
   useUserPopover: vi.fn(),
 }))
 
-vi.mock('../modals/ConfirmModal', () => ({
+vi.mock('@/shared/ui', () => ({
   ConfirmModal: ({ open, onConfirm, onCancel, title, description, confirmLabel, itemName }: any) =>
     open ? (
       <div data-testid="confirm-modal">
