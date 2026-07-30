@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
+import { StatusEnum } from '@prisma/client'
 
 import { PrismaService } from '@/shared/prisma/prisma.service'
 import { REDIS_KEYS } from '@/shared/redis/redis.constants'
@@ -27,10 +28,8 @@ export class AnalyticsService {
     startDate.setDate(startDate.getDate() - days)
     startDate.setHours(0, 0, 0, 0)
 
-    const { uptime, averageResponseTime, totalChecks, p95ResponseTime } = await this.getUptime(
-      monitorId,
-      startDate,
-    )
+    const { uptime, averageResponseTime, totalChecks, p95ResponseTime, up, down } =
+      await this.getUptime(monitorId, startDate)
     const dailyStats = await this.getDailyStats(monitorId, startDate)
 
     const result: OverviewResult = {
@@ -40,6 +39,8 @@ export class AnalyticsService {
       startDate,
       endDate: new Date(),
       totalChecks,
+      up,
+      down,
       uptime,
       averageResponseTime: averageResponseTime ?? null,
       p95ResponseTime: p95ResponseTime ?? null,
@@ -50,9 +51,9 @@ export class AnalyticsService {
     return result
   }
 
-  private async getDailyStats(monitorId: string, startDate: Date): Promise<DailyStats> {
+  private async getDailyStats(monitorId: string, startDate: Date): Promise<DailyStatsItem[]> {
     try {
-      const stats = await this.prisma.$queryRaw<DailyStatsRaw[]>`
+      const stats = await this.prisma.$queryRaw<DailyStatsItem[]>`
         SELECT
           TO_CHAR(DATE("checkedAt"), 'YYYY-MM-DD') AS day,
           ROUND((COUNT(*) FILTER (WHERE status = 'up')::float / NULLIF(COUNT(*), 0) * 100)::numeric, 1) AS uptime,
@@ -78,22 +79,26 @@ export class AnalyticsService {
 
   private async getUptime(monitorId: string, startDate: Date): Promise<UptimeItem> {
     try {
-      const result = await this.prisma.$queryRaw<UptimeRaw[]>`
+      const result = await this.prisma.$queryRaw<UptimeItem[]>`
         SELECT 
           ROUND((COUNT(*) FILTER (WHERE status = 'up')::float / NULLIF(COUNT(*), 0) * 100)::numeric, 1) AS uptime,
           ROUND(AVG("responseTime") FILTER (WHERE "responseTime" IS NOT NULL), 1) AS "averageResponseTime",
           ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY "responseTime")::numeric, 1) AS "p95ResponseTime",
-          COUNT(*) AS "totalChecks"
+          COUNT(*) AS "totalChecks",
+          COUNT(*) FILTER (WHERE status = 'up') AS up,
+          COUNT(*) FILTER (WHERE status = 'down') AS down
         FROM "Check"
         WHERE "monitorId" = ${monitorId} AND "checkedAt" >= ${startDate}
       `
       const item = result[0] || {}
       return {
-        uptime: item.uptime !== null ? Number(item.uptime) : null,
+        uptime: item.uptime !== null ? Number(item.uptime) : 0,
         averageResponseTime:
           item.averageResponseTime !== null ? Number(item.averageResponseTime) : null,
         p95ResponseTime: item.p95ResponseTime !== null ? Number(item.p95ResponseTime) : null,
         totalChecks: item.totalChecks !== null ? Number(item.totalChecks) : 0,
+        up: item.up ? Number(item.up) : 0,
+        down: item.down ? Number(item.down) : 0,
       }
     } catch (e) {
       throw logAndThrow({ context: 'get uptime', e, name: AnalyticsService.name })
@@ -120,63 +125,85 @@ export class AnalyticsService {
   private async getIncidentsList(monitorId: string, startDate: Date): Promise<Incidents> {
     try {
       const incidents = await this.prisma.$queryRaw<IncidentRaw[]>`
-        WITH ranked AS (
-          SELECT 
-            "checkedAt",
-            status,
-            error,
-            ROW_NUMBER() OVER (ORDER BY "checkedAt", "id") AS rn
-          FROM "Check"
-          WHERE "monitorId" = ${monitorId} 
-            AND "checkedAt" >= ${startDate} 
-            AND "checkedAt" <= ${new Date()}
-        ),
-        changes AS (
-          SELECT 
-            rn,
-            "checkedAt",
-            status,
-            error,
-            CASE 
-              WHEN status = 'down' AND (LAG(status) OVER (ORDER BY rn) = 'up' OR LAG(status) OVER (ORDER BY rn) IS NULL) 
-                THEN 'start'
-              WHEN status = 'up' AND LAG(status) OVER (ORDER BY rn) = 'down'
-                THEN 'end'
-              ELSE 'none'
-            END AS boundary
-          FROM ranked
-        ),
-        starts AS (
-          SELECT rn, "checkedAt", error
-          FROM changes
-          WHERE boundary = 'start'
-        ),
-        ends AS (
-          SELECT rn, "checkedAt"
-          FROM changes
-          WHERE boundary = 'end'
-        )
+      WITH ranked AS (
         SELECT 
-          s."checkedAt" AS "startAt",
-          e."checkedAt" AS "endAt",
-          EXTRACT(EPOCH FROM (e."checkedAt" - s."checkedAt")) * 1000 AS "durationMs",
-          s.error AS "cause"
-        FROM starts s
-        LEFT JOIN LATERAL (
-          SELECT "checkedAt"
-          FROM ends e
-          WHERE e.rn > s.rn
-          ORDER BY e.rn
-          LIMIT 1
-        ) e ON true
-        ORDER BY s."checkedAt" DESC
-      `
-      return incidents.map(i => ({
-        startAt: i.startAt,
-        endAt: i.endAt,
-        durationMs: i.durationMs !== null ? Number(i.durationMs) : 0,
-        cause: i.cause ?? null,
-      }))
+          "checkedAt",
+          status,
+          error,
+          ROW_NUMBER() OVER (ORDER BY "checkedAt", "id") AS rn
+        FROM "Check"
+        WHERE "monitorId" = ${monitorId} 
+          AND "checkedAt" >= ${startDate} 
+          AND "checkedAt" <= ${new Date()}
+      ),
+      changes AS (
+        SELECT 
+          rn,
+          "checkedAt",
+          status,
+          error,
+          CASE 
+            WHEN status = 'down' AND (LAG(status) OVER (ORDER BY rn) = 'up' OR LAG(status) OVER (ORDER BY rn) IS NULL) 
+              THEN 'start'
+            WHEN status = 'up' AND LAG(status) OVER (ORDER BY rn) = 'down'
+              THEN 'end'
+            ELSE 'none'
+          END AS boundary
+        FROM ranked
+      ),
+      starts AS (
+        SELECT rn, "checkedAt", error
+        FROM changes
+        WHERE boundary = 'start'
+      ),
+      ends AS (
+        SELECT rn, "checkedAt"
+        FROM changes
+        WHERE boundary = 'end'
+      )
+      SELECT 
+        s."checkedAt" AS "startAt",
+        e."checkedAt" AS "endAt",
+        EXTRACT(EPOCH FROM (e."checkedAt" - s."checkedAt")) * 1000 AS "durationMs",
+        s.error AS "cause",
+        CASE
+          WHEN e."checkedAt" IS NOT NULL THEN 'Resolved'
+          ELSE 'Active'
+        END AS "status",
+        ROW_NUMBER() OVER (ORDER BY s."checkedAt" DESC) AS "id"
+      FROM starts s
+      LEFT JOIN LATERAL (
+        SELECT "checkedAt"
+        FROM ends e
+        WHERE e.rn > s.rn
+        ORDER BY e.rn
+        LIMIT 1
+      ) e ON true
+      ORDER BY s."checkedAt" DESC
+    `
+
+      return incidents.map(i => {
+        const durationMs = i.durationMs !== null ? Number(i.durationMs) : null
+        let duration: string
+        if (durationMs !== null) {
+          const seconds = Math.floor(durationMs / 1000)
+          const minutes = Math.floor(seconds / 60)
+          const remainingSeconds = seconds % 60
+          if (minutes > 0 && remainingSeconds > 0) duration = `${minutes}m ${remainingSeconds}s`
+          else if (minutes > 0) duration = `${minutes}m`
+          else duration = `${seconds}s`
+        } else duration = 'Active'
+
+        return {
+          id: Number(i.id),
+          startAt: i.startAt,
+          endAt: i.endAt ?? null,
+          durationMs,
+          cause: i.cause ?? null,
+          status: i.status,
+          formattedDuration: duration,
+        }
+      })
     } catch (e) {
       throw logAndThrow({ context: 'get incidents list', e, name: AnalyticsService.name })
     }
@@ -214,16 +241,40 @@ export class AnalyticsService {
     return await this.getRawTimeline(monitorId, startDate)
   }
 
+  private async getRawChecks(monitorId: string, startDate: Date) {
+    const results = await this.prisma.check.findMany({
+      where: { monitorId, checkedAt: { gte: startDate, lte: new Date() } },
+      select: { checkedAt: true, status: true, responseTime: true, error: true },
+      orderBy: { checkedAt: 'asc' },
+      take: 40,
+    })
+
+    return results.map(r => ({
+      date: r.checkedAt,
+      up: r.status === StatusEnum.up ? 1 : 0,
+      down: r.status === StatusEnum.down ? 1 : 0,
+      uptime: r.status === StatusEnum.up ? 100 : 0,
+      averageResponseTime: Number(r.responseTime) || null,
+      p95ResponseTime: null,
+    }))
+  }
+
   private async getRawTimeline(monitorId: string, startDate: Date) {
     try {
+      const totalChecks = await this.prisma.check.count({
+        where: { monitorId, checkedAt: { gte: startDate, lte: new Date() } },
+      })
+      if (totalChecks < 40) return await this.getRawChecks(monitorId, startDate)
+
       const bucketMinutes = this.getBucketMinutes(startDate)
       const results = await this.prisma.$queryRaw<
         {
           bucket: Date
           up: bigint
           down: bigint
-          averageResponseTime: number
-          p95ResponseTime: number | null
+          averageResponseTime: bigint | null
+          p95ResponseTime: bigint | null
+          uptime: bigint | null
         }[]
       >`
         SELECT
@@ -231,16 +282,18 @@ export class AnalyticsService {
           COUNT(*) FILTER (WHERE status = 'up') AS up,
           COUNT(*) FILTER (WHERE status = 'down') AS down,
           ROUND(AVG("responseTime") FILTER (WHERE "responseTime" IS NOT NULL), 1) AS "averageResponseTime",
-          ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY "responseTime")::numeric, 1) AS "p95ResponseTime"
+          ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY "responseTime")::numeric, 1) AS "p95ResponseTime",
+          ROUND((COUNT(*) FILTER (WHERE status = 'up')::float / NULLIF(COUNT(*), 0) * 100)::numeric, 1) AS uptime
         FROM "Check"
         WHERE "monitorId" = ${monitorId} AND "checkedAt" BETWEEN ${startDate} AND ${new Date()}
         GROUP BY bucket
         ORDER BY bucket ASC
       `
       return results.map(r => ({
-        timestamp: r.bucket,
-        up: Number(r.up),
-        down: Number(r.down),
+        date: r.bucket,
+        up: r.up ? Number(r.up) : 0,
+        down: r.down ? Number(r.down) : 0,
+        uptime: r.uptime ? Number(r.uptime) : 0,
         averageResponseTime: r.averageResponseTime ? Number(r.averageResponseTime) : null,
         p95ResponseTime: r.p95ResponseTime ? Number(r.p95ResponseTime) : null,
       }))
@@ -249,49 +302,68 @@ export class AnalyticsService {
     }
   }
 
-  private getBucketMinutes(startDate: Date) {
+  private getBucketMinutes(startDate: Date, checkIntervalSeconds: number = 60) {
     const diffMs = Date.now() - startDate.getTime()
-    const diffMinutes = diffMs / (60 * 1000)
-    const targetPoints = 100
+    const diffMinutes = Math.max(1, diffMs / (60 * 1000))
 
-    const bucket = Math.max(1, Math.floor(diffMinutes / targetPoints))
-    const bucketValues = [1, 5, 15, 30, 60, 120, 240, 1440]
+    const minBucket = Math.max(1, Math.ceil(checkIntervalSeconds / 60))
+    const maxBucket = 1440
+    const targetPoints = 40
 
-    for (const b of bucketValues) if (bucket <= b) return b
-    return 1440
+    let idealBucket = diffMinutes / targetPoints
+    idealBucket = Math.min(Math.max(idealBucket, minBucket), maxBucket)
+
+    const bucketValues = [1, 2, 3, 5, 10, 15, 20, 30, 60, 120, 180, 240, 360, 480, 720, 1440]
+
+    let bestBucket = bucketValues[0]
+    let minDiff = Infinity
+
+    for (const b of bucketValues) {
+      const diff = Math.abs(b - idealBucket)
+      if (diff < minDiff) {
+        minDiff = diff
+        bestBucket = b
+      }
+    }
+
+    return bestBucket
   }
 }
 
-type UptimeRaw = {
-  uptime: number | null
-  averageResponseTime: number | null
-  p95ResponseTime: number | null
-  totalChecks: number | null
-}
 type UptimeItem = {
-  uptime: number | null
+  uptime: number
   averageResponseTime: number | null
   p95ResponseTime: number | null
   totalChecks: number
+  up: number
+  down: number
 }
 
-type DailyStatsRaw = {
-  day: string
-  uptime: number | null
-  averageResponseTime: number | null
-  p95ResponseTime: number | null
-  failureCount: number | null
-}
-type DailyStats = {
+type DailyStatsItem = {
   day: string
   uptime: number
   averageResponseTime: number | null
   p95ResponseTime: number | null
-  failureCount: number
-}[]
+  failureCount: number | null
+}
 
-type IncidentRaw = { startAt: Date; endAt: Date; cause: string | null; durationMs: number | null }
-type Incidents = { startAt: Date; endAt: Date; cause: string | null; durationMs: number }[]
+type IncidentRaw = {
+  id: bigint
+  startAt: Date
+  endAt: Date | null
+  cause: string | null
+  durationMs: bigint | null
+  status: 'Resolved' | 'Active'
+}
+type Incidents = {
+  id: number
+  startAt: Date
+  endAt: Date | null
+  cause: string | null
+  durationMs: number | null
+  status: 'Resolved' | 'Active'
+  formattedDuration: string
+}[]
 
 export interface OverviewResult {
   monitorId: string
@@ -300,8 +372,10 @@ export interface OverviewResult {
   startDate: Date
   endDate: Date
   totalChecks: number
-  uptime: number | null
+  uptime: number
+  up: number
+  down: number
   averageResponseTime: number | null
   p95ResponseTime: number | null
-  dailyStats: DailyStats
+  dailyStats: DailyStatsItem[]
 }

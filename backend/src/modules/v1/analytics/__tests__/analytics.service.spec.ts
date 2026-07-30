@@ -1,10 +1,10 @@
 import { Logger, NotFoundException } from '@nestjs/common'
+import { StatusEnum } from '@prisma/client'
 
 import type { RedisService } from '@/shared/redis/redis.service'
 
 import { AnalyticsService } from '../analytics.service'
 
-// --- mocks ---
 const mockMonitor = { userId: 'user-1', name: 'My Monitor' }
 const mockRedis = {
   get: vi.fn(),
@@ -12,12 +12,32 @@ const mockRedis = {
 } as unknown as RedisService
 
 const makeUptimeRaw = (overrides = {}) => [
-  { uptime: 99.5, averageResponseTime: 123.4, totalChecks: 200, ...overrides },
+  {
+    uptime: 99.5,
+    averageResponseTime: 123.4,
+    p95ResponseTime: 150,
+    totalChecks: 200,
+    up: 190,
+    down: 10,
+    ...overrides,
+  },
 ]
 
 const makeDailyStatsRaw = () => [
-  { day: '2024-01-01', uptime: 100, averageResponseTime: 110, failureCount: 0 },
-  { day: '2024-01-02', uptime: 95, averageResponseTime: 130, failureCount: 2 },
+  {
+    day: '2024-01-01',
+    uptime: 100,
+    averageResponseTime: 110,
+    p95ResponseTime: 120,
+    failureCount: 0,
+  },
+  {
+    day: '2024-01-02',
+    uptime: 95,
+    averageResponseTime: 130,
+    p95ResponseTime: 140,
+    failureCount: 2,
+  },
 ]
 
 const makeIncidentRaw = (overrides = {}) => [
@@ -50,12 +70,15 @@ function makePrisma(overrides: Record<string, unknown> = {}) {
     monitor: {
       findUnique: vi.fn(),
     },
+    check: {
+      count: vi.fn(),
+      findMany: vi.fn(),
+    },
     $queryRaw: vi.fn(),
     ...overrides,
   }
 }
 
-// --- tests ---
 describe('AnalyticsService', () => {
   let service: AnalyticsService
   let prisma: ReturnType<typeof makePrisma>
@@ -100,8 +123,18 @@ describe('AnalyticsService', () => {
         totalChecks: 200,
         uptime: 99.5,
         averageResponseTime: 123.4,
+        p95ResponseTime: 150,
+        up: 190,
+        down: 10,
       })
       expect(result.dailyStats).toHaveLength(2)
+      expect(result.dailyStats[0]).toMatchObject({
+        day: '2024-01-01',
+        uptime: 100,
+        averageResponseTime: 110,
+        p95ResponseTime: 120,
+        failureCount: 0,
+      })
       expect(result.startDate).toBeInstanceOf(Date)
       expect(result.endDate).toBeInstanceOf(Date)
     })
@@ -114,7 +147,7 @@ describe('AnalyticsService', () => {
 
       const result = await service.getOverview('user-1', 'monitor-1')
 
-      expect(result.uptime).toBeNull()
+      expect(result.uptime).toBe(0)
       expect(result.averageResponseTime).toBeNull()
       expect(result.totalChecks).toBe(0)
     })
@@ -126,6 +159,17 @@ describe('AnalyticsService', () => {
       const result = await service.getOverview('user-1', 'monitor-1')
 
       expect(result.periodDays).toBe(7)
+    })
+
+    it('re-throws database errors from getDailyStats', async () => {
+      prisma.monitor.findUnique.mockResolvedValue(mockMonitor)
+      prisma.$queryRaw
+        .mockResolvedValueOnce(makeUptimeRaw())
+        .mockRejectedValueOnce(new Error('Daily stats DB exploded'))
+
+      await expect(service.getOverview('user-1', 'monitor-1')).rejects.toThrow(
+        'Daily stats DB exploded',
+      )
     })
   })
 
@@ -165,7 +209,7 @@ describe('AnalyticsService', () => {
       expect(incidents[0].startAt).toBeInstanceOf(Date)
     })
 
-    it('maps null durationMs to 0', async () => {
+    it('maps null durationMs to null and formats as Active', async () => {
       prisma.monitor.findUnique.mockResolvedValue({ userId: 'user-1' })
       prisma.$queryRaw
         .mockResolvedValueOnce(makeIncidentRaw({ durationMs: null, endAt: null }))
@@ -173,7 +217,28 @@ describe('AnalyticsService', () => {
 
       const { incidents } = await service.getIncidents('user-1', 'monitor-1', startDate)
 
-      expect(incidents[0].durationMs).toBe(0)
+      expect(incidents[0].durationMs).toBeNull()
+      expect(incidents[0].formattedDuration).toBe('Active')
+    })
+
+    it('formats duration as "Xm Ys" when minutes and seconds are > 0', async () => {
+      prisma.monitor.findUnique.mockResolvedValue({ userId: 'user-1' })
+      prisma.$queryRaw
+        .mockResolvedValueOnce(makeIncidentRaw({ durationMs: 305_000 }))
+        .mockResolvedValueOnce([{ count: 1 }])
+
+      const { incidents } = await service.getIncidents('user-1', 'monitor-1', startDate)
+      expect(incidents[0].formattedDuration).toBe('5m 5s')
+    })
+
+    it('formats duration as "Xs" when minutes are 0', async () => {
+      prisma.monitor.findUnique.mockResolvedValue({ userId: 'user-1' })
+      prisma.$queryRaw
+        .mockResolvedValueOnce(makeIncidentRaw({ durationMs: 45_000 }))
+        .mockResolvedValueOnce([{ count: 1 }])
+
+      const { incidents } = await service.getIncidents('user-1', 'monitor-1', startDate)
+      expect(incidents[0].formattedDuration).toBe('45s')
     })
 
     it('maps null cause to null', async () => {
@@ -194,6 +259,17 @@ describe('AnalyticsService', () => {
       const { total } = await service.getIncidents('user-1', 'monitor-1', startDate)
 
       expect(total).toBe(0)
+    })
+
+    it('re-throws database errors from getIncidentsCount', async () => {
+      prisma.monitor.findUnique.mockResolvedValue({ userId: 'user-1' })
+      prisma.$queryRaw
+        .mockResolvedValueOnce(makeIncidentRaw())
+        .mockRejectedValueOnce(new Error('Incidents count DB exploded'))
+
+      await expect(service.getIncidents('user-1', 'monitor-1', new Date())).rejects.toThrow(
+        'Incidents count DB exploded',
+      )
     })
   })
 
@@ -218,17 +294,56 @@ describe('AnalyticsService', () => {
 
     it('returns mapped timeline buckets', async () => {
       prisma.monitor.findUnique.mockResolvedValue({ userId: 'user-1' })
+      prisma.check.count.mockResolvedValue(100)
       prisma.$queryRaw.mockResolvedValue(makeTimelineRaw())
 
       const result = await service.getTimeline('user-1', 'monitor-1', startDate)
 
       expect(result).toHaveLength(2)
       expect(result[0]).toMatchObject({ up: 9, down: 1, averageResponseTime: 200 })
-      expect(result[0].timestamp).toBeInstanceOf(Date)
+      expect(result[0].date).toBeInstanceOf(Date)
+    })
+
+    it('returns raw checks when total checks are less than 40', async () => {
+      prisma.monitor.findUnique.mockResolvedValue({ userId: 'user-1' })
+      prisma.check.count.mockResolvedValue(39)
+      prisma.check.findMany.mockResolvedValue([
+        {
+          checkedAt: new Date('2024-01-01'),
+          status: StatusEnum.up,
+          responseTime: 100,
+          error: null,
+        },
+        {
+          checkedAt: new Date('2024-01-02'),
+          status: StatusEnum.down,
+          responseTime: null,
+          error: 'Timeout',
+        },
+      ])
+
+      const result = await service.getTimeline('user-1', 'monitor-1', startDate)
+
+      expect(result).toHaveLength(2)
+      expect(result[0]).toMatchObject({
+        up: 1,
+        down: 0,
+        uptime: 100,
+        averageResponseTime: 100,
+        p95ResponseTime: null,
+      })
+      expect(result[1]).toMatchObject({
+        up: 0,
+        down: 1,
+        uptime: 0,
+        averageResponseTime: null,
+        p95ResponseTime: null,
+      })
     })
 
     it('maps null averageResponseTime to null', async () => {
       prisma.monitor.findUnique.mockResolvedValue({ userId: 'user-1' })
+      prisma.check.count.mockResolvedValue(100)
       prisma.$queryRaw.mockResolvedValue([
         { bucket: new Date(), up: BigInt(5), down: BigInt(0), averageResponseTime: null },
       ])
@@ -240,6 +355,7 @@ describe('AnalyticsService', () => {
 
     it('converts BigInt up/down counts to numbers', async () => {
       prisma.monitor.findUnique.mockResolvedValue({ userId: 'user-1' })
+      prisma.check.count.mockResolvedValue(100)
       prisma.$queryRaw.mockResolvedValue([
         { bucket: new Date(), up: BigInt(42), down: BigInt(3), averageResponseTime: 100 },
       ])
@@ -251,21 +367,32 @@ describe('AnalyticsService', () => {
       expect(point.up).toBe(42)
       expect(point.down).toBe(3)
     })
+
+    it('re-throws database errors from getRawTimeline', async () => {
+      prisma.monitor.findUnique.mockResolvedValue({ userId: 'user-1' })
+      prisma.check.count.mockResolvedValue(100)
+      prisma.$queryRaw.mockRejectedValue(new Error('Timeline DB exploded'))
+
+      await expect(service.getTimeline('user-1', 'monitor-1', new Date())).rejects.toThrow(
+        'Timeline DB exploded',
+      )
+    })
   })
 
   describe('bucket size selection', () => {
     const cases: [number, number][] = [
       [30, 1],
       [60 * 5, 5],
-      [60 * 24, 15],
-      [60 * 48, 30],
-      [60 * 96, 60],
+      [60 * 24, 30],
+      [60 * 48, 60],
+      [60 * 96, 120],
     ]
 
     it.each(cases)(
       'window of %i minutes uses %i-minute buckets',
       async (windowMinutes, expectedBucket) => {
         prisma.monitor.findUnique.mockResolvedValue({ userId: 'user-1' })
+        prisma.check.count.mockResolvedValue(100)
         prisma.$queryRaw.mockResolvedValue([])
 
         const startDate = new Date(Date.now() - windowMinutes * 60 * 1000)
@@ -279,27 +406,18 @@ describe('AnalyticsService', () => {
   })
 
   describe('error propagation', () => {
-    it('re-throws database errors from getOverview', async () => {
+    it('re-throws database errors from getOverview (getUptime)', async () => {
       prisma.monitor.findUnique.mockResolvedValue(mockMonitor)
       prisma.$queryRaw.mockRejectedValue(new Error('DB exploded'))
 
       await expect(service.getOverview('user-1', 'monitor-1')).rejects.toThrow('DB exploded')
     })
 
-    it('re-throws database errors from getIncidents', async () => {
+    it('re-throws database errors from getIncidents (getIncidentsList)', async () => {
       prisma.monitor.findUnique.mockResolvedValue({ userId: 'user-1' })
       prisma.$queryRaw.mockRejectedValue(new Error('DB exploded'))
 
       await expect(service.getIncidents('user-1', 'monitor-1', new Date())).rejects.toThrow(
-        'DB exploded',
-      )
-    })
-
-    it('re-throws database errors from getTimeline', async () => {
-      prisma.monitor.findUnique.mockResolvedValue({ userId: 'user-1' })
-      prisma.$queryRaw.mockRejectedValue(new Error('DB exploded'))
-
-      await expect(service.getTimeline('user-1', 'monitor-1', new Date())).rejects.toThrow(
         'DB exploded',
       )
     })
@@ -326,7 +444,7 @@ describe('AnalyticsService', () => {
       )
     })
 
-    it('handles non-Error throws from getIncidentsList (lines 183-184)', async () => {
+    it('handles non-Error throws from getIncidentsList', async () => {
       prisma.monitor.findUnique.mockResolvedValue({ userId: 'user-1' })
       prisma.$queryRaw.mockRejectedValue(42)
 
