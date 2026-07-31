@@ -235,15 +235,15 @@ export interface MonitorModalProps {
   onClose: () => void
   initial?:
     | {
-        id?: string
+        id?: string | undefined
         name: string
         type: MonitorType
         checkInterval: number
         timeout: number
-        url?: string
-        host?: string
-        port?: number
-        recordType?: DnsRecordType
+        url?: string | undefined
+        host?: string | undefined
+        port?: number | undefined
+        recordType?: DnsRecordType | undefined
         method?: 'HEAD'
       }
     | undefined
