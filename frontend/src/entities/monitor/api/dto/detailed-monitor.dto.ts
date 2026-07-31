@@ -27,6 +27,7 @@ const baseDetailedMonitorSchema = z
     nextCheckAt: z.coerce.date(),
     createdAt: z.coerce.date(),
     updatedAt: z.coerce.date(),
+    domain: z.string().min(1),
   })
   .strict()
 

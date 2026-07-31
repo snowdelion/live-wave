@@ -28,6 +28,12 @@ export class DetailedMonitorDto {
   })
   httpMonitor!: HttpMonitorConfig
 
+  @ApiProperty({
+    example: 'example.com:80',
+    description: 'Current monitor domain',
+  })
+  domain!: string
+
   @ApiProperty({ example: '2026-05-28T17:16:12.045Z' })
   lastCheckedAt!: Date
   @ApiProperty({ example: '2026-05-28T17:17:12.045Z' })

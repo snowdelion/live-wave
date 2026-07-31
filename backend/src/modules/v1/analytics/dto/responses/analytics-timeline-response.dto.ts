@@ -2,12 +2,14 @@ import { ApiProperty } from '@nestjs/swagger'
 
 export class AnalyticsTimelineEntryDto {
   @ApiProperty({ example: '2026-06-12T16:00:00.000Z' })
-  timestamp!: string
+  date!: string
 
-  @ApiProperty({ example: 20 })
+  @ApiProperty({ example: 20, minimum: 0 })
   up!: number
-  @ApiProperty({ example: 2 })
+  @ApiProperty({ example: 2, minimum: 0 })
   down!: number
+  @ApiProperty({ example: 85.7, minimum: 0, maximum: 100 })
+  uptime!: number
 
   @ApiProperty({ example: 29.5, nullable: true })
   averageResponseTime!: number | null

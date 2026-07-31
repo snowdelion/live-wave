@@ -3,8 +3,8 @@ import { ApiProperty } from '@nestjs/swagger'
 class DailyStatDto {
   @ApiProperty({ example: '2026-06-01' })
   day!: string
-  @ApiProperty({ example: 99.5, nullable: true })
-  uptime!: number | null
+  @ApiProperty({ example: 99.5 })
+  uptime!: number
   @ApiProperty({ example: 124.5, nullable: true })
   averageResponseTime!: number | null
   @ApiProperty({ example: 42.5, nullable: true })
@@ -29,8 +29,13 @@ export class AnalyticsOverviewResponseDto {
 
   @ApiProperty({ example: 1000 })
   totalChecks!: number
-  @ApiProperty({ example: 99.5, nullable: true })
-  uptime!: number | null
+  @ApiProperty({ example: 99.5 })
+  uptime!: number
+  @ApiProperty({ example: 900 })
+  up!: number
+  @ApiProperty({ example: 100 })
+  down!: number
+
   @ApiProperty({ example: 124.5, nullable: true })
   averageResponseTime!: number | null
   @ApiProperty({ example: 42.5, nullable: true })
