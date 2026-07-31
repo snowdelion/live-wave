@@ -8,6 +8,7 @@ import {
 } from '@/entities/monitor'
 
 export function useMonitorDetails(monitorId: string) {
+  const [periodDays, setPeriodDays] = useState(7)
   const [showEdit, setShowEdit] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
@@ -41,5 +42,7 @@ export function useMonitorDetails(monitorId: string) {
     deleteMonitor,
     showEdit,
     initialMonitor,
+    periodDays,
+    setPeriodDays,
   }
 }
