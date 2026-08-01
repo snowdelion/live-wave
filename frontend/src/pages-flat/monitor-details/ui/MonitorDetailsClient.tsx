@@ -1,7 +1,7 @@
 'use client'
 
 import { MonitorModal } from '@/features/dashboard'
-import { DetailsHeader, PeriodSwitcher } from '@/features/monitor-details'
+import { DetailsHeader, OverviewCards, PeriodSwitcher } from '@/features/monitor-details'
 import { ConfirmModal } from '@/shared/ui/ConfirmModal'
 
 import { useMonitorDetails } from '../model/useMonitorDetails'
@@ -33,6 +33,8 @@ export function MonitorDetailsClient({ monitorId }: { monitorId: string }) {
           periodDays={periodDays}
           setPeriodDays={setPeriodDays}
         />
+
+        <OverviewCards monitorId={monitorId} periodDays={periodDays} />
       </main>
 
       {showDeleteConfirm && monitor && (
