@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import type { AnalyticsIncident } from '@/entities/analytics'
 import {
   useDetailedMonitor,
   useDeleteMonitor,
@@ -9,6 +10,7 @@ import {
 
 export function useMonitorDetails(monitorId: string) {
   const [periodDays, setPeriodDays] = useState(7)
+  const [selectedIncident, setSelectedIncident] = useState<AnalyticsIncident | null>(null)
   const [showEdit, setShowEdit] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
@@ -44,5 +46,7 @@ export function useMonitorDetails(monitorId: string) {
     initialMonitor,
     periodDays,
     setPeriodDays,
+    selectedIncident,
+    setSelectedIncident,
   }
 }

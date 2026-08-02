@@ -3,6 +3,8 @@
 import { MonitorModal } from '@/features/dashboard'
 import {
   DetailsHeader,
+  IncidentModal,
+  Incidents,
   LatencyChart,
   OverviewCards,
   PeriodSwitcher,
@@ -23,6 +25,8 @@ export function MonitorDetailsClient({ monitorId }: { monitorId: string }) {
     initialMonitor,
     periodDays,
     setPeriodDays,
+    selectedIncident,
+    setSelectedIncident,
   } = useMonitorDetails(monitorId)
 
   return (
@@ -46,7 +50,17 @@ export function MonitorDetailsClient({ monitorId }: { monitorId: string }) {
           <UptimeChart monitorId={monitorId} periodDays={periodDays} />
           <LatencyChart monitorId={monitorId} periodDays={periodDays} />
         </div>
+
+        <Incidents
+          monitorId={monitorId}
+          onIncidentChange={setSelectedIncident}
+          periodDays={periodDays}
+        />
       </main>
+
+      {selectedIncident && (
+        <IncidentModal incident={selectedIncident} onClose={() => setSelectedIncident(null)} />
+      )}
 
       {showDeleteConfirm && monitor && (
         <ConfirmModal

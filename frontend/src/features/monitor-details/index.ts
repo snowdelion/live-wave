@@ -1,5 +1,7 @@
+export { IncidentModal } from './ui/incidents/IncidentModal'
 export { DetailsHeader } from './ui/header/DetailsHeader'
 export { PeriodSwitcher } from './ui/period-switcher/PeriodSwitcher'
 export { LatencyChart } from './ui/charts/LatencyChart'
 export { OverviewCards } from './ui/overview-cards/OverviewCards'
 export { UptimeChart } from './ui/charts/UptimeChart'
+export { Incidents } from './ui/incidents/Incidents'
