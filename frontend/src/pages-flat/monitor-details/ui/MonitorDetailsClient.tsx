@@ -1,7 +1,13 @@
 'use client'
 
 import { MonitorModal } from '@/features/dashboard'
-import { DetailsHeader, OverviewCards, PeriodSwitcher } from '@/features/monitor-details'
+import {
+  DetailsHeader,
+  LatencyChart,
+  OverviewCards,
+  PeriodSwitcher,
+  UptimeChart,
+} from '@/features/monitor-details'
 import { ConfirmModal } from '@/shared/ui/ConfirmModal'
 
 import { useMonitorDetails } from '../model/useMonitorDetails'
@@ -20,7 +26,7 @@ export function MonitorDetailsClient({ monitorId }: { monitorId: string }) {
   } = useMonitorDetails(monitorId)
 
   return (
-    <div className="bg-[#080a08] min-h-screen flex flex-col">
+    <div className="bg-[#080a08] min-h-screen flex flex-col overflow-x-hidden">
       <DetailsHeader
         monitorId={monitorId}
         setShowEdit={setShowEdit}
@@ -35,6 +41,11 @@ export function MonitorDetailsClient({ monitorId }: { monitorId: string }) {
         />
 
         <OverviewCards monitorId={monitorId} periodDays={periodDays} />
+
+        <div className="grid md:grid-cols-2 gap-4 mb-6">
+          <UptimeChart monitorId={monitorId} periodDays={periodDays} />
+          <LatencyChart monitorId={monitorId} periodDays={periodDays} />
+        </div>
       </main>
 
       {showDeleteConfirm && monitor && (
