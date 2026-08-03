@@ -7,7 +7,8 @@ const logger = new Logger('RedisModule')
 export const createRedisClient = (config: ConfigService) => {
   const url = config.get<string>('REDIS_URL')
   if (!url) throw new Error('REDIS_URL is not defined')
-  const isProduction = config.get('NODE_ENV') === 'production'
+
+  const useTls = config.get<string>('REDIS_TLS') === 'true'
 
   const redis = new Redis(url, {
     maxRetriesPerRequest: null,
@@ -19,7 +20,7 @@ export const createRedisClient = (config: ConfigService) => {
 
       return Math.min(times * 200, 1000)
     },
-    ...(isProduction && { tls: {} }),
+    ...(useTls && { tls: {} }),
   })
 
   redis.on('error', e => {

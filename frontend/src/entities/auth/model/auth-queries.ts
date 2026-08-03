@@ -13,28 +13,40 @@ import { signUpViaEmail } from '../api/sign-up-via-email'
 
 export function useSignUpEmail() {
   const setAccessToken = useAuthStore(s => s.setAccessToken)
+  const router = useRouter()
 
   return useMutation({
     mutationFn: (body: AuthViaEmailRequest) => signUpViaEmail(body),
-    onSuccess: ({ accessToken }) => setAccessToken(accessToken),
+    onSuccess: ({ accessToken }) => {
+      setAccessToken(accessToken)
+      router.replace('/dashboard')
+    },
   })
 }
 
 export function useSignInEmail() {
   const setAccessToken = useAuthStore(s => s.setAccessToken)
+  const router = useRouter()
 
   return useMutation({
     mutationFn: (body: AuthViaEmailRequest) => signInViaEmail(body),
-    onSuccess: ({ accessToken }) => setAccessToken(accessToken),
+    onSuccess: ({ accessToken }) => {
+      setAccessToken(accessToken)
+      router.replace('/dashboard')
+    },
   })
 }
 
 export function useSignInTelegram() {
   const setAccessToken = useAuthStore(s => s.setAccessToken)
+  const router = useRouter()
 
   return useMutation({
     mutationFn: (body: AuthViaTelegramRequest) => signInViaTelegram(body),
-    onSuccess: ({ accessToken }) => setAccessToken(accessToken),
+    onSuccess: ({ accessToken }) => {
+      setAccessToken(accessToken)
+      router.replace('/dashboard')
+    },
   })
 }
 
