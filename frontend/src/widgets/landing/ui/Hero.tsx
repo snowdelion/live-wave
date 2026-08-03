@@ -63,7 +63,7 @@ export function Hero() {
 
         <p className="font-inter text-[1.1rem] text-[#4caf50] max-w-135 mx-auto mb-10 leading-relaxed">
           <span className="font-bold tracking-wide">LiveWave</span> monitors your websites, APIs,
-          and services at least every 1 minute. Get alerted before your customers notice
+          and services at least every 5 minutes. Get alerted before your customers notice
         </p>
 
         <Link
@@ -75,7 +75,7 @@ export function Hero() {
         </Link>
 
         <div className="mt-6 flex flex-col items-center sm:flex-row justify-center gap-6">
-          {['Completely free', '1-minute check intervals', 'Cancel anytime'].map(text => (
+          {['Completely free', '5-minutes check intervals', 'Cancel anytime'].map(text => (
             <span
               key={text}
               className="inline-flex items-center gap-1.5 font-inter text-sm text-[#4caf50]"

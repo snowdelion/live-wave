@@ -5,7 +5,7 @@ import { DnsRecordType } from '../../model/monitor.types'
 export const updateMonitorRequestSchema = z
   .object({
     name: z.string().min(1).optional(),
-    checkInterval: z.number().min(1).max(60).optional(),
+    checkInterval: z.number().min(5).max(60).optional(),
     timeout: z.number().min(5000).max(30_000).optional(),
     url: z.url().optional(),
     method: z.enum(['HEAD']).optional(),
