@@ -5,7 +5,7 @@ import { DnsRecordType, MonitorType } from '../../model/monitor.types'
 export const baseCreateMonitorRequestSchema = z
   .object({
     name: z.string().min(1),
-    checkInterval: z.number().min(1).max(60).default(10),
+    checkInterval: z.number().min(5).max(60).default(10),
     timeout: z.number().min(5000).max(30_000).default(5000),
   })
   .strict()

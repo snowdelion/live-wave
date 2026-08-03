@@ -40,7 +40,7 @@ export class CreateMonitorDto {
     required: false,
   })
   @IsInt()
-  @Min(1)
+  @Min(5)
   @Max(60)
   @IsOptional()
   checkInterval?: number = 10

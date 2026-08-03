@@ -19,7 +19,7 @@ const baseDetailedMonitorSchema = z
     id: z.string(),
     name: z.string(),
     type: z.enum(MonitorType),
-    checkInterval: z.number().min(1).max(60),
+    checkInterval: z.number().min(5).max(60),
     timeout: z.number().min(5000).max(30_000),
     lastStatus: z.enum(MonitorStatus).nullable(),
     userId: z.string(),
