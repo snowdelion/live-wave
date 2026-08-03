@@ -1,6 +1,6 @@
 import { MonitorType } from '@/entities/monitor'
 
-export const MODAL_INTERVALS = [1, 5, 10, 20, 30, 40, 50, 60]
+export const MODAL_INTERVALS = [5, 10, 20, 30, 40, 50, 60]
 export const MODAL_TIMEOUTS = [5000, 10000, 20000, 30000]
 
 export const MODAL_PLACEHOLDERS: Record<MonitorType, string> = {
