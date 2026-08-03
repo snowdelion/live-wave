@@ -15,7 +15,7 @@ import {
 } from './telegram.docs'
 import { TelegramService } from './telegram.service'
 
-@Controller('v1/notification/telegram')
+@Controller('notification/telegram')
 export class TelegramController {
   constructor(private telegramService: TelegramService) {}
 

@@ -1,4 +1,5 @@
-import { ValidationPipe } from '@nestjs/common'
+import { ValidationPipe, VersioningType } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { NestFactory } from '@nestjs/core'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import cookieParser from 'cookie-parser'
@@ -8,6 +9,7 @@ import { AppModule } from './app.module'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
+  const configService = app.get(ConfigService)
 
   const config = new DocumentBuilder()
     .setTitle('LiveWave: Uptime monitor API')
@@ -16,20 +18,29 @@ async function bootstrap() {
     .addBearerAuth()
     .build()
 
-  const document = SwaggerModule.createDocument(app, config)
-  SwaggerModule.setup('/docs', app, document)
+  if (configService.get<'production' | 'test' | 'development'>('NODE_ENV') !== 'production') {
+    const document = SwaggerModule.createDocument(app, config)
+    SwaggerModule.setup('/docs', app, document)
+  }
 
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }))
   app.setGlobalPrefix('api')
+  app.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: '1',
+  })
 
-  app.use(helmet())
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: configService.get<string>('FRONTEND_URL', 'http://localhost:3000'),
     credentials: true,
   })
   app.enableShutdownHooks()
   app.use(cookieParser())
 
-  await app.listen(process.env.PORT || 8000)
+  await app.listen(configService.get<number>('PORT', 8000))
 }
-bootstrap().catch(console.error)
+bootstrap().catch(e => {
+  console.error(`Failed to start application: ${JSON.stringify(e)}`)
+  process.exit(1)
+})

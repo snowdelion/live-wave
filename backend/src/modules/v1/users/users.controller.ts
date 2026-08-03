@@ -19,7 +19,7 @@ import { UsersDocs } from './decorators/users-docs.decorator'
 import { deleteDocs, getMeDocs } from './users.docs'
 import { UsersService } from './users.service'
 
-@Controller('v1/users')
+@Controller('users')
 export class UsersController {
   constructor(
     private usersService: UsersService,

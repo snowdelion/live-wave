@@ -13,7 +13,7 @@ import { AnalyticsOverviewQueryDto } from './dto/requests/analytics-overview-que
 import { AnalyticsTimelineQueryDto } from './dto/requests/analytics-timeline-query.dto'
 
 @ApiExtraModels(...ANALYTICS_EXTRA_MODELS)
-@Controller('v1/analytics')
+@Controller('analytics')
 export class AnalyticsController {
   constructor(private analyticsService: AnalyticsService) {}
 
