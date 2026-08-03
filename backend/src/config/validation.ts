@@ -5,6 +5,7 @@ const envSchema = z.object({
   FRONTEND_URL: z.string().default('http://localhost:3000'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL required'),
+  REDIS_TLS: z.enum(['true', 'false']).default('true'),
   REDIS_URL: z.string().min(1, 'REDIS_URL required'),
   JWT_ACCESS_SECRET: z.string().min(1, 'JWT_ACCESS_SECRET is required'),
   JWT_REFRESH_SECRET: z.string().min(1, 'JWT_REFRESH_SECRET is required'),
