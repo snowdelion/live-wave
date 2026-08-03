@@ -69,9 +69,9 @@ const FEATURES = [
   },
   {
     icon: Zap,
-    title: '1-Minute Check Intervals',
+    title: '5-Minutes Check Intervals',
     desc: 'Monitoring checks selectively at least every minute. Get alerted quickly without overloading your servers',
-    stat: '1m+',
+    stat: '5m+',
     statLabel: 'fastest check',
   },
   {

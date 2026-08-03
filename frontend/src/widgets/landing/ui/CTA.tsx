@@ -24,7 +24,8 @@ export function CTA() {
           </h2>
 
           <p className="font-inter text-[1rem] text-[#4caf50] max-w-120 mx-auto mb-10 leading-relaxed">
-            Set up your first monitor in under 60 seconds. No credit card required or authorization.
+            Set up your first monitor in under 60 seconds.
+            <br />
             Start monitoring now
           </p>
 
