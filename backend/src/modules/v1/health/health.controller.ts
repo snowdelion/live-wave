@@ -5,7 +5,7 @@ import { HealthDocs } from './decorators/health-docs.decorator'
 import { livenessDocs, readinessDocs } from './health.docs'
 import { HealthService } from './health.service'
 
-@Controller('v1/health')
+@Controller('health')
 export class HealthController {
   constructor(private healthService: HealthService) {}
 

@@ -8,7 +8,7 @@
     "frontend"
   ],
   "scripts": {
-    "up": "docker-compose up -d --build",
+    "docker": "docker-compose up -d --build",
     "dev": "pnpm run -r dev",
     "dev:backend": "pnpm --filter backend dev",
     "dev:frontend": "pnpm --filter frontend dev",

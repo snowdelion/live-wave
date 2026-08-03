@@ -30,7 +30,7 @@ import {
 import { MonitorService } from './monitor.service'
 
 @ApiExtraModels(...MONITOR_EXTRA_MODELS)
-@Controller('v1/monitor')
+@Controller('monitor')
 export class MonitorController {
   constructor(private monitorService: MonitorService) {}
 

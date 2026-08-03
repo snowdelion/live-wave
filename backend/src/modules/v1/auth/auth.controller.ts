@@ -30,7 +30,7 @@ import { SignUpEmailDto } from './dto/requests/sign-up.dto'
 import { TelegramAuthDto } from './dto/requests/telegram-auth.dto'
 
 @ApiExtraModels(SignInEmailDto, TelegramAuthDto, SignUpEmailDto)
-@Controller('v1/auth')
+@Controller('auth')
 export class AuthController {
   constructor(
     private authService: AuthService,
