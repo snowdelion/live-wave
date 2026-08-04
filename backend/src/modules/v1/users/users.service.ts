@@ -30,7 +30,7 @@ export class UsersService {
 
     const formattedUser = {
       ...rest,
-      isNotificationEnabled: alert?.enabled ?? false,
+      isNotificationsEnabled: alert?.enabled ?? false,
       monitorsCount: _count?.monitors ?? 0,
       checksCount: monitors?.[0]?._count?.checks ?? 0,
     }

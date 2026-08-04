@@ -1,4 +1,4 @@
-import { useDetailedMonitor } from '@/entities/monitor'
+import { useDetailedMonitor } from '@/entities/monitors'
 
 import { PeriodSwitcherError } from './PeriodSwitcherError'
 import { PeriodSwitcherSkeleton } from './PeriodSwitcherSkeleton'

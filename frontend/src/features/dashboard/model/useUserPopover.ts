@@ -3,15 +3,15 @@ import { useState } from 'react'
 import { useLogout } from '@/entities/auth'
 import {
   useLinkTelegram,
-  useNotificationSettings,
+  useNotificationsSettings,
   useToggleAlert,
   useUnlinkTelegram,
-} from '@/entities/notification'
+} from '@/entities/notifications'
 import { useDeleteUser, useUser } from '@/entities/users'
 
 export function useUserPopover() {
   const { data: user } = useUser()
-  const { data: settings } = useNotificationSettings()
+  const { data: settings } = useNotificationsSettings()
   const { mutate: deleteUser } = useDeleteUser()
   const { mutate: logout } = useLogout()
   const { mutate: toggleAlert } = useToggleAlert()
@@ -19,7 +19,7 @@ export function useUserPopover() {
   const { mutate: unlinkTelegram } = useUnlinkTelegram()
 
   const hasTelegram = settings?.hasChat ?? false
-  const isNotificationEnabled = settings?.enabled ?? false
+  const isNotificationsEnabled = settings?.enabled ?? false
 
   const [showConfirm, setShowConfirm] = useState(false)
   const [accountName, setAccountName] = useState<string>('')
@@ -33,7 +33,7 @@ export function useUserPopover() {
       shouldShowConfirm: false,
     },
     {
-      label: isNotificationEnabled ? 'Disable Notifications' : 'Enable Notifications',
+      label: isNotificationsEnabled ? 'Disable Notifications' : 'Enable Notifications',
       shouldShow: hasTelegram,
       action: toggleAlert,
       isDanger: false,

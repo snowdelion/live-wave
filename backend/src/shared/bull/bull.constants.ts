@@ -3,7 +3,7 @@ import type { StatusEnum } from '@prisma/client'
 export const BULL_NAMES = {
   QUEUE: 'monitor-checks',
   CHECK: 'check',
-  NOTIFICATION: 'notifications',
+  NOTIFICATIONS: 'notifications',
   SEND_NOTIFICATION: 'send-notification',
 } as const
 

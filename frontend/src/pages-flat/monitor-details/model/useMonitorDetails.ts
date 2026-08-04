@@ -6,7 +6,7 @@ import {
   useDeleteMonitor,
   DnsRecordType,
   MonitorType,
-} from '@/entities/monitor'
+} from '@/entities/monitors'
 
 export function useMonitorDetails(monitorId: string) {
   const [periodDays, setPeriodDays] = useState(7)

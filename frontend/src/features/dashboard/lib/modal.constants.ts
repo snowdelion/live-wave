@@ -1,4 +1,4 @@
-import { MonitorType } from '@/entities/monitor'
+import { MonitorType } from '@/entities/monitors'
 
 export const MODAL_INTERVALS = [5, 10, 20, 30, 40, 50, 60]
 export const MODAL_TIMEOUTS = [5000, 10000, 20000, 30000]

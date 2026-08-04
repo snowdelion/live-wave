@@ -1,4 +1,4 @@
-import type { MonitorType } from '@/entities/monitor'
+import type { MonitorType } from '@/entities/monitors'
 
 export const urlRefine = (value: string) => {
   try {

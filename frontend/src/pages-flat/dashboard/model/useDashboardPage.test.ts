@@ -1,12 +1,12 @@
 import { act } from '@testing-library/react'
 
-import { MonitorType, useDetailedMonitor, type DetailedMonitor } from '@/entities/monitor'
+import { MonitorType, useDetailedMonitor, type DetailedMonitor } from '@/entities/monitors'
 import { renderHookWithClient } from '@/shared/test-utils'
 
 import { useDashboardPage } from './useDashboardPage'
 
-vi.mock('@/entities/monitor', async () => {
-  const actual = await vi.importActual('@/entities/monitor')
+vi.mock('@/entities/monitors', async () => {
+  const actual = await vi.importActual('@/entities/monitors')
   return {
     ...actual,
     useDetailedMonitor: vi.fn(),

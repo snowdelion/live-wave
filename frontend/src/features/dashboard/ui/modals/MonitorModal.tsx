@@ -2,7 +2,7 @@ import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@
 import { X, Activity } from 'lucide-react'
 import { Fragment } from 'react'
 
-import { DnsRecordType, MonitorType } from '@/entities/monitor'
+import { DnsRecordType, MonitorType } from '@/entities/monitors'
 
 import {
   errorStyle,

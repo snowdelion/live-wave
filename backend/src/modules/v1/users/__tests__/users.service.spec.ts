@@ -84,13 +84,13 @@ describe('UsersService', () => {
         telegramId: '123',
         username: 'user',
         createdAt,
-        isNotificationEnabled: true,
+        isNotificationsEnabled: true,
         monitorsCount: 2,
         checksCount: 5,
       })
     })
 
-    it('defaults isNotificationEnabled to false when alert is null', async () => {
+    it('defaults isNotificationsEnabled to false when alert is null', async () => {
       prisma.user.findUnique.mockResolvedValue({
         email: 'a@b.com',
         telegramId: '123',
@@ -103,7 +103,7 @@ describe('UsersService', () => {
 
       const result = await service.getMe('user-1')
 
-      expect(result.isNotificationEnabled).toBe(false)
+      expect(result.isNotificationsEnabled).toBe(false)
     })
 
     it('defaults monitorsCount to 0 when _count is missing', async () => {

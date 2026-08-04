@@ -1,14 +1,14 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { RotateCw, Search, X } from 'lucide-react'
 
-import { MonitorType, MONITOR_QUERY_KEYS } from '@/entities/monitor'
+import { MonitorType, MONITORS_QUERY_KEYS } from '@/entities/monitors'
 
 import { FilterSelectMobile } from './FilterSelectMobile'
 
 export function FiltersBar({ search, onSearch, typeFilter, onTypeFilter }: FiltersBarProps) {
   const queryClient = useQueryClient()
   const refreshList = () =>
-    void queryClient.invalidateQueries({ queryKey: MONITOR_QUERY_KEYS.list() })
+    void queryClient.invalidateQueries({ queryKey: MONITORS_QUERY_KEYS.list() })
 
   return (
     <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-4">

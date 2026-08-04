@@ -1,6 +1,6 @@
 import { Monitor as MonitorIcon, TrendingUp, AlertTriangle, Gauge } from 'lucide-react'
 
-import { MonitorStatus, useMonitors } from '@/entities/monitor'
+import { MonitorStatus, useMonitors } from '@/entities/monitors'
 
 import { StatsCardsSkeleton } from './StatsCardsSkeleton'
 

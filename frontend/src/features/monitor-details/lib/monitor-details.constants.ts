@@ -1,4 +1,4 @@
-import { MonitorType } from '@/entities/monitor'
+import { MonitorType } from '@/entities/monitors'
 
 export const RESPONSE_THRESHOLD: Record<MonitorType, { good: number; warn: number }> = {
   [MonitorType.HTTP]: { good: 200, warn: 500 },

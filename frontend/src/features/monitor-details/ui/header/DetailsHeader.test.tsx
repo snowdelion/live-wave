@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import { MonitorStatus, useDetailedMonitor } from '@/entities/monitor'
+import { MonitorStatus, useDetailedMonitor } from '@/entities/monitors'
 
 import { DetailsHeader } from './DetailsHeader'
 
@@ -21,7 +21,7 @@ vi.mock('./DetailsHeaderError', () => ({
   DetailsHeaderError: () => <div data-testid="error-state">Error loading monitor</div>,
 }))
 
-vi.mock('@/entities/monitor', () => ({
+vi.mock('@/entities/monitors', () => ({
   MonitorStatus: {
     up: 'up',
     down: 'down',

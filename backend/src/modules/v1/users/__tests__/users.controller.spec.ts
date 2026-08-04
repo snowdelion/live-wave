@@ -30,7 +30,7 @@ describe('UsersController', () => {
         telegramId: '123',
         username: 'user',
         createdAt: new Date('2024-01-01'),
-        isNotificationEnabled: true,
+        isNotificationsEnabled: true,
         monitorsCount: 2,
         checksCount: 5,
       }

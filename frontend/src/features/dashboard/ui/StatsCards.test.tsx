@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 
-import { useMonitors, MonitorStatus } from '@/entities/monitor'
+import { useMonitors, MonitorStatus } from '@/entities/monitors'
 
 import { StatsCards } from './StatsCards'
 
@@ -15,10 +15,10 @@ vi.mock('./StatsCardsSkeleton', () => ({
   StatsCardsSkeleton: () => <div data-testid="skeleton">Loading stats...</div>,
 }))
 
-vi.mock('@/entities/monitor', () => ({
-  MonitorStatus: { up: 'up', down: 'down' },
-  useMonitors: vi.fn(),
-}))
+vi.mock('@/entities/monitors', async () => {
+  const actual = await vi.importActual('@/entities/monitors')
+  return { ...actual, useMonitors: vi.fn() }
+})
 
 describe('StatsCards', () => {
   beforeEach(() => {

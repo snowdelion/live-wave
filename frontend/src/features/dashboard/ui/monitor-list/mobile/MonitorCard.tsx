@@ -2,7 +2,7 @@ import { Eye, Pencil, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import React from 'react'
 
-import type { UserMonitor } from '@/entities/monitor'
+import type { UserMonitor } from '@/entities/monitors'
 
 import { formatTime, getResponseColor, getUptimeColor } from '../../../lib/dashboard.utils'
 import { TYPE_STYLE } from '../../../lib/monitor.constants'

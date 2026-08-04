@@ -1,11 +1,11 @@
 import { renderHook, act } from '@testing-library/react'
 
-import { useDeleteMonitor, useMonitors } from '@/entities/monitor'
+import { useDeleteMonitor, useMonitors } from '@/entities/monitors'
 
 import { useMonitorTable } from '../useMonitorTable'
 
-vi.mock('@/entities/monitor', async () => {
-  const actual = await vi.importActual('@/entities/monitor')
+vi.mock('@/entities/monitors', async () => {
+  const actual = await vi.importActual('@/entities/monitors')
   return {
     ...actual,
     useMonitors: vi.fn(),

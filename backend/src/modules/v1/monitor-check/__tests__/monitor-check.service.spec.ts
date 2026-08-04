@@ -7,7 +7,6 @@ import type { PrismaService } from '@/shared/prisma/prisma.service'
 
 import { MonitorCheckService } from '../monitor-check.service'
 
-// --- helpers ---
 const MONITOR_ID = 'monitor-1'
 const CHAT_ID = 'chat-1'
 const CHECK_INTERVAL = 5
@@ -24,7 +23,6 @@ const makeJob = (id: string, startsWith = true): Partial<Job> => ({
   remove: vi.fn().mockResolvedValue(undefined),
 })
 
-// --- mocks ---
 const mockPrisma = {
   monitor: {
     findMany: vi.fn(),
@@ -37,11 +35,10 @@ const mockQueue = {
   getJobs: vi.fn().mockResolvedValue([]),
 } satisfies Partial<Queue> as unknown as Queue
 
-const mockNotificationQueue = {
+const mockNotificationsQueue = {
   add: vi.fn(),
 } satisfies Partial<Queue> as unknown as Queue
 
-// --- tests ---
 describe('MonitorCheckService', () => {
   let service: MonitorCheckService
 
@@ -54,12 +51,12 @@ describe('MonitorCheckService', () => {
     service = new MonitorCheckService(
       mockPrisma,
       mockQueue as unknown as Queue,
-      mockNotificationQueue as unknown as Queue,
+      mockNotificationsQueue as unknown as Queue,
     )
     Object.assign(service, {
       prisma: mockPrisma,
       checksQueue: mockQueue,
-      notificationQueue: mockNotificationQueue,
+      notificationQueue: mockNotificationsQueue,
     })
   })
 
@@ -228,13 +225,13 @@ describe('MonitorCheckService', () => {
     }
 
     beforeEach(() => {
-      vi.mocked(mockNotificationQueue.add).mockResolvedValue(undefined as unknown as Job<any>)
+      vi.mocked(mockNotificationsQueue.add).mockResolvedValue(undefined as unknown as Job<any>)
     })
 
     it('enqueues with the correct job name, payload, and jobId', async () => {
       await service.scheduleNotification(notificationPayload)
 
-      expect(mockNotificationQueue.add).toHaveBeenCalledWith(
+      expect(mockNotificationsQueue.add).toHaveBeenCalledWith(
         BULL_NAMES.SEND_NOTIFICATION,
         {
           chatId: CHAT_ID,
@@ -251,13 +248,13 @@ describe('MonitorCheckService', () => {
     it('does not include monitorId in the queue payload', async () => {
       await service.scheduleNotification(notificationPayload)
 
-      const [, payload] = vi.mocked(mockNotificationQueue.add).mock.calls[0] as any
+      const [, payload] = vi.mocked(mockNotificationsQueue.add).mock.calls[0] as any
       expect(payload).not.toHaveProperty('monitorId')
     })
 
     it('logs an error (with stack) when the queue throws an Error', async () => {
       const err = new Error('queue unavailable')
-      vi.mocked(mockNotificationQueue.add).mockRejectedValue(err)
+      vi.mocked(mockNotificationsQueue.add).mockRejectedValue(err)
 
       await service.scheduleNotification(notificationPayload)
 
@@ -268,7 +265,7 @@ describe('MonitorCheckService', () => {
     })
 
     it('logs "unknown error" when a non-Error is thrown', async () => {
-      vi.mocked(mockNotificationQueue.add).mockRejectedValue('oops')
+      vi.mocked(mockNotificationsQueue.add).mockRejectedValue('oops')
 
       await service.scheduleNotification(notificationPayload)
 

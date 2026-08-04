@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import React from 'react'
 
-import type { UserMonitor } from '@/entities/monitor'
+import type { UserMonitor } from '@/entities/monitors'
 
 import { MonitorRow } from '../MonitorRow'
 

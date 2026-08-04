@@ -1,8 +1,8 @@
 const analytics = '/api/analytics'
 const auth = '/api/auth'
 const health = '/api/health'
-const monitor = '/api/monitor'
-const notification = '/api/notification'
+const monitors = '/api/monitors'
+const notifications = '/api/notifications'
 const users = '/api/users'
 
 export const API_URL = {
@@ -25,19 +25,19 @@ export const API_URL = {
     READINESS: `${health}/readiness`,
   },
 
-  MONITOR: {
-    ALL: monitor,
-    BY_ID: (monitorId: string) => `${monitor}/${monitorId}`,
-    CREATE: monitor,
-    UPDATE: (monitorId: string) => `${monitor}/${monitorId}`,
-    DELETE: (monitorId: string) => `${monitor}/${monitorId}`,
+  MONITORS: {
+    ALL: monitors,
+    BY_ID: (monitorId: string) => `${monitors}/${monitorId}`,
+    CREATE: monitors,
+    UPDATE: (monitorId: string) => `${monitors}/${monitorId}`,
+    DELETE: (monitorId: string) => `${monitors}/${monitorId}`,
   },
 
-  NOTIFICATION: {
-    LINK_TELEGRAM: `${notification}/telegram/link-chat`,
-    UNLINK_TELEGRAM: `${notification}/telegram/unlink-chat`,
-    TOGGLE_ALERT: `${notification}/telegram/toggle-alert`,
-    SETTINGS: `${notification}/telegram/settings`,
+  NOTIFICATIONS: {
+    LINK_TELEGRAM: `${notifications}/telegram/link-chat`,
+    UNLINK_TELEGRAM: `${notifications}/telegram/unlink-chat`,
+    TOGGLE_ALERT: `${notifications}/telegram/toggle-alert`,
+    SETTINGS: `${notifications}/telegram/settings`,
   },
 
   USERS: {

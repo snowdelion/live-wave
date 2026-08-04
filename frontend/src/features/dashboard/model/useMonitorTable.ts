@@ -5,7 +5,7 @@ import {
   useDeleteMonitor,
   useMonitors,
   type UserMonitor,
-} from '@/entities/monitor'
+} from '@/entities/monitors'
 
 export function useMonitorTable({ search, typeFilter }: UseMonitorTableOptions) {
   const { data: { monitors } = { monitors: [] } } = useMonitors()

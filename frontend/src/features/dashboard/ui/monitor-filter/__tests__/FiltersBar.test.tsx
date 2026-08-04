@@ -1,6 +1,6 @@
 import { screen, fireEvent } from '@testing-library/react'
 
-import { MonitorType, MONITOR_QUERY_KEYS } from '@/entities/monitor'
+import { MonitorType, MONITORS_QUERY_KEYS } from '@/entities/monitors'
 import { renderWithClient } from '@/shared/test-utils'
 
 import { FiltersBar } from '../FiltersBar'
@@ -27,8 +27,8 @@ vi.mock('@tanstack/react-query', async () => {
   }
 })
 
-vi.mock('@/entities/monitor', async () => {
-  const actual = await vi.importActual('@/entities/monitor')
+vi.mock('@/entities/monitors', async () => {
+  const actual = await vi.importActual('@/entities/monitors')
   return { ...actual }
 })
 
@@ -70,7 +70,7 @@ describe('FiltersBar', () => {
     fireEvent.click(refreshButton!)
 
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: MONITOR_QUERY_KEYS.list(),
+      queryKey: MONITORS_QUERY_KEYS.list(),
     })
   })
 

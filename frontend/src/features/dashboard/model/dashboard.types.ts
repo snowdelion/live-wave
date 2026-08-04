@@ -1,4 +1,4 @@
-import type { MonitorType, UserMonitor } from '@/entities/monitor'
+import type { MonitorType, UserMonitor } from '@/entities/monitors'
 
 export interface MonitorTableProps {
   onEdit: (m: UserMonitor) => void
