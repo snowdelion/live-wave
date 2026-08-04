@@ -2,7 +2,7 @@ const analytics = '/api/analytics'
 const auth = '/api/auth'
 const health = '/api/health'
 const monitors = '/api/monitors'
-const notification = '/api/notification'
+const notifications = '/api/notifications'
 const users = '/api/users'
 
 export const API_URL = {
@@ -33,11 +33,11 @@ export const API_URL = {
     DELETE: (monitorId: string) => `${monitors}/${monitorId}`,
   },
 
-  NOTIFICATION: {
-    LINK_TELEGRAM: `${notification}/telegram/link-chat`,
-    UNLINK_TELEGRAM: `${notification}/telegram/unlink-chat`,
-    TOGGLE_ALERT: `${notification}/telegram/toggle-alert`,
-    SETTINGS: `${notification}/telegram/settings`,
+  NOTIFICATIONS: {
+    LINK_TELEGRAM: `${notifications}/telegram/link-chat`,
+    UNLINK_TELEGRAM: `${notifications}/telegram/unlink-chat`,
+    TOGGLE_ALERT: `${notifications}/telegram/toggle-alert`,
+    SETTINGS: `${notifications}/telegram/settings`,
   },
 
   USERS: {

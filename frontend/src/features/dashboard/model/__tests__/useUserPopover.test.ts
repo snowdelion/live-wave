@@ -4,10 +4,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useLogout } from '@/entities/auth'
 import {
   useLinkTelegram,
-  useNotificationSettings,
+  useNotificationsSettings,
   useToggleAlert,
   useUnlinkTelegram,
-} from '@/entities/notification'
+} from '@/entities/notifications'
 import { useDeleteUser, useUser } from '@/entities/users'
 import { renderHookWithClient } from '@/shared/test-utils'
 
@@ -17,9 +17,9 @@ vi.mock('@/entities/auth', () => ({
   useLogout: vi.fn(),
 }))
 
-vi.mock('@/entities/notification', () => ({
+vi.mock('@/entities/notifications', () => ({
   useLinkTelegram: vi.fn(),
-  useNotificationSettings: vi.fn(),
+  useNotificationsSettings: vi.fn(),
   useToggleAlert: vi.fn(),
   useUnlinkTelegram: vi.fn(),
 }))
@@ -38,7 +38,7 @@ describe('useUserPopover', () => {
     vi.clearAllMocks()
 
     vi.mocked(useUser).mockReturnValue({ data: mockUser } as any)
-    vi.mocked(useNotificationSettings).mockReturnValue({ data: mockSettings } as any)
+    vi.mocked(useNotificationsSettings).mockReturnValue({ data: mockSettings } as any)
     vi.mocked(useDeleteUser).mockReturnValue({ mutate: mockMutate } as any)
     vi.mocked(useLogout).mockReturnValue({ mutate: mockMutate } as any)
     vi.mocked(useToggleAlert).mockReturnValue({ mutate: mockMutate } as any)
@@ -75,7 +75,7 @@ describe('useUserPopover', () => {
     })
 
     it('shows "Link Telegram" and hides notifications button when telegram is not linked', () => {
-      vi.mocked(useNotificationSettings).mockReturnValue({
+      vi.mocked(useNotificationsSettings).mockReturnValue({
         data: { hasChat: false, enabled: false },
       } as any)
 
@@ -88,7 +88,7 @@ describe('useUserPopover', () => {
     })
 
     it('handles undefined settings gracefully with fallbacks', () => {
-      vi.mocked(useNotificationSettings).mockReturnValue({ data: undefined } as any)
+      vi.mocked(useNotificationsSettings).mockReturnValue({ data: undefined } as any)
 
       const { result } = renderHookWithClient(() => useUserPopover())
       const buttons = result.current.PANEL_BUTTONS

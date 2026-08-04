@@ -14,7 +14,7 @@ import { TcpStrategy } from './strategies/tcp-check.strategy'
 @Module({
   imports: [
     BullModule.registerQueue({ name: BULL_NAMES.QUEUE }),
-    BullModule.registerQueue({ name: BULL_NAMES.NOTIFICATION }),
+    BullModule.registerQueue({ name: BULL_NAMES.NOTIFICATIONS }),
   ],
   providers: [
     MonitorCheckService,

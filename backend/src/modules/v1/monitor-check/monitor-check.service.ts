@@ -14,8 +14,8 @@ export class MonitorCheckService implements OnModuleInit {
   constructor(
     private prisma: PrismaService,
     @InjectQueue(BULL_NAMES.QUEUE) private checksQueue: Queue<{ monitorId: string }>,
-    @InjectQueue(BULL_NAMES.NOTIFICATION)
-    private notificationQueue: Queue<{
+    @InjectQueue(BULL_NAMES.NOTIFICATIONS)
+    private notificationsQueue: Queue<{
       chatId: string
       message: string
       statusType: StatusEnum
@@ -96,7 +96,7 @@ export class MonitorCheckService implements OnModuleInit {
     monitorName: string
   }) {
     try {
-      await this.notificationQueue.add(
+      await this.notificationsQueue.add(
         BULL_NAMES.SEND_NOTIFICATION,
         {
           chatId,

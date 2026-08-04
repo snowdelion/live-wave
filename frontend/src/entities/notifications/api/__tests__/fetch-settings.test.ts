@@ -1,8 +1,7 @@
 import { API_URL, request } from '@/shared/api'
 import { ERROR_CODES } from '@/shared/api/config/error-codes'
 
-import { telegramMessageResponseSchema } from '../dto/telegram-message-response.dto'
-import { unlinkTelegram } from '../unlink-telegram'
+import { fetchSettings, settingsSchema } from '../fetch-settings'
 
 vi.mock('@/shared/api', async () => {
   const actual = await vi.importActual('@/shared/api')
@@ -14,32 +13,33 @@ vi.mock('@/shared/api', async () => {
 
 const mockedRequest = vi.mocked(request) as any
 
-describe('unlinkTelegram', () => {
-  beforeEach(() => mockedRequest.mockReset())
+describe('fetchSettings', () => {
+  beforeEach(() => {
+    mockedRequest.mockReset()
+  })
 
   it('calls request with the correct url, schema, and error code', async () => {
-    const fakeData = { message: 'success' }
+    const fakeData = { enabled: true, hasChat: true }
     mockedRequest.mockResolvedValueOnce({ data: fakeData })
 
-    await unlinkTelegram()
+    await fetchSettings()
 
     expect(mockedRequest).toHaveBeenCalledTimes(1)
     expect(mockedRequest).toHaveBeenCalledWith(
       expect.objectContaining({
-        url: API_URL.NOTIFICATION.UNLINK_TELEGRAM,
-        schema: telegramMessageResponseSchema,
-        errorCode: ERROR_CODES.UNLINK_TELEGRAM,
-        method: 'POST',
+        url: API_URL.NOTIFICATIONS.SETTINGS,
+        schema: settingsSchema,
+        errorCode: ERROR_CODES.GET_SETTINGS,
         isProtected: true,
       }),
     )
   })
 
   it('returns the data field from the response', async () => {
-    const fakeData = { message: 'success' }
+    const fakeData = { enabled: true, hasChat: true }
     mockedRequest.mockResolvedValueOnce({ data: fakeData })
 
-    const result = await unlinkTelegram()
+    const result = await fetchSettings()
 
     expect(result).toEqual(fakeData)
   })
@@ -48,13 +48,13 @@ describe('unlinkTelegram', () => {
     const error = new Error('Network error')
     mockedRequest.mockRejectedValueOnce(error)
 
-    await expect(unlinkTelegram()).rejects.toThrow('Network error')
+    await expect(fetchSettings).rejects.toThrow('Network error')
   })
 
   it('propagates a schema validation error from request', async () => {
     const validationError = new Error('Invalid response shape')
     mockedRequest.mockRejectedValueOnce(validationError)
 
-    await expect(unlinkTelegram()).rejects.toThrow('Invalid response shape')
+    await expect(fetchSettings()).rejects.toThrow('Invalid response shape')
   })
 })

@@ -5,14 +5,14 @@ import { linkTelegram } from '../api/link-telegram'
 import { toggleAlert } from '../api/toggle-alert'
 import { unlinkTelegram } from '../api/unlink-telegram'
 
-export const NOTIFICATION_QUERY_KEYS = {
+export const NOTIFICATIONS_QUERY_KEYS = {
   all: ['notifications'] as const,
-  settings: () => [...NOTIFICATION_QUERY_KEYS.all, 'settings'] as const,
+  settings: () => [...NOTIFICATIONS_QUERY_KEYS.all, 'settings'] as const,
 }
 
-export function useNotificationSettings() {
+export function useNotificationsSettings() {
   return useQuery<Settings>({
-    queryKey: NOTIFICATION_QUERY_KEYS.settings(),
+    queryKey: NOTIFICATIONS_QUERY_KEYS.settings(),
     queryFn: fetchSettings,
     refetchOnWindowFocus: 'always',
   })
@@ -24,7 +24,7 @@ export function useLinkTelegram() {
   return useMutation({
     mutationFn: linkTelegram,
     onSuccess: ({ link }) => {
-      void client.invalidateQueries({ queryKey: NOTIFICATION_QUERY_KEYS.settings() })
+      void client.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEYS.settings() })
       window.open(link, '_blank')
     },
   })
@@ -35,7 +35,7 @@ export function useUnlinkTelegram() {
 
   return useMutation({
     mutationFn: unlinkTelegram,
-    onSuccess: () => client.invalidateQueries({ queryKey: NOTIFICATION_QUERY_KEYS.settings() }),
+    onSuccess: () => client.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEYS.settings() }),
   })
 }
 
@@ -44,16 +44,19 @@ export function useToggleAlert() {
 
   return useMutation({
     mutationFn: toggleAlert,
-    onSuccess: () => client.invalidateQueries({ queryKey: NOTIFICATION_QUERY_KEYS.settings() }),
+    onSuccess: () => client.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEYS.settings() }),
     onMutate: async () => {
-      await client.cancelQueries({ queryKey: NOTIFICATION_QUERY_KEYS.settings() })
-      const prev = client.getQueryData<Settings>(NOTIFICATION_QUERY_KEYS.settings())
+      await client.cancelQueries({ queryKey: NOTIFICATIONS_QUERY_KEYS.settings() })
+      const prev = client.getQueryData<Settings>(NOTIFICATIONS_QUERY_KEYS.settings())
 
       if (prev)
-        client.setQueryData(NOTIFICATION_QUERY_KEYS.settings(), { ...prev, enabled: !prev.enabled })
+        client.setQueryData(NOTIFICATIONS_QUERY_KEYS.settings(), {
+          ...prev,
+          enabled: !prev.enabled,
+        })
       return { prev }
     },
     onError: (_, __, ctx) =>
-      ctx?.prev && client.setQueryData(NOTIFICATION_QUERY_KEYS.settings(), ctx.prev),
+      ctx?.prev && client.setQueryData(NOTIFICATIONS_QUERY_KEYS.settings(), ctx.prev),
   })
 }

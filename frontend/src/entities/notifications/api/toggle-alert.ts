@@ -11,7 +11,7 @@ type ToggleAlertResponse = z.infer<typeof toggleAlertResponseSchema>
 
 export async function toggleAlert(): Promise<ToggleAlertResponse> {
   const res = await request({
-    url: API_URL.NOTIFICATION.TOGGLE_ALERT,
+    url: API_URL.NOTIFICATIONS.TOGGLE_ALERT,
     method: 'PATCH',
     schema: toggleAlertResponseSchema,
     errorCode: ERROR_CODES.TOGGLE_ALERT,

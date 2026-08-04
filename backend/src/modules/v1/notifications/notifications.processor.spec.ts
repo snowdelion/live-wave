@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common'
 import type { Job } from 'bullmq'
 
-import { NotificationProcessor } from './notification.processor'
+import { NotificationsProcessor } from './notifications.processor'
 import type { TelegramService } from './telegram/telegram.service'
 
 const CHAT_ID = 'chat-123'
@@ -32,15 +32,15 @@ const mockTelegramService = {
   sendMessage: vi.fn(),
 } satisfies Partial<TelegramService> as unknown as TelegramService
 
-describe('NotificationProcessor', () => {
-  let processor: NotificationProcessor
+describe('NotificationsProcessor', () => {
+  let processor: NotificationsProcessor
 
   beforeEach(() => {
     vi.clearAllMocks()
     vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
     vi.mocked(mockTelegramService.sendMessage).mockResolvedValue(true)
 
-    processor = new NotificationProcessor(mockTelegramService)
+    processor = new NotificationsProcessor(mockTelegramService)
   })
 
   describe('process', () => {

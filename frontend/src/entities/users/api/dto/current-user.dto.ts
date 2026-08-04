@@ -5,7 +5,7 @@ export const currentUserSchema = z.object({
   telegramId: z.coerce.number().nullable(),
   username: z.string().min(1).nullable(),
   createdAt: z.coerce.date(),
-  isNotificationEnabled: z.boolean(),
+  isNotificationsEnabled: z.boolean(),
   monitorsCount: z.coerce.number().min(0),
   checksCount: z.coerce.number().min(0),
 })

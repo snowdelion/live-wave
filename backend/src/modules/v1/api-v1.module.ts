@@ -5,8 +5,8 @@ import { AuthModule } from './auth/auth.module'
 import { HealthModule } from './health/health.module'
 import { MonitorCheckModule } from './monitor-check/monitor-check.module'
 import { MonitorsModule } from './monitors/monitors.module'
-import { NotificationModule } from './notification/notification.module'
-import { TelegramModule } from './notification/telegram/telegram.module'
+import { NotificationsModule } from './notifications/notifications.module'
+import { TelegramModule } from './notifications/telegram/telegram.module'
 import { UsersModule } from './users/users.module'
 
 @Module({
@@ -16,7 +16,7 @@ import { UsersModule } from './users/users.module'
     MonitorCheckModule,
     AnalyticsModule,
     TelegramModule,
-    NotificationModule,
+    NotificationsModule,
     AuthModule,
     UsersModule,
   ],

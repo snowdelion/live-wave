@@ -1,6 +1,6 @@
 export {
-  useNotificationSettings,
+  useNotificationsSettings,
   useLinkTelegram,
   useToggleAlert,
   useUnlinkTelegram,
-} from './model/notification-queries'
+} from './model/notifications-queries'

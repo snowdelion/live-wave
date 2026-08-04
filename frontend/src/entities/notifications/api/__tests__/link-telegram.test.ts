@@ -1,7 +1,7 @@
 import { API_URL, request } from '@/shared/api'
 import { ERROR_CODES } from '@/shared/api/config/error-codes'
 
-import { toggleAlert, toggleAlertResponseSchema } from '../toggle-alert'
+import { linkTelegram, linkTelegramResponseSchema } from '../link-telegram'
 
 vi.mock('@/shared/api', async () => {
   const actual = await vi.importActual('@/shared/api')
@@ -13,32 +13,32 @@ vi.mock('@/shared/api', async () => {
 
 const mockedRequest = vi.mocked(request) as any
 
-describe('toggleAlert', () => {
+describe('linkTelegram', () => {
   beforeEach(() => mockedRequest.mockReset())
 
   it('calls request with the correct url, schema, and error code', async () => {
-    const fakeData = { message: 'success' }
+    const fakeData = { link: 'success' }
     mockedRequest.mockResolvedValueOnce({ data: fakeData })
 
-    await toggleAlert()
+    await linkTelegram()
 
     expect(mockedRequest).toHaveBeenCalledTimes(1)
     expect(mockedRequest).toHaveBeenCalledWith(
       expect.objectContaining({
-        url: API_URL.NOTIFICATION.TOGGLE_ALERT,
-        method: 'PATCH',
-        schema: toggleAlertResponseSchema,
-        errorCode: ERROR_CODES.TOGGLE_ALERT,
+        url: API_URL.NOTIFICATIONS.LINK_TELEGRAM,
+        schema: linkTelegramResponseSchema,
+        errorCode: ERROR_CODES.LINK_TELEGRAM,
+        method: 'POST',
         isProtected: true,
       }),
     )
   })
 
   it('returns the data field from the response', async () => {
-    const fakeData = { message: 'success' }
+    const fakeData = { link: 'success' }
     mockedRequest.mockResolvedValueOnce({ data: fakeData })
 
-    const result = await toggleAlert()
+    const result = await linkTelegram()
 
     expect(result).toEqual(fakeData)
   })
@@ -47,13 +47,13 @@ describe('toggleAlert', () => {
     const error = new Error('Network error')
     mockedRequest.mockRejectedValueOnce(error)
 
-    await expect(toggleAlert()).rejects.toThrow('Network error')
+    await expect(linkTelegram()).rejects.toThrow('Network error')
   })
 
   it('propagates a schema validation error from request', async () => {
     const validationError = new Error('Invalid response shape')
     mockedRequest.mockRejectedValueOnce(validationError)
 
-    await expect(toggleAlert()).rejects.toThrow('Invalid response shape')
+    await expect(linkTelegram()).rejects.toThrow('Invalid response shape')
   })
 })

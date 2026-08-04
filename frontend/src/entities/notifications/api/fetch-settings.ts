@@ -10,7 +10,7 @@ export type Settings = z.infer<typeof settingsSchema>
 
 export async function fetchSettings(): Promise<Settings> {
   const res = await request({
-    url: API_URL.NOTIFICATION.SETTINGS,
+    url: API_URL.NOTIFICATIONS.SETTINGS,
     schema: settingsSchema,
     errorCode: ERROR_CODES.GET_SETTINGS,
     isProtected: true,

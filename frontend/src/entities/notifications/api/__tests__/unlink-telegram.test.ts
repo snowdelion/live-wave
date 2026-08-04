@@ -1,7 +1,8 @@
 import { API_URL, request } from '@/shared/api'
 import { ERROR_CODES } from '@/shared/api/config/error-codes'
 
-import { linkTelegram, linkTelegramResponseSchema } from '../link-telegram'
+import { telegramMessageResponseSchema } from '../dto/telegram-message-response.dto'
+import { unlinkTelegram } from '../unlink-telegram'
 
 vi.mock('@/shared/api', async () => {
   const actual = await vi.importActual('@/shared/api')
@@ -13,21 +14,21 @@ vi.mock('@/shared/api', async () => {
 
 const mockedRequest = vi.mocked(request) as any
 
-describe('linkTelegram', () => {
+describe('unlinkTelegram', () => {
   beforeEach(() => mockedRequest.mockReset())
 
   it('calls request with the correct url, schema, and error code', async () => {
-    const fakeData = { link: 'success' }
+    const fakeData = { message: 'success' }
     mockedRequest.mockResolvedValueOnce({ data: fakeData })
 
-    await linkTelegram()
+    await unlinkTelegram()
 
     expect(mockedRequest).toHaveBeenCalledTimes(1)
     expect(mockedRequest).toHaveBeenCalledWith(
       expect.objectContaining({
-        url: API_URL.NOTIFICATION.LINK_TELEGRAM,
-        schema: linkTelegramResponseSchema,
-        errorCode: ERROR_CODES.LINK_TELEGRAM,
+        url: API_URL.NOTIFICATIONS.UNLINK_TELEGRAM,
+        schema: telegramMessageResponseSchema,
+        errorCode: ERROR_CODES.UNLINK_TELEGRAM,
         method: 'POST',
         isProtected: true,
       }),
@@ -35,10 +36,10 @@ describe('linkTelegram', () => {
   })
 
   it('returns the data field from the response', async () => {
-    const fakeData = { link: 'success' }
+    const fakeData = { message: 'success' }
     mockedRequest.mockResolvedValueOnce({ data: fakeData })
 
-    const result = await linkTelegram()
+    const result = await unlinkTelegram()
 
     expect(result).toEqual(fakeData)
   })
@@ -47,13 +48,13 @@ describe('linkTelegram', () => {
     const error = new Error('Network error')
     mockedRequest.mockRejectedValueOnce(error)
 
-    await expect(linkTelegram()).rejects.toThrow('Network error')
+    await expect(unlinkTelegram()).rejects.toThrow('Network error')
   })
 
   it('propagates a schema validation error from request', async () => {
     const validationError = new Error('Invalid response shape')
     mockedRequest.mockRejectedValueOnce(validationError)
 
-    await expect(linkTelegram()).rejects.toThrow('Invalid response shape')
+    await expect(unlinkTelegram()).rejects.toThrow('Invalid response shape')
   })
 })

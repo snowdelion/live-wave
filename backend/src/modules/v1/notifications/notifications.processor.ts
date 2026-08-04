@@ -6,9 +6,9 @@ import { BULL_NAMES } from '@/shared/bull/bull.constants'
 
 import { TelegramService } from './telegram/telegram.service'
 
-@Processor(BULL_NAMES.NOTIFICATION, { concurrency: 3 })
-export class NotificationProcessor extends WorkerHost {
-  private readonly logger = new Logger(NotificationProcessor.name)
+@Processor(BULL_NAMES.NOTIFICATIONS, { concurrency: 3 })
+export class NotificationsProcessor extends WorkerHost {
+  private readonly logger = new Logger(NotificationsProcessor.name)
   constructor(private telegramService: TelegramService) {
     super()
   }

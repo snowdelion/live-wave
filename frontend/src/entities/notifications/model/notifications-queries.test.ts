@@ -8,12 +8,12 @@ import { toggleAlert } from '../api/toggle-alert'
 import { unlinkTelegram } from '../api/unlink-telegram'
 
 import {
-  NOTIFICATION_QUERY_KEYS,
-  useNotificationSettings,
+  NOTIFICATIONS_QUERY_KEYS,
+  useNotificationsSettings,
   useLinkTelegram,
   useUnlinkTelegram,
   useToggleAlert,
-} from './notification-queries'
+} from './notifications-queries'
 
 vi.mock('../api/fetch-settings')
 vi.mock('../api/link-telegram')
@@ -24,24 +24,24 @@ vi.mock('@/shared/api', async () => {
   return { ...actual, useAuthStore: vi.fn().mockReturnValue('token') }
 })
 
-describe('Notification Queries', () => {
+describe('Notifications Queries', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  describe('NOTIFICATION_QUERY_KEYS', () => {
+  describe('NOTIFICATIONS_QUERY_KEYS', () => {
     it('generates the correct query keys', () => {
-      expect(NOTIFICATION_QUERY_KEYS.all).toEqual(['notifications'])
-      expect(NOTIFICATION_QUERY_KEYS.settings()).toEqual(['notifications', 'settings'])
+      expect(NOTIFICATIONS_QUERY_KEYS.all).toEqual(['notifications'])
+      expect(NOTIFICATIONS_QUERY_KEYS.settings()).toEqual(['notifications', 'settings'])
     })
   })
 
-  describe('useNotificationSettings', () => {
+  describe('useNotificationsSettings', () => {
     it('fetches settings successfully', async () => {
       const mockSettings = { hasChat: true, enabled: false }
       vi.mocked(fetchSettings).mockResolvedValue(mockSettings)
 
-      const { result } = renderHookWithClient(() => useNotificationSettings())
+      const { result } = renderHookWithClient(() => useNotificationsSettings())
 
       expect(result.current.isLoading).toBe(true)
 
@@ -56,7 +56,7 @@ describe('Notification Queries', () => {
     it('handles fetch errors gracefully', async () => {
       vi.mocked(fetchSettings).mockRejectedValue(new Error('Failed to fetch settings'))
 
-      const { result } = renderHookWithClient(() => useNotificationSettings())
+      const { result } = renderHookWithClient(() => useNotificationsSettings())
 
       await waitFor(() => {
         expect(result.current.isError).toBe(true)
@@ -81,7 +81,7 @@ describe('Notification Queries', () => {
       })
 
       expect(invalidateSpy).toHaveBeenCalledWith({
-        queryKey: NOTIFICATION_QUERY_KEYS.settings(),
+        queryKey: NOTIFICATIONS_QUERY_KEYS.settings(),
       })
     })
 
@@ -118,7 +118,7 @@ describe('Notification Queries', () => {
 
       expect(unlinkTelegram).toHaveBeenCalledTimes(1)
       expect(invalidateSpy).toHaveBeenCalledWith({
-        queryKey: NOTIFICATION_QUERY_KEYS.settings(),
+        queryKey: NOTIFICATIONS_QUERY_KEYS.settings(),
       })
     })
 
@@ -154,7 +154,7 @@ describe('Notification Queries', () => {
       })
 
       expect(invalidateSpy).toHaveBeenCalledWith({
-        queryKey: NOTIFICATION_QUERY_KEYS.settings(),
+        queryKey: NOTIFICATIONS_QUERY_KEYS.settings(),
       })
     })
 

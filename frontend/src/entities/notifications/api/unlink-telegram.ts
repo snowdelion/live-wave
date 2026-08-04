@@ -7,7 +7,7 @@ import {
 
 export async function unlinkTelegram(): Promise<TelegramMessageResponse> {
   const res = await request({
-    url: API_URL.NOTIFICATION.UNLINK_TELEGRAM,
+    url: API_URL.NOTIFICATIONS.UNLINK_TELEGRAM,
     method: 'POST',
     schema: telegramMessageResponseSchema,
     errorCode: ERROR_CODES.UNLINK_TELEGRAM,
