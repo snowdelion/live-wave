@@ -4,6 +4,15 @@ import { StatusEnum } from '@prisma/client'
 import type { RedisService } from '@/shared/redis/redis.service'
 
 import { AnalyticsService } from '../analytics.service'
+import { getTimelineSql } from '../analytics.sql'
+
+vi.mock('../analytics.sql', () => ({
+  getDailyStatsSql: vi.fn(),
+  getIncidentsCountSql: vi.fn(),
+  getIncidentsSql: vi.fn(),
+  getTimelineSql: vi.fn(),
+  getUptimeItemSql: vi.fn(),
+}))
 
 const mockMonitor = { userId: 'user-1', name: 'My Monitor' }
 const mockRedis = {
@@ -398,9 +407,7 @@ describe('AnalyticsService', () => {
         const startDate = new Date(Date.now() - windowMinutes * 60 * 1000)
         await service.getTimeline('user-1', 'monitor-1', startDate)
 
-        const callArgs = prisma.$queryRaw.mock.calls[0]
-        const flatArgs = callArgs.flat(Infinity)
-        expect(flatArgs).toContain(expectedBucket)
+        expect(getTimelineSql).toHaveBeenCalledWith('monitor-1', startDate, expectedBucket)
       },
     )
   })

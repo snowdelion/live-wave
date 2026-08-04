@@ -21,6 +21,7 @@ import { MonitorCheckService } from '../monitor-check/monitor-check.service'
 
 import { CreateMonitorDto } from './dto/requests/create-monitor.dto'
 import { UpdateMonitorDto } from './dto/requests/update-monitor.dto'
+import { getIncidentsCountSql, getTrendSql } from './monitors.sql'
 import {
   monitorRequestData,
   handleDnsTransaction,
@@ -29,7 +30,6 @@ import {
   handleTcpTransaction,
   Tx,
   UpdateData,
-  getTrendSql,
   getDomainByType,
 } from './monitors.utils'
 
@@ -133,22 +133,9 @@ export class MonitorsService {
   }
 
   private async getIncidentsCountForMonitors(monitorIds: string[]) {
-    const result = await this.prisma.$queryRaw<{ monitorId: string; count: bigint }[]>`
-      SELECT "monitorId", COUNT(*) AS count FROM (
-        WITH with_prev AS (
-          SELECT
-            "monitorId",
-            status,
-            LAG(status) OVER (PARTITION BY "monitorId" ORDER BY "checkedAt") AS prev_status
-            FROM "Check"
-            WHERE "monitorId" = ANY(${monitorIds}) AND "checkedAt" >= ${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)}
-        )
-        SELECT "monitorId", 1
-        FROM with_prev
-        WHERE status = 'down' AND (prev_status IS NULL OR prev_status != status)
-      ) AS down_starts
-      GROUP BY "monitorId"
-    `
+    const result = await this.prisma.$queryRaw<{ monitorId: string; count: bigint }[]>(
+      getIncidentsCountSql(monitorIds),
+    )
     return result.reduce((a, b) => a + Number(b.count), 0)
   }
 
