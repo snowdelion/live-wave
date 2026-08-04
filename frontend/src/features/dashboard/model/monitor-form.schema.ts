@@ -1,6 +1,6 @@
 import z from 'zod'
 
-import { DnsRecordType, MonitorType } from '@/entities/monitor'
+import { DnsRecordType, MonitorType } from '@/entities/monitors'
 
 import { urlRefine } from '../lib/dashboard.utils'
 

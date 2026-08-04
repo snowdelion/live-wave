@@ -1,7 +1,7 @@
 const analytics = '/api/analytics'
 const auth = '/api/auth'
 const health = '/api/health'
-const monitor = '/api/monitor'
+const monitors = '/api/monitors'
 const notification = '/api/notification'
 const users = '/api/users'
 
@@ -25,12 +25,12 @@ export const API_URL = {
     READINESS: `${health}/readiness`,
   },
 
-  MONITOR: {
-    ALL: monitor,
-    BY_ID: (monitorId: string) => `${monitor}/${monitorId}`,
-    CREATE: monitor,
-    UPDATE: (monitorId: string) => `${monitor}/${monitorId}`,
-    DELETE: (monitorId: string) => `${monitor}/${monitorId}`,
+  MONITORS: {
+    ALL: monitors,
+    BY_ID: (monitorId: string) => `${monitors}/${monitorId}`,
+    CREATE: monitors,
+    UPDATE: (monitorId: string) => `${monitors}/${monitorId}`,
+    DELETE: (monitorId: string) => `${monitors}/${monitorId}`,
   },
 
   NOTIFICATION: {

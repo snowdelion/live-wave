@@ -8,7 +8,7 @@ import {
 import { Check, ChevronDown } from 'lucide-react'
 import { Fragment } from 'react'
 
-import type { MonitorType } from '@/entities/monitor'
+import type { MonitorType } from '@/entities/monitors'
 
 interface FilterSelectMobileProps {
   value: MonitorType | 'ALL'

@@ -1,6 +1,6 @@
 import { Globe, Radio, Server, Wifi } from 'lucide-react'
 
-import { MonitorType } from '@/entities/monitor'
+import { MonitorType } from '@/entities/monitors'
 
 export const MONITOR_TYPES: MonitorType[] = [
   MonitorType.HTTP,

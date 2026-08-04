@@ -1,5 +1,5 @@
 import { useIncidents, useOverview } from '@/entities/analytics'
-import { useDetailedMonitor } from '@/entities/monitor'
+import { useDetailedMonitor } from '@/entities/monitors'
 
 import { getCardsData } from '../../lib/monitor-details.utils'
 

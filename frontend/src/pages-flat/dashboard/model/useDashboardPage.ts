@@ -5,7 +5,7 @@ import {
   useDetailedMonitor,
   useMonitors,
   type DetailedMonitor,
-} from '@/entities/monitor'
+} from '@/entities/monitors'
 
 export function useDashboardPage() {
   const [showModal, setShowModal] = useState(false)

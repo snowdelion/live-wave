@@ -1,7 +1,7 @@
 import { Activity, ArrowLeft, Pencil, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 
-import { MonitorStatus, useDetailedMonitor } from '@/entities/monitor'
+import { MonitorStatus, useDetailedMonitor } from '@/entities/monitors'
 
 import { DetailsHeaderError } from './DetailsHeaderError'
 import { DetailsHeaderSkeleton } from './DetailsHeaderSkeleton'

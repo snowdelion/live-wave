@@ -1,6 +1,6 @@
 import { Activity, AlertTriangle, BarChart2, ShieldCheck } from 'lucide-react'
 
-import type { MonitorType } from '@/entities/monitor'
+import type { MonitorType } from '@/entities/monitors'
 
 import { RESPONSE_THRESHOLD } from './monitor-details.constants'
 

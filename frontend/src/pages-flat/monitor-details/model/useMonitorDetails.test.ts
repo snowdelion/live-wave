@@ -5,12 +5,12 @@ import {
   useDeleteMonitor,
   MonitorType,
   DnsRecordType,
-} from '@/entities/monitor'
+} from '@/entities/monitors'
 
 import { useMonitorDetails } from './useMonitorDetails'
 
-vi.mock('@/entities/monitor', async () => {
-  const actual = await vi.importActual('@/entities/monitor')
+vi.mock('@/entities/monitors', async () => {
+  const actual = await vi.importActual('@/entities/monitors')
   return { ...actual, useDetailedMonitor: vi.fn(), useDeleteMonitor: vi.fn() }
 })
 

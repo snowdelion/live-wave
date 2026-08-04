@@ -1,11 +1,11 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import { useDetailedMonitor } from '@/entities/monitor'
+import { useDetailedMonitor } from '@/entities/monitors'
 
 import { PeriodSwitcher } from './PeriodSwitcher'
 
-vi.mock('@/entities/monitor', () => ({
+vi.mock('@/entities/monitors', () => ({
   useDetailedMonitor: vi.fn(),
 }))
 

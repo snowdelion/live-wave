@@ -9,7 +9,7 @@ import {
   useUpdateMonitor,
   type CreateMonitorRequest,
   type UpdateMonitorRequest,
-} from '@/entities/monitor'
+} from '@/entities/monitors'
 
 import type { MonitorModalProps } from '../ui/modals/MonitorModal'
 

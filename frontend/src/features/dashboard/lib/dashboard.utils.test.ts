@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { MonitorType } from '@/entities/monitor'
+import { MonitorType } from '@/entities/monitors'
 
 import { urlRefine, formatTime, getUptimeColor, getResponseColor } from './dashboard.utils'
 

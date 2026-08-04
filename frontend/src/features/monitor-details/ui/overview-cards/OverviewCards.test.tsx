@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react'
 
 import { useOverview, useIncidents } from '@/entities/analytics'
-import { MonitorType, useDetailedMonitor } from '@/entities/monitor'
+import { MonitorType, useDetailedMonitor } from '@/entities/monitors'
 import { renderWithClient } from '@/shared/test-utils'
 
 import { getCardsData } from '../../lib/monitor-details.utils'
@@ -13,8 +13,8 @@ vi.mock('@/entities/analytics', () => ({
   useIncidents: vi.fn(),
 }))
 
-vi.mock('@/entities/monitor', async () => {
-  const actual = await vi.importActual('@/entities/monitor')
+vi.mock('@/entities/monitors', async () => {
+  const actual = await vi.importActual('@/entities/monitors')
   return { ...actual, useDetailedMonitor: vi.fn() }
 })
 
