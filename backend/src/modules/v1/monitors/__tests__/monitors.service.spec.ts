@@ -382,8 +382,6 @@ describe('findAllByUserId', () => {
         total: 10,
         up: 10,
         avgResponse: 30,
-        minResponse: 10,
-        maxResponse: 50,
         sparkline: [30, 40, 50],
       },
     ])
@@ -414,8 +412,6 @@ describe('findAllByUserId', () => {
       name: 'test',
       trend: {
         avgResponseTime: 30,
-        minResponseTime: 10,
-        maxResponseTime: 50,
         sparkline: [30, 40, 50],
       },
       weekUptime: 100,
@@ -428,7 +424,6 @@ describe('findById', () => {
   it('returns the monitor when found and owned by userId', async () => {
     vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue({
       ...httpMonitorWithRelation,
-      checks: [],
       icmpMonitor: null,
       tcpMonitor: null,
     } as any)
@@ -438,12 +433,19 @@ describe('findById', () => {
 
     expect(mockPrisma.monitor.findUnique).toHaveBeenCalledWith({
       where: { id: MONITOR_ID },
-      include: {
-        checks: { orderBy: { checkedAt: 'desc' }, take: 10 },
+      select: {
+        checkInterval: true,
+        dnsMonitor: true,
         httpMonitor: true,
         icmpMonitor: true,
+        id: true,
+        lastCheckedAt: true,
+        lastStatus: true,
+        name: true,
         tcpMonitor: true,
-        dnsMonitor: true,
+        timeout: true,
+        type: true,
+        userId: true,
       },
     })
     expect(result).toMatchObject({ id: MONITOR_ID })

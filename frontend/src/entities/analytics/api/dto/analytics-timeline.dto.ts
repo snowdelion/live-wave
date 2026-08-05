@@ -2,8 +2,6 @@ import z from 'zod'
 
 export const analyticsTimelineItemSchema = z.object({
   date: z.coerce.date(),
-  up: z.coerce.number().min(0).int(),
-  down: z.coerce.number().min(0).int(),
   uptime: z.coerce.number().min(0).max(100),
   averageResponseTime: z.coerce.number().min(0).nullable(),
   p95ResponseTime: z.coerce.number().min(0).nullable(),

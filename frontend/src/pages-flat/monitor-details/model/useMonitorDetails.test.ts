@@ -55,7 +55,6 @@ describe('useMonitorDetails', () => {
   describe('monitor data mapping', () => {
     it('maps HTTP monitor data correctly', () => {
       const mockMonitor = {
-        id: 'mon-1',
         name: 'API',
         type: MonitorType.HTTP,
         checkInterval: 30,
@@ -67,7 +66,6 @@ describe('useMonitorDetails', () => {
       const { result } = renderHook(() => useMonitorDetails(monitorId))
 
       expect(result.current.initialMonitor).toMatchObject({
-        id: 'mon-1',
         name: 'API',
         type: MonitorType.HTTP,
         checkInterval: 30,
@@ -80,7 +78,6 @@ describe('useMonitorDetails', () => {
 
     it('extracts host and port from TCP monitor', () => {
       const mockMonitor = {
-        id: 'mon-2',
         name: 'DB',
         type: MonitorType.TCP,
         checkInterval: 60,
@@ -100,7 +97,6 @@ describe('useMonitorDetails', () => {
 
     it('extracts host from ICMP monitor', () => {
       const mockMonitor = {
-        id: 'mon-3',
         name: 'Server',
         type: MonitorType.ICMP,
         checkInterval: 60,
@@ -116,7 +112,6 @@ describe('useMonitorDetails', () => {
 
     it('extracts host and recordType from DNS monitor', () => {
       const mockMonitor = {
-        id: 'mon-4',
         name: 'DNS',
         type: MonitorType.DNS,
         checkInterval: 60,

@@ -19,9 +19,7 @@ export function getTrendSql(monitorIds: string[]) {
         "monitorId",
         COUNT(*) AS total,
         SUM(CASE WHEN status = 'up' THEN 1 ELSE 0 END) AS up,
-        ROUND(AVG("responseTime")::numeric) AS "avgResponse",
-        ROUND(MIN("responseTime")::numeric) AS "minResponse",
-        ROUND(MAX("responseTime")::numeric) AS "maxResponse"
+        ROUND(AVG("responseTime")::numeric) AS "avgResponse"
       FROM "Check"
       WHERE "checkedAt" >= ${sevenDaysAgo}
         AND "monitorId" IN (${Prisma.join(monitorIds)})
@@ -48,12 +46,9 @@ export function getTrendSql(monitorIds: string[]) {
       s.total,
       s.up,
       s."avgResponse",
-      s."minResponse",
-      s."maxResponse",
       sp.sparkline
     FROM stats s
-    LEFT JOIN spark sp ON s."monitorId" = sp."monitorId"
-        `
+    LEFT JOIN spark sp ON s."monitorId" = sp."monitorId"`
 }
 
 export function getIncidentsCountSql(monitorIds: string[]) {

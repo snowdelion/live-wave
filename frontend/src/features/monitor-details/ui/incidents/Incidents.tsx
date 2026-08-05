@@ -39,7 +39,7 @@ export function Incidents({ monitorId, onIncidentChange, periodDays }: Incidents
             key={incident.id}
             incident={incident}
             onIncidentChange={onIncidentChange}
-            incidentsDetails={incidentsDetails}
+            totalIncidents={incidentsDetails.total}
             index={index}
           />
         ))

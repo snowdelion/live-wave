@@ -4,10 +4,6 @@ import { MonitorType, StatusEnum } from '@prisma/client'
 class TrendConfig {
   @ApiProperty({ example: 42, nullable: true })
   avgResponseTime!: number | null
-  @ApiProperty({ example: 30, nullable: true })
-  minResponseTime!: number | null
-  @ApiProperty({ example: 50, nullable: true })
-  maxResponseTime!: number | null
   @ApiProperty({ example: [30, 50, 40] })
   sparkline!: number[]
 }

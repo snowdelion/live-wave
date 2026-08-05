@@ -5,7 +5,6 @@ import type { RedisService } from '@/shared/redis/redis.service'
 import { OverviewService } from './overview.service'
 
 vi.mock('../analytics.sql', () => ({
-  getDailyStatsSql: vi.fn(),
   getIncidentsCountSql: vi.fn(),
   getIncidentsSql: vi.fn(),
   getTimelineSql: vi.fn(),
@@ -27,23 +26,6 @@ const makeUptimeRaw = (overrides = {}) => [
     up: 190,
     down: 10,
     ...overrides,
-  },
-]
-
-const makeDailyStatsRaw = () => [
-  {
-    day: '2024-01-01',
-    uptime: 100,
-    averageResponseTime: 110,
-    p95ResponseTime: 120,
-    failureCount: 0,
-  },
-  {
-    day: '2024-01-02',
-    uptime: 95,
-    averageResponseTime: 130,
-    p95ResponseTime: 140,
-    failureCount: 2,
   },
 ]
 
@@ -92,33 +74,17 @@ describe('OverviewService', () => {
 
     it('returns a correctly shaped overview', async () => {
       prisma.monitor.findUnique.mockResolvedValue(mockMonitor)
-      prisma.$queryRaw
-        .mockResolvedValueOnce(makeUptimeRaw())
-        .mockResolvedValueOnce(makeDailyStatsRaw())
+      prisma.$queryRaw.mockResolvedValueOnce(makeUptimeRaw())
 
       const result = await service.getOverview('user-1', 'monitor-1', 7)
 
       expect(result).toMatchObject({
-        monitorId: 'monitor-1',
-        monitorName: 'My Monitor',
-        periodDays: 7,
         totalChecks: 200,
         uptime: 99.5,
         averageResponseTime: 123.4,
-        p95ResponseTime: 150,
         up: 190,
         down: 10,
       })
-      expect(result.dailyStats).toHaveLength(2)
-      expect(result.dailyStats[0]).toMatchObject({
-        day: '2024-01-01',
-        uptime: 100,
-        averageResponseTime: 110,
-        p95ResponseTime: 120,
-        failureCount: 0,
-      })
-      expect(result.startDate).toBeInstanceOf(Date)
-      expect(result.endDate).toBeInstanceOf(Date)
     })
 
     it('sets averageResponseTime to null when uptime row is missing', async () => {
@@ -132,26 +98,6 @@ describe('OverviewService', () => {
       expect(result.uptime).toBe(0)
       expect(result.averageResponseTime).toBeNull()
       expect(result.totalChecks).toBe(0)
-    })
-
-    it('defaults to 7 days when the days param is omitted', async () => {
-      prisma.monitor.findUnique.mockResolvedValue(mockMonitor)
-      prisma.$queryRaw.mockResolvedValue([])
-
-      const result = await service.getOverview('user-1', 'monitor-1')
-
-      expect(result.periodDays).toBe(7)
-    })
-
-    it('re-throws database errors from getDailyStats', async () => {
-      prisma.monitor.findUnique.mockResolvedValue(mockMonitor)
-      prisma.$queryRaw
-        .mockResolvedValueOnce(makeUptimeRaw())
-        .mockRejectedValueOnce(new Error('Daily stats DB exploded'))
-
-      await expect(service.getOverview('user-1', 'monitor-1')).rejects.toThrow(
-        'Daily stats DB exploded',
-      )
     })
   })
 

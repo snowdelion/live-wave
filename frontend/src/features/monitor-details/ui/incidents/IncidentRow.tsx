@@ -1,19 +1,14 @@
 import dayjs from 'dayjs'
 import { Clock } from 'lucide-react'
 
-import type { AnalyticsIncident, AnalyticsIncidents } from '@/entities/analytics'
+import type { AnalyticsIncident } from '@/entities/analytics'
 
-export function IncidentRow({
-  incident,
-  onIncidentChange,
-  incidentsDetails,
-  index,
-}: IncidentProps) {
+export function IncidentRow({ incident, onIncidentChange, totalIncidents, index }: IncidentProps) {
   return (
     <div
       key={`${incident.startAt}-${incident.endAt}`}
       onClick={() => onIncidentChange(incident)}
-      className={`grid grid-cols-[1fr_auto_auto] items-center py-[0.9rem] px-5 cursor-pointer transition duration-150 hover:bg-[rgba(0,230,118,0.02)] active:bg-[rgba(0,230,118,0.08)] ${incident.endAt === null ? '' : 'gap-4'} ${index < incidentsDetails.total - 1 ? 'border border-[rgba(0,230,118,0.05)]' : 'border-none'}`}
+      className={`grid grid-cols-[1fr_auto_auto] items-center py-[0.9rem] px-5 cursor-pointer transition duration-150 hover:bg-[rgba(0,230,118,0.02)] active:bg-[rgba(0,230,118,0.08)] ${incident.endAt === null ? '' : 'gap-4'} ${index < totalIncidents - 1 ? 'border border-[rgba(0,230,118,0.05)]' : 'border-none'}`}
     >
       <div className="min-w-0">
         <p className="font-jet-brains text-xs sm:text-[0.78rem] text-[#e8f5e8] mb-[0.2rem] whitespace-nowrap overflow-hidden text-ellipsis">
@@ -47,6 +42,6 @@ export function IncidentRow({
 interface IncidentProps {
   incident: AnalyticsIncident
   onIncidentChange: (value: AnalyticsIncident) => void
-  incidentsDetails: AnalyticsIncidents
+  totalIncidents: number
   index: number
 }

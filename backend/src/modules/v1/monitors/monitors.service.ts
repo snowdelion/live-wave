@@ -91,8 +91,6 @@ export class MonitorsService {
         total: number
         up: number
         avgResponse: number | null
-        minResponse: number | null
-        maxResponse: number | null
         sparkline: number[]
       }[]
     >(getTrendSql(monitorIds))
@@ -107,11 +105,9 @@ export class MonitorsService {
         const weekUptime = total > 0 ? Math.round((up / total) * 100 * 100) / 100 : null
 
         const avgResponseTime = stat?.avgResponse ? Number(stat.avgResponse) : null
-        const minResponseTime = stat?.minResponse ? Number(stat.minResponse) : null
-        const maxResponseTime = stat?.maxResponse ? Number(stat.maxResponse) : null
         const sparkline = stat?.sparkline.map(s => Number(s)) ?? []
 
-        const trend = { avgResponseTime, minResponseTime, maxResponseTime, sparkline }
+        const trend = { avgResponseTime, sparkline }
         const data = { ...rest, trend, weekUptime }
 
         return {
@@ -142,11 +138,15 @@ export class MonitorsService {
   async findById(userId: string, id: string) {
     const monitor = await this.prisma.monitor.findUnique({
       where: { id },
-      include: {
-        checks: {
-          orderBy: { checkedAt: 'desc' },
-          take: 10,
-        },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        checkInterval: true,
+        timeout: true,
+        lastStatus: true,
+        lastCheckedAt: true,
+        userId: true,
         httpMonitor: true,
         icmpMonitor: true,
         tcpMonitor: true,
@@ -157,7 +157,7 @@ export class MonitorsService {
     if (monitor.userId !== userId)
       throw new ForbiddenException('Uptime monitoring service not found')
 
-    const { httpMonitor, icmpMonitor, tcpMonitor, dnsMonitor, ...rest } = monitor
+    const { httpMonitor, icmpMonitor, tcpMonitor, dnsMonitor, userId: _userId, ...rest } = monitor
     const domain = getDomainByType({
       type: rest.type,
       url: httpMonitor?.url,
