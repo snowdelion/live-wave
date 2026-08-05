@@ -91,8 +91,6 @@ export class MonitorsService {
         total: number
         up: number
         avgResponse: number | null
-        minResponse: number | null
-        maxResponse: number | null
         sparkline: number[]
       }[]
     >(getTrendSql(monitorIds))
@@ -107,11 +105,9 @@ export class MonitorsService {
         const weekUptime = total > 0 ? Math.round((up / total) * 100 * 100) / 100 : null
 
         const avgResponseTime = stat?.avgResponse ? Number(stat.avgResponse) : null
-        const minResponseTime = stat?.minResponse ? Number(stat.minResponse) : null
-        const maxResponseTime = stat?.maxResponse ? Number(stat.maxResponse) : null
         const sparkline = stat?.sparkline.map(s => Number(s)) ?? []
 
-        const trend = { avgResponseTime, minResponseTime, maxResponseTime, sparkline }
+        const trend = { avgResponseTime, sparkline }
         const data = { ...rest, trend, weekUptime }
 
         return {

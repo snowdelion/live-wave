@@ -5,8 +5,6 @@ import { MonitorStatus, MonitorType } from '../../model/monitors.types'
 const trendConfigSchema = z
   .object({
     avgResponseTime: z.coerce.number().nullable(),
-    minResponseTime: z.coerce.number().nullable(),
-    maxResponseTime: z.coerce.number().nullable(),
     sparkline: z.array(z.coerce.number()),
   })
   .strict()

@@ -382,8 +382,6 @@ describe('findAllByUserId', () => {
         total: 10,
         up: 10,
         avgResponse: 30,
-        minResponse: 10,
-        maxResponse: 50,
         sparkline: [30, 40, 50],
       },
     ])
@@ -414,8 +412,6 @@ describe('findAllByUserId', () => {
       name: 'test',
       trend: {
         avgResponseTime: 30,
-        minResponseTime: 10,
-        maxResponseTime: 50,
         sparkline: [30, 40, 50],
       },
       weekUptime: 100,
