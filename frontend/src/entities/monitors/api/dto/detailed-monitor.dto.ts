@@ -2,18 +2,6 @@ import z from 'zod'
 
 import { DnsRecordType, MonitorStatus, MonitorType } from '../../model/monitors.types'
 
-const baseCheckSchema = z
-  .object({
-    id: z.string(),
-    status: z.enum(MonitorStatus),
-    statusCode: z.number().nullable(),
-    responseTime: z.number().min(0).nullable(),
-    error: z.string().nullable(),
-    monitorId: z.string(),
-    checkedAt: z.coerce.date(),
-  })
-  .strict()
-
 const baseDetailedMonitorSchema = z
   .object({
     id: z.string(),
@@ -22,30 +10,10 @@ const baseDetailedMonitorSchema = z
     checkInterval: z.number().min(5).max(60),
     timeout: z.number().min(5000).max(30_000),
     lastStatus: z.enum(MonitorStatus).nullable(),
-    userId: z.string(),
     lastCheckedAt: z.coerce.date().nullable(),
-    nextCheckAt: z.coerce.date(),
-    createdAt: z.coerce.date(),
-    updatedAt: z.coerce.date(),
     domain: z.string().min(1),
   })
   .strict()
-
-const httpDetailsSchema = z.object({
-  url: z.url(),
-  method: z.enum(['HEAD']),
-})
-const tcpDetailsSchema = z.object({
-  host: z.string(),
-  port: z.coerce.number().min(1).max(65535),
-})
-const icmpDetailsSchema = z.object({
-  host: z.string(),
-})
-const dnsDetailsSchema = z.object({
-  host: z.string(),
-  recordType: z.enum(DnsRecordType),
-})
 
 export const detailedHttpMonitorSchema = baseDetailedMonitorSchema
   .extend({
@@ -55,7 +23,6 @@ export const detailedHttpMonitorSchema = baseDetailedMonitorSchema
       url: z.url(),
       method: z.enum(['HEAD']),
     }),
-    checks: z.array(baseCheckSchema.extend({ details: httpDetailsSchema })),
   })
   .strict()
 export const detailedTcpMonitorSchema = baseDetailedMonitorSchema
@@ -66,7 +33,6 @@ export const detailedTcpMonitorSchema = baseDetailedMonitorSchema
       host: z.string(),
       port: z.coerce.number().min(1).max(65535),
     }),
-    checks: z.array(baseCheckSchema.extend({ details: tcpDetailsSchema })),
   })
   .strict()
 export const detailedIcmpMonitorSchema = baseDetailedMonitorSchema
@@ -76,7 +42,6 @@ export const detailedIcmpMonitorSchema = baseDetailedMonitorSchema
       monitorId: z.string(),
       host: z.string(),
     }),
-    checks: z.array(baseCheckSchema.extend({ details: icmpDetailsSchema })),
   })
   .strict()
 export const detailedDnsMonitorSchema = baseDetailedMonitorSchema
@@ -87,7 +52,6 @@ export const detailedDnsMonitorSchema = baseDetailedMonitorSchema
       host: z.string(),
       recordType: z.enum(DnsRecordType),
     }),
-    checks: z.array(baseCheckSchema.extend({ details: dnsDetailsSchema })),
   })
   .strict()
 

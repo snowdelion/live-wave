@@ -23,7 +23,6 @@ export function useMonitorDetails(monitorId: string) {
   if (monitor && 'tcpMonitor' in monitor) host = monitor.tcpMonitor.host
 
   const initialMonitor = {
-    id: monitor?.id,
     name: monitor?.name || '',
     type: monitor?.type || MonitorType.HTTP,
     checkInterval: monitor?.checkInterval || 10,

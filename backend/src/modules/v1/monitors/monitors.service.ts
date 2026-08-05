@@ -142,11 +142,15 @@ export class MonitorsService {
   async findById(userId: string, id: string) {
     const monitor = await this.prisma.monitor.findUnique({
       where: { id },
-      include: {
-        checks: {
-          orderBy: { checkedAt: 'desc' },
-          take: 10,
-        },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        checkInterval: true,
+        timeout: true,
+        lastStatus: true,
+        lastCheckedAt: true,
+        userId: true,
         httpMonitor: true,
         icmpMonitor: true,
         tcpMonitor: true,
@@ -157,7 +161,7 @@ export class MonitorsService {
     if (monitor.userId !== userId)
       throw new ForbiddenException('Uptime monitoring service not found')
 
-    const { httpMonitor, icmpMonitor, tcpMonitor, dnsMonitor, ...rest } = monitor
+    const { httpMonitor, icmpMonitor, tcpMonitor, dnsMonitor, userId: _userId, ...rest } = monitor
     const domain = getDomainByType({
       type: rest.type,
       url: httpMonitor?.url,

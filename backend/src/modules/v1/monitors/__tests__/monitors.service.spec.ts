@@ -428,7 +428,6 @@ describe('findById', () => {
   it('returns the monitor when found and owned by userId', async () => {
     vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue({
       ...httpMonitorWithRelation,
-      checks: [],
       icmpMonitor: null,
       tcpMonitor: null,
     } as any)
@@ -438,12 +437,19 @@ describe('findById', () => {
 
     expect(mockPrisma.monitor.findUnique).toHaveBeenCalledWith({
       where: { id: MONITOR_ID },
-      include: {
-        checks: { orderBy: { checkedAt: 'desc' }, take: 10 },
+      select: {
+        checkInterval: true,
+        dnsMonitor: true,
         httpMonitor: true,
         icmpMonitor: true,
+        id: true,
+        lastCheckedAt: true,
+        lastStatus: true,
+        name: true,
         tcpMonitor: true,
-        dnsMonitor: true,
+        timeout: true,
+        type: true,
+        userId: true,
       },
     })
     expect(result).toMatchObject({ id: MONITOR_ID })
