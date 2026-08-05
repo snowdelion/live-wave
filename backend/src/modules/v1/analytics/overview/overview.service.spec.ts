@@ -1,0 +1,188 @@
+import { Logger, NotFoundException } from '@nestjs/common'
+
+import type { RedisService } from '@/shared/redis/redis.service'
+
+import { OverviewService } from './overview.service'
+
+vi.mock('../analytics.sql', () => ({
+  getDailyStatsSql: vi.fn(),
+  getIncidentsCountSql: vi.fn(),
+  getIncidentsSql: vi.fn(),
+  getTimelineSql: vi.fn(),
+  getUptimeItemSql: vi.fn(),
+}))
+
+const mockMonitor = { userId: 'user-1', name: 'My Monitor' }
+const mockRedis = {
+  get: vi.fn(),
+  set: vi.fn(),
+} as unknown as RedisService
+
+const makeUptimeRaw = (overrides = {}) => [
+  {
+    uptime: 99.5,
+    averageResponseTime: 123.4,
+    p95ResponseTime: 150,
+    totalChecks: 200,
+    up: 190,
+    down: 10,
+    ...overrides,
+  },
+]
+
+const makeDailyStatsRaw = () => [
+  {
+    day: '2024-01-01',
+    uptime: 100,
+    averageResponseTime: 110,
+    p95ResponseTime: 120,
+    failureCount: 0,
+  },
+  {
+    day: '2024-01-02',
+    uptime: 95,
+    averageResponseTime: 130,
+    p95ResponseTime: 140,
+    failureCount: 2,
+  },
+]
+
+function makePrisma(overrides: Record<string, unknown> = {}) {
+  return {
+    monitor: {
+      findUnique: vi.fn(),
+    },
+    check: {
+      count: vi.fn(),
+      findMany: vi.fn(),
+    },
+    $queryRaw: vi.fn(),
+    ...overrides,
+  }
+}
+
+describe('OverviewService', () => {
+  let service: OverviewService
+  let prisma: ReturnType<typeof makePrisma>
+
+  let loggerErrorSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    prisma = makePrisma()
+    service = new OverviewService(prisma as never, mockRedis)
+    loggerErrorSpy = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
+  })
+
+  afterEach(() => {
+    loggerErrorSpy.mockRestore()
+  })
+
+  describe('getOverview', () => {
+    it('throws NotFoundException when monitor does not exist', async () => {
+      prisma.monitor.findUnique.mockResolvedValue(null)
+
+      await expect(service.getOverview('user-1', 'monitor-1')).rejects.toThrow(NotFoundException)
+    })
+
+    it('throws NotFoundException when monitor belongs to a different user', async () => {
+      prisma.monitor.findUnique.mockResolvedValue({ userId: 'other-user', name: 'X' })
+
+      await expect(service.getOverview('user-1', 'monitor-1')).rejects.toThrow(NotFoundException)
+    })
+
+    it('returns a correctly shaped overview', async () => {
+      prisma.monitor.findUnique.mockResolvedValue(mockMonitor)
+      prisma.$queryRaw
+        .mockResolvedValueOnce(makeUptimeRaw())
+        .mockResolvedValueOnce(makeDailyStatsRaw())
+
+      const result = await service.getOverview('user-1', 'monitor-1', 7)
+
+      expect(result).toMatchObject({
+        monitorId: 'monitor-1',
+        monitorName: 'My Monitor',
+        periodDays: 7,
+        totalChecks: 200,
+        uptime: 99.5,
+        averageResponseTime: 123.4,
+        p95ResponseTime: 150,
+        up: 190,
+        down: 10,
+      })
+      expect(result.dailyStats).toHaveLength(2)
+      expect(result.dailyStats[0]).toMatchObject({
+        day: '2024-01-01',
+        uptime: 100,
+        averageResponseTime: 110,
+        p95ResponseTime: 120,
+        failureCount: 0,
+      })
+      expect(result.startDate).toBeInstanceOf(Date)
+      expect(result.endDate).toBeInstanceOf(Date)
+    })
+
+    it('sets averageResponseTime to null when uptime row is missing', async () => {
+      prisma.monitor.findUnique.mockResolvedValue(mockMonitor)
+      prisma.$queryRaw
+        .mockResolvedValueOnce([{ uptime: null, averageResponseTime: null, totalChecks: null }])
+        .mockResolvedValueOnce([])
+
+      const result = await service.getOverview('user-1', 'monitor-1')
+
+      expect(result.uptime).toBe(0)
+      expect(result.averageResponseTime).toBeNull()
+      expect(result.totalChecks).toBe(0)
+    })
+
+    it('defaults to 7 days when the days param is omitted', async () => {
+      prisma.monitor.findUnique.mockResolvedValue(mockMonitor)
+      prisma.$queryRaw.mockResolvedValue([])
+
+      const result = await service.getOverview('user-1', 'monitor-1')
+
+      expect(result.periodDays).toBe(7)
+    })
+
+    it('re-throws database errors from getDailyStats', async () => {
+      prisma.monitor.findUnique.mockResolvedValue(mockMonitor)
+      prisma.$queryRaw
+        .mockResolvedValueOnce(makeUptimeRaw())
+        .mockRejectedValueOnce(new Error('Daily stats DB exploded'))
+
+      await expect(service.getOverview('user-1', 'monitor-1')).rejects.toThrow(
+        'Daily stats DB exploded',
+      )
+    })
+  })
+
+  describe('error propagation', () => {
+    it('re-throws database errors from getOverview (getUptime)', async () => {
+      prisma.monitor.findUnique.mockResolvedValue(mockMonitor)
+      prisma.$queryRaw.mockRejectedValue(new Error('DB exploded'))
+
+      await expect(service.getOverview('user-1', 'monitor-1')).rejects.toThrow('DB exploded')
+    })
+
+    it('calls logger.error with message and stack when an Error is thrown', async () => {
+      const err = new Error('oops')
+      prisma.monitor.findUnique.mockResolvedValue(mockMonitor)
+      prisma.$queryRaw.mockRejectedValue(err)
+
+      await expect(service.getOverview('user-1', 'monitor-1')).rejects.toThrow('oops')
+
+      expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringContaining('oops'), err.stack)
+    })
+
+    it('calls logger.error with "Unknown error" and no stack for non-Error throws', async () => {
+      prisma.monitor.findUnique.mockResolvedValue(mockMonitor)
+      prisma.$queryRaw.mockRejectedValue('raw string error')
+
+      await expect(service.getOverview('user-1', 'monitor-1')).rejects.toBe('raw string error')
+
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Unknown error'),
+        undefined,
+      )
+    })
+  })
+})

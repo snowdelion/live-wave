@@ -5,17 +5,23 @@ import { ApiExtraModels } from '@nestjs/swagger'
 import { UserId } from '@/shared/decorators/user-id.decorator'
 
 import { getIncidentsDocs, getOverviewDocs, getTimelineDocs } from './analytics.docs'
-import { AnalyticsService } from './analytics.service'
 import { AnalyticsDocs } from './decorators/analytics-docs.decorator'
 import { ANALYTICS_EXTRA_MODELS } from './dto/analytics-extra-models'
 import { AnalyticsIncidentsQueryDto } from './dto/requests/analytics-incidents-query.dto'
 import { AnalyticsOverviewQueryDto } from './dto/requests/analytics-overview-query.dto'
 import { AnalyticsTimelineQueryDto } from './dto/requests/analytics-timeline-query.dto'
+import { IncidentsService } from './incidents/incidents.service'
+import { OverviewService } from './overview/overview.service'
+import { TimelineService } from './timeline/timeline.service'
 
 @ApiExtraModels(...ANALYTICS_EXTRA_MODELS)
 @Controller('analytics')
 export class AnalyticsController {
-  constructor(private analyticsService: AnalyticsService) {}
+  constructor(
+    private overviewService: OverviewService,
+    private incidentsService: IncidentsService,
+    private timelineService: TimelineService,
+  ) {}
 
   @AnalyticsDocs(getOverviewDocs)
   @Get(':monitorId')
@@ -25,7 +31,7 @@ export class AnalyticsController {
     @Param('monitorId') monitorId: string,
     @Query() query: AnalyticsOverviewQueryDto,
   ) {
-    return await this.analyticsService.getOverview(userId, monitorId, query.days)
+    return await this.overviewService.getOverview(userId, monitorId, query.days)
   }
 
   @AnalyticsDocs(getIncidentsDocs)
@@ -38,7 +44,7 @@ export class AnalyticsController {
   ) {
     const startDate = this.getStartDate(query)
 
-    return this.analyticsService.getIncidents(userId, monitorId, startDate)
+    return this.incidentsService.getIncidents(userId, monitorId, startDate)
   }
 
   @AnalyticsDocs(getTimelineDocs)
@@ -50,7 +56,7 @@ export class AnalyticsController {
     @Query() query: AnalyticsTimelineQueryDto,
   ) {
     const startDate = this.getStartDate(query)
-    return await this.analyticsService.getTimeline(userId, monitorId, startDate)
+    return await this.timelineService.getTimeline(userId, monitorId, startDate)
   }
 
   private getStartDate(query: { days?: number }) {

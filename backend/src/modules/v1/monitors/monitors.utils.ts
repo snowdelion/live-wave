@@ -6,7 +6,7 @@ import {
   Method,
   type Monitor,
   MonitorType,
-  Prisma,
+  type Prisma,
   type PrismaClient,
   RecordType,
   type TcpMonitor,
@@ -15,61 +15,6 @@ import type { DefaultArgs } from '@prisma/client/runtime/library'
 
 import type { CreateMonitorDto } from './dto/requests/create-monitor.dto'
 import type { UpdateMonitorDto } from './dto/requests/update-monitor.dto'
-
-const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-export function getTrendSql(monitorIds: string[]) {
-  return Prisma.sql`
-    WITH numbered AS (
-      SELECT
-        "monitorId",
-        "responseTime",
-        ROW_NUMBER() OVER (PARTITION BY "monitorId" ORDER BY "checkedAt") AS rn,
-        COUNT(*) OVER (PARTITION BY "monitorId") AS total
-      FROM "Check"
-      WHERE "checkedAt" >= ${sevenDaysAgo}
-        AND "monitorId" IN (${Prisma.join(monitorIds)})
-    ),
-    stats AS (
-      SELECT
-        "monitorId",
-        COUNT(*) AS total,
-        SUM(CASE WHEN status = 'up' THEN 1 ELSE 0 END) AS up,
-        ROUND(AVG("responseTime")::numeric) AS "avgResponse",
-        ROUND(MIN("responseTime")::numeric) AS "minResponse",
-        ROUND(MAX("responseTime")::numeric) AS "maxResponse"
-      FROM "Check"
-      WHERE "checkedAt" >= ${sevenDaysAgo}
-        AND "monitorId" IN (${Prisma.join(monitorIds)})
-      GROUP BY "monitorId"
-    ),
-    blocks AS (
-      SELECT
-        "monitorId",
-        CEIL(rn / (total::float / 20)) AS block_num,
-        AVG("responseTime") AS avg_response
-      FROM numbered
-      WHERE "responseTime" IS NOT NULL
-      GROUP BY "monitorId", block_num
-    ),
-    spark AS (
-      SELECT
-        "monitorId",
-        array_agg(ROUND(avg_response::numeric) ORDER BY block_num) AS sparkline
-      FROM blocks
-      GROUP BY "monitorId"
-    )
-    SELECT
-      s."monitorId",
-      s.total,
-      s.up,
-      s."avgResponse",
-      s."minResponse",
-      s."maxResponse",
-      sp.sparkline
-    FROM stats s
-    LEFT JOIN spark sp ON s."monitorId" = sp."monitorId"
-        `
-}
 
 export function monitorRequestData(userId: string, type: MonitorType, dto: CreateMonitorDto) {
   const data = {
