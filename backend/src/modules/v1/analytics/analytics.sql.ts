@@ -1,25 +1,10 @@
 import { Prisma } from '@prisma/client'
 
-export function getDailyStatsSql(monitorId: string, startDate: Date) {
-  return Prisma.sql`
-    SELECT
-      TO_CHAR(DATE("checkedAt"), 'YYYY-MM-DD') AS day,
-      ROUND((COUNT(*) FILTER (WHERE status = 'up')::float / NULLIF(COUNT(*), 0) * 100)::numeric, 1) AS uptime,
-      ROUND(AVG("responseTime") FILTER (WHERE "responseTime" IS NOT NULL), 1) AS "averageResponseTime",
-      ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY "responseTime")::numeric, 1) AS "p95ResponseTime",
-      COUNT(*) FILTER (WHERE status = 'down') AS "failureCount"
-    FROM "Check"
-    WHERE "monitorId" = ${monitorId} AND "checkedAt" >= ${startDate}
-    GROUP BY TO_CHAR(DATE("checkedAt"), 'YYYY-MM-DD')
-    ORDER BY day ASC`
-}
-
 export function getUptimeItemSql(monitorId: string, startDate: Date) {
   return Prisma.sql`
     SELECT 
       ROUND((COUNT(*) FILTER (WHERE status = 'up')::float / NULLIF(COUNT(*), 0) * 100)::numeric, 1) AS uptime,
       ROUND(AVG("responseTime") FILTER (WHERE "responseTime" IS NOT NULL), 1) AS "averageResponseTime",
-      ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY "responseTime")::numeric, 1) AS "p95ResponseTime",
       COUNT(*) AS "totalChecks",
       COUNT(*) FILTER (WHERE status = 'up') AS up,
       COUNT(*) FILTER (WHERE status = 'down') AS down
@@ -107,8 +92,6 @@ export function getTimelineSql(monitorId: string, startDate: Date, bucketMinutes
   return Prisma.sql`
     SELECT
       DATE_TRUNC('minute', "checkedAt") - (EXTRACT(MINUTE FROM "checkedAt")::int % ${bucketMinutes}) * INTERVAL '1 minute' AS bucket,
-      COUNT(*) FILTER (WHERE status = 'up') AS up,
-      COUNT(*) FILTER (WHERE status = 'down') AS down,
       ROUND(AVG("responseTime") FILTER (WHERE "responseTime" IS NOT NULL), 1) AS "averageResponseTime",
       ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY "responseTime")::numeric, 1) AS "p95ResponseTime",
       ROUND((COUNT(*) FILTER (WHERE status = 'up')::float / NULLIF(COUNT(*), 0) * 100)::numeric, 1) AS uptime

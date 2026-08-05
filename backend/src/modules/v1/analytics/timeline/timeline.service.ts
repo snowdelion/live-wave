@@ -30,8 +30,6 @@ export class TimelineService {
 
     return results.map(r => ({
       date: r.checkedAt,
-      up: r.status === StatusEnum.up ? 1 : 0,
-      down: r.status === StatusEnum.down ? 1 : 0,
       uptime: r.status === StatusEnum.up ? 100 : 0,
       averageResponseTime: Number(r.responseTime) || null,
       p95ResponseTime: null,
@@ -49,8 +47,6 @@ export class TimelineService {
       const results = await this.prisma.$queryRaw<
         {
           bucket: Date
-          up: bigint
-          down: bigint
           averageResponseTime: bigint | null
           p95ResponseTime: bigint | null
           uptime: bigint | null
@@ -59,8 +55,6 @@ export class TimelineService {
 
       return results.map(r => ({
         date: r.bucket,
-        up: r.up ? Number(r.up) : 0,
-        down: r.down ? Number(r.down) : 0,
         uptime: r.uptime ? Number(r.uptime) : 0,
         averageResponseTime: r.averageResponseTime ? Number(r.averageResponseTime) : null,
         p95ResponseTime: r.p95ResponseTime ? Number(r.p95ResponseTime) : null,

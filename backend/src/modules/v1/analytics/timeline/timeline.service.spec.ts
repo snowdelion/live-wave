@@ -85,7 +85,7 @@ describe('TimelineService', () => {
       const result = await service.getTimeline('user-1', 'monitor-1', startDate)
 
       expect(result).toHaveLength(2)
-      expect(result[0]).toMatchObject({ up: 9, down: 1, averageResponseTime: 200 })
+      expect(result[0]).toMatchObject({ averageResponseTime: 200 })
       expect(result[0].date).toBeInstanceOf(Date)
     })
 
@@ -111,15 +111,11 @@ describe('TimelineService', () => {
 
       expect(result).toHaveLength(2)
       expect(result[0]).toMatchObject({
-        up: 1,
-        down: 0,
         uptime: 100,
         averageResponseTime: 100,
         p95ResponseTime: null,
       })
       expect(result[1]).toMatchObject({
-        up: 0,
-        down: 1,
         uptime: 0,
         averageResponseTime: null,
         p95ResponseTime: null,
@@ -136,21 +132,6 @@ describe('TimelineService', () => {
       const [point] = await service.getTimeline('user-1', 'monitor-1', startDate)
 
       expect(point.averageResponseTime).toBeNull()
-    })
-
-    it('converts BigInt up/down counts to numbers', async () => {
-      prisma.monitor.findUnique.mockResolvedValue({ userId: 'user-1' })
-      prisma.check.count.mockResolvedValue(100)
-      prisma.$queryRaw.mockResolvedValue([
-        { bucket: new Date(), up: BigInt(42), down: BigInt(3), averageResponseTime: 100 },
-      ])
-
-      const [point] = await service.getTimeline('user-1', 'monitor-1', startDate)
-
-      expect(typeof point.up).toBe('number')
-      expect(typeof point.down).toBe('number')
-      expect(point.up).toBe(42)
-      expect(point.down).toBe(3)
     })
 
     it('re-throws database errors from getRawTimeline', async () => {
