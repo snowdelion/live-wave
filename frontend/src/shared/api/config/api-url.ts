@@ -7,7 +7,7 @@ const users = '/api/users'
 
 export const API_URL = {
   ANALYTICS: {
-    OVERVIEW: (monitorId: string, days = 7) => `${analytics}/${monitorId}?days=${days}`,
+    OVERVIEW: (monitorId: string, days = 7) => `${analytics}/overview/${monitorId}?days=${days}`,
     INCIDENTS: (monitorId: string, days = 7) => `${analytics}/incidents/${monitorId}?days=${days}`,
     TIMELINE: (monitorId: string, days = 7) => `${analytics}/timeline/${monitorId}?days=${days}`,
   },

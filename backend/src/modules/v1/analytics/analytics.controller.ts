@@ -24,7 +24,7 @@ export class AnalyticsController {
   ) {}
 
   @AnalyticsDocs(getOverviewDocs)
-  @Get(':monitorId')
+  @Get('/overview/:monitorId')
   @UseGuards(AuthGuard('jwt'))
   async getOverview(
     @UserId() userId: string,
