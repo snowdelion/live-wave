@@ -6,7 +6,6 @@ import { useAuthStore } from '@/shared/api'
 import type { AuthViaEmailRequest } from '../api/dto/auth-via-email.dto'
 import type { AuthViaTelegramRequest } from '../api/dto/auth-via-telegram.dto'
 import { logout } from '../api/log-out'
-import { refreshToken } from '../api/refresh-token'
 import { signInViaEmail } from '../api/sign-in-via-email'
 import { signInViaTelegram } from '../api/sign-in-via-telegram'
 import { signUpViaEmail } from '../api/sign-up-via-email'
@@ -62,14 +61,5 @@ export function useLogout() {
       queryClient.clear()
       router.replace('/auth')
     },
-  })
-}
-
-export function useRefreshToken() {
-  const setAccessToken = useAuthStore(s => s.setAccessToken)
-
-  return useMutation({
-    mutationFn: refreshToken,
-    onSuccess: ({ accessToken }) => setAccessToken(accessToken),
   })
 }

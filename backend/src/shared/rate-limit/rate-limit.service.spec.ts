@@ -19,7 +19,6 @@ describe('RateLimitService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockRedis.multi.mockReturnValue(mockMulti)
     mockMulti.incr.mockReturnThis()
     service = new RateLimitService(mockRedis as unknown as RedisService)
   })

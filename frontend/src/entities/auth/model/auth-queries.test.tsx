@@ -6,21 +6,13 @@ import { useAuthStore } from '@/shared/api'
 import { renderHookWithClient } from '@/shared/test-utils'
 
 import { logout } from '../api/log-out'
-import { refreshToken } from '../api/refresh-token'
 import { signInViaEmail } from '../api/sign-in-via-email'
 import { signInViaTelegram } from '../api/sign-in-via-telegram'
 import { signUpViaEmail } from '../api/sign-up-via-email'
 
-import {
-  useLogout,
-  useRefreshToken,
-  useSignInEmail,
-  useSignInTelegram,
-  useSignUpEmail,
-} from './auth-queries'
+import { useLogout, useSignInEmail, useSignInTelegram, useSignUpEmail } from './auth-queries'
 
 vi.mock('../api/log-out')
-vi.mock('../api/refresh-token')
 vi.mock('../api/sign-in-via-email')
 vi.mock('../api/sign-in-via-telegram')
 vi.mock('../api/sign-up-via-email')
@@ -152,33 +144,6 @@ describe('auth mutations', () => {
       expect(mockClearAccessToken).toHaveBeenCalledTimes(1)
       expect(clearSpy).toHaveBeenCalledTimes(1)
       expect(mockRouter.replace).toHaveBeenCalledWith('/auth')
-    })
-  })
-
-  describe('useRefreshToken', () => {
-    it('should call refreshToken and call setAccessToken on success', async () => {
-      vi.mocked(refreshToken).mockResolvedValueOnce({ accessToken: 'refreshed-token' } as never)
-
-      const { result } = renderHookWithClient(() => useRefreshToken())
-
-      result.current.mutate()
-
-      await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-      expect(refreshToken).toHaveBeenCalledTimes(1)
-      expect(mockSetAccessToken).toHaveBeenCalledWith('refreshed-token')
-    })
-
-    it('should not call setAccessToken when the mutation fails', async () => {
-      vi.mocked(refreshToken).mockRejectedValueOnce(new Error('failed'))
-
-      const { result } = renderHookWithClient(() => useRefreshToken())
-
-      result.current.mutate()
-
-      await waitFor(() => expect(result.current.isError).toBe(true))
-
-      expect(mockSetAccessToken).not.toHaveBeenCalled()
     })
   })
 })

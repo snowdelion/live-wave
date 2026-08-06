@@ -87,18 +87,4 @@ export class RedisService {
       })
     }
   }
-
-  multi() {
-    try {
-      return this.redis.multi()
-    } catch (e) {
-      throw logAndThrow({
-        name: RedisService.name,
-        context: 'multi Redis',
-        e,
-        exception: Error,
-        exceptionContext: 'Redis multi failed',
-      })
-    }
-  }
 }
