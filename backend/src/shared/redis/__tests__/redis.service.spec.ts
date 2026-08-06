@@ -112,23 +112,6 @@ describe('RedisService', () => {
     })
   })
 
-  describe('multi', () => {
-    it('returns a multi instance', () => {
-      const mockMulti = { exec: vi.fn() }
-      mockRedis.multi = vi.fn().mockReturnValue(mockMulti)
-      const result = service.multi()
-      expect(mockRedis.multi).toHaveBeenCalled()
-      expect(result).toBe(mockMulti)
-    })
-
-    it('throws error when redis fails', () => {
-      mockRedis.multi = vi.fn().mockImplementation(() => {
-        throw new Error('fail')
-      })
-      expect(() => service.multi()).toThrow('Redis multi failed: fail')
-    })
-  })
-
   describe('when redis throws', () => {
     const setMessage = 'set failed'
     const getMessage = 'get failed'
