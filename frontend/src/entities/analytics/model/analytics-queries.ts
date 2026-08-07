@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 
 import { fetchIncidents } from '../api/fetch-incidents'
 import { fetchOverview } from '../api/fetch-overview'
@@ -19,6 +19,7 @@ export function useOverview(monitorId: string, days = 7) {
     queryKey: ANALYTICS_QUERY_KEYS.overview(monitorId, days),
     queryFn: () => fetchOverview(monitorId, days),
     enabled: !!monitorId,
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -27,6 +28,7 @@ export function useIncidents(monitorId: string, days = 7) {
     queryKey: ANALYTICS_QUERY_KEYS.incidents(monitorId, days),
     queryFn: () => fetchIncidents(monitorId, days),
     enabled: !!monitorId,
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -35,5 +37,6 @@ export function useTimeline(monitorId: string, days = 7) {
     queryKey: ANALYTICS_QUERY_KEYS.timeline(monitorId, days),
     queryFn: () => fetchTimeline(monitorId, days),
     enabled: !!monitorId,
+    placeholderData: keepPreviousData,
   })
 }
