@@ -210,7 +210,7 @@ export function MonitorModal({ mode, onClose, initial }: MonitorModalProps) {
                     <button
                       type="submit"
                       disabled={isPending}
-                      className={`flex-2 p-[0.7rem] font-inter font-semibold text-sm text-[#080a08] bg-[#00e676] border-none rounded-sm transition-opacity duration-200
+                      className={`flex-2 flex items-center justify-center gap-1.5 p-[0.7rem] font-inter font-semibold text-sm text-[#080a08] bg-[#00e676] border-none rounded-sm transition-opacity duration-200
                         hover:opacity-90 active:opacity-80 disabled:opacity-50 focus:outline-none`}
                     >
                       {isPending && (
