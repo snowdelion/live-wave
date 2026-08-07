@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 
 import LandingPage from './LandingPage'
 
-vi.mock('@/widgets/landing', () => ({
+vi.mock('@/features/landing', () => ({
   Hero: () => <div data-testid="hero">Hero</div>,
   Features: () => <div data-testid="features">Features</div>,
   CTA: () => <div data-testid="cta">CTA</div>,
