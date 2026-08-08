@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'livewave-metrics'
+    sample_limit: 10000
+    static_configs:
+      - targets: ['host.docker.internal:8000']
+    metrics_path: '/api/v1/metrics'
+    honor_labels: true
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'backend'
+    bearer_token_file: /etc/prometheus/token
