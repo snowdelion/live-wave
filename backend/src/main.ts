@@ -6,6 +6,9 @@ import cookieParser from 'cookie-parser'
 import helmet from 'helmet'
 
 import { AppModule } from './app.module'
+import { MetricsInterceptor } from './shared/metrics/interceptors/metrics.interceptor'
+import { MetricsFilter } from './shared/metrics/metrics.filter'
+import { MetricsService } from './shared/metrics/metrics.service'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
@@ -25,6 +28,8 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }))
   app.setGlobalPrefix('api')
+  app.useGlobalFilters(new MetricsFilter(app.get(MetricsService)))
+  app.useGlobalInterceptors(new MetricsInterceptor(app.get(MetricsService)))
   app.enableVersioning({
     type: VersioningType.URI,
     defaultVersion: '1',

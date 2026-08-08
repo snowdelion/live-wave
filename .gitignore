@@ -26,6 +26,7 @@ backend/dist/
 coverage/
 .nyc_output/
 *.lcov
+observability/prometheus/token
 
 !.env.example
 .env.production

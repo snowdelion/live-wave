@@ -7,6 +7,7 @@ import { validate } from '@/config/validation'
 
 import { V1Module } from './modules/v1/api-v1.module'
 import { CookieModule } from './shared/cookie/cookie.module'
+import { MetricsModule } from './shared/metrics/metrics.module'
 import { PrismaModule } from './shared/prisma/prisma.module'
 import { RateLimitModule } from './shared/rate-limit/rate-limit.module'
 import { RedisModule } from './shared/redis/redis.module'
@@ -38,6 +39,7 @@ import { ThrottlerModule } from './shared/throttler/throttler.module'
     RateLimitModule,
     ThrottlerModule,
     CookieModule,
+    MetricsModule,
   ],
 
   providers: [

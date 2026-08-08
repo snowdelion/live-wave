@@ -23,12 +23,47 @@ services:
       - '6379:6379'
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./observability/prometheus/prometheus.dev.yml:/etc/prometheus/prometheus.yml
+      - ./observability/prometheus/token:/etc/prometheus/token:ro
+      - prometheus_data:/prometheus
+    ports:
+      - '9090:9090'
+    env_file:
+      - ./backend/.env.local
+    networks:
+      - app-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - '3001:3000'
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning
+      - ./observability/grafana/dashboards:/etc/grafana/dashboards
+    env_file:
+      - ./backend/.env.local
     networks:
       - app-network
 
 volumes:
   postgres_data:
   redis_data:
+  grafana_data:
+  prometheus_data:
 
 networks:
   app-network:

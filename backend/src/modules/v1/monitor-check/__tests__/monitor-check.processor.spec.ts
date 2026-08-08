@@ -2,6 +2,7 @@ import { Logger } from '@nestjs/common'
 import { MonitorType, StatusEnum } from '@prisma/client'
 import type { Job } from 'bullmq'
 
+import type { MetricsService } from '@/shared/metrics/metrics.service'
 import type { PrismaService } from '@/shared/prisma/prisma.service'
 import type { RateLimitService } from '@/shared/rate-limit/rate-limit.service'
 
@@ -12,7 +13,6 @@ import type { HttpStrategy } from '../strategies/http-check.strategy'
 import type { IcmpStrategy } from '../strategies/icmp-check.strategy'
 import type { TcpStrategy } from '../strategies/tcp-check.strategy'
 
-// --- helpers ---
 const MONITOR_ID = 'monitor-1'
 const USER_ID = 'user-1'
 const HTTP_URL = 'https://example.com/health'
@@ -71,7 +71,6 @@ const makeAlertRow = ({
   telegramChatId,
 })
 
-// --- mocks ---
 const mockPrisma = {
   monitor: { findUnique: vi.fn() },
   alert: { findUnique: vi.fn() },
@@ -95,7 +94,10 @@ const mockRateLimitService = {
   domain: vi.fn(),
 } satisfies Partial<RateLimitService> as unknown as RateLimitService
 
-// --- tests ---
+const mockMetricsService = {
+  incrementMonitorChecksRequest: vi.fn(),
+} satisfies Partial<MetricsService> as unknown as MetricsService
+
 describe('MonitorCheckProcessor', () => {
   let processor: MonitorCheckProcessor
 
@@ -112,6 +114,7 @@ describe('MonitorCheckProcessor', () => {
     vi.mocked(mockDnsStrategy.check).mockReset()
     vi.mocked(mockMonitorCheckService.scheduleCheck).mockReset()
     vi.mocked(mockMonitorCheckService.scheduleNotification).mockReset()
+    vi.mocked(mockMetricsService.incrementMonitorChecksRequest).mockReset()
     vi.mocked(mockRateLimitService.domain).mockReset()
 
     vi.mocked(mockRateLimitService.domain).mockResolvedValue(false)
@@ -128,6 +131,7 @@ describe('MonitorCheckProcessor', () => {
       mockDnsStrategy,
       mockMonitorCheckService,
       mockRateLimitService,
+      mockMetricsService,
     )
   })
 
