@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common'
 
 import { BullShutdownService } from '@/shared/bull/bull-shutdown.service'
 import { BULL_NAMES } from '@/shared/bull/bull.constants'
+import { MetricsModule } from '@/shared/metrics/metrics.module'
 
 import { MonitorCheckProcessor } from './monitor-check.processor'
 import { MonitorCheckService } from './monitor-check.service'
@@ -15,6 +16,7 @@ import { TcpStrategy } from './strategies/tcp-check.strategy'
   imports: [
     BullModule.registerQueue({ name: BULL_NAMES.QUEUE }),
     BullModule.registerQueue({ name: BULL_NAMES.NOTIFICATIONS }),
+    MetricsModule,
   ],
   providers: [
     MonitorCheckService,

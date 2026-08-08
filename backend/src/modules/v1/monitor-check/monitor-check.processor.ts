@@ -4,6 +4,7 @@ import { Monitor, MonitorType, StatusEnum } from '@prisma/client'
 import { Job } from 'bullmq'
 
 import { BULL_NAMES } from '@/shared/bull/bull.constants'
+import { MetricsService } from '@/shared/metrics/metrics.service'
 import { PrismaService } from '@/shared/prisma/prisma.service'
 import { RateLimitService } from '@/shared/rate-limit/rate-limit.service'
 import { logAndThrow } from '@/shared/utils/error.utils'
@@ -28,6 +29,7 @@ export class MonitorCheckProcessor extends WorkerHost {
     private dnsStrategy: DnsStrategy,
     private monitorCheckService: MonitorCheckService,
     private rateLimitService: RateLimitService,
+    private metricsService: MetricsService,
   ) {
     super()
   }
@@ -105,6 +107,7 @@ export class MonitorCheckProcessor extends WorkerHost {
         oldLastStatus: monitor.lastStatus,
         monitor,
       })
+      this.metricsService.incrementMonitorChecksRequest('success')
     } catch (e) {
       logAndThrow({
         name: MonitorCheckProcessor.name,
@@ -112,6 +115,7 @@ export class MonitorCheckProcessor extends WorkerHost {
         e,
         shouldThrow: !shouldReschedule,
       })
+      this.metricsService.incrementMonitorChecksRequest('failure')
     } finally {
       if (shouldReschedule) {
         await this.monitorCheckService.scheduleCheck({ monitorId, immediate: false })
