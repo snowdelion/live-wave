@@ -16,6 +16,9 @@ const envSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().optional(),
   TELEGRAM_BOT_USERNAME: z.string().optional(),
   TELEGRAM_WEBHOOK_URL: z.string().optional(),
+
+  GF_SECURITY_ADMIN_PASSWORD: z.string().optional(),
+  METRICS_BEARER_TOKEN: z.string().optional(),
 })
 
 export type EnvironmentVariables = z.infer<typeof envSchema>
