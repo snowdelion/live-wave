@@ -4,22 +4,20 @@
   "metadata": {
     "name": "adlljkj",
     "namespace": "default",
-    "uid": "4335f5f8-84ad-4371-8875-c8f59170e6b2",
-    "resourceVersion": "1786197003665006",
-    "generation": 3,
-    "creationTimestamp": "2026-08-07T20:43:47Z",
+    "uid": "6ba00499-3869-4547-a424-d28d576f326b",
+    "resourceVersion": "1786539236516019",
+    "generation": 1,
+    "creationTimestamp": "2026-08-12T12:53:56Z",
     "labels": {
-      "grafana.app/deprecatedInternalID": "662651502268416"
+      "grafana.app/deprecatedInternalID": "2356348849184768"
     },
     "annotations": {
       "grafana.app/createdBy": "access-policy:service",
       "grafana.app/managedBy": "classic-file-provisioning",
       "grafana.app/managerId": "default",
-      "grafana.app/sourceChecksum": "11bffc513e522ed74499933c1f8ad385",
+      "grafana.app/sourceChecksum": "27557804728018ae1fc02e696c7236f1",
       "grafana.app/sourcePath": "/etc/grafana/dashboards/api-overview.json",
-      "grafana.app/sourceTimestamp": "1786196983000",
-      "grafana.app/updatedBy": "access-policy:service",
-      "grafana.app/updatedTimestamp": "2026-08-08T13:50:03Z",
+      "grafana.app/sourceTimestamp": "1786215535000",
       "grafana.app/folder": ""
     }
   },
@@ -61,7 +59,7 @@
                     "hidden": false,
                     "query": {
                       "datasource": {
-                        "name": "cfugrahyh845cd"
+                        "name": "Prometheus"
                       },
                       "group": "prometheus",
                       "kind": "DataQuery",
@@ -188,7 +186,7 @@
                     "hidden": false,
                     "query": {
                       "datasource": {
-                        "name": "cfugrahyh845cd"
+                        "name": "Prometheus"
                       },
                       "group": "prometheus",
                       "kind": "DataQuery",
@@ -316,7 +314,7 @@
                     "hidden": false,
                     "query": {
                       "datasource": {
-                        "name": "cfugrahyh845cd"
+                        "name": "Prometheus"
                       },
                       "group": "prometheus",
                       "kind": "DataQuery",
@@ -454,7 +452,7 @@
                     "hidden": false,
                     "query": {
                       "datasource": {
-                        "name": "cfugrahyh845cd"
+                        "name": "Prometheus"
                       },
                       "group": "prometheus",
                       "kind": "DataQuery",
@@ -578,7 +576,7 @@
                     "hidden": false,
                     "query": {
                       "datasource": {
-                        "name": "cfugrahyh845cd"
+                        "name": "Prometheus"
                       },
                       "group": "prometheus",
                       "kind": "DataQuery",
@@ -668,7 +666,7 @@
                     "hidden": false,
                     "query": {
                       "datasource": {
-                        "name": "cfugrahyh845cd"
+                        "name": "Prometheus"
                       },
                       "group": "prometheus",
                       "kind": "DataQuery",
@@ -689,7 +687,7 @@
                     "hidden": false,
                     "query": {
                       "datasource": {
-                        "name": "cfugrahyh845cd"
+                        "name": "Prometheus"
                       },
                       "group": "prometheus",
                       "kind": "DataQuery",
