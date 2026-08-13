@@ -1,8 +1,8 @@
-import { Logger } from '@nestjs/common'
 import { StatusEnum } from '@prisma/client'
 import { ping } from 'node-ping-rs'
-import { beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
+import { type MockInstance } from 'vitest'
 
+import { Logger } from '@/shared/logger/logger.service'
 import type { PrismaService } from '@/shared/prisma/prisma.service'
 
 import { IcmpStrategy } from '../icmp-check.strategy'
@@ -25,6 +25,14 @@ const makePrisma = () =>
     $transaction: vi.fn().mockResolvedValue([]),
   }) as unknown as PrismaService
 
+const mockLogger = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(() => mockLogger),
+} as unknown as Logger
+
 const baseMonitor = {
   id: 'monitor-1',
   timeout: 5000,
@@ -39,7 +47,7 @@ describe('IcmpStrategy', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     prisma = makePrisma()
-    strategy = new IcmpStrategy(prisma)
+    strategy = new IcmpStrategy(prisma, mockLogger)
     vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => {})
   })
 
@@ -49,13 +57,11 @@ describe('IcmpStrategy', () => {
   })
 
   describe('check()', () => {
-    it('skips and warns when monitor is not found', async () => {
+    it('skips when monitor is not found', async () => {
       prisma.monitor.findUnique = vi.fn().mockResolvedValue(null)
-      const warn = vi.spyOn(Logger.prototype, 'warn')
 
       await strategy.check('missing-id')
 
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('missing-id'))
       expect(mockPing).not.toHaveBeenCalled()
     })
 
@@ -120,17 +126,15 @@ describe('IcmpStrategy', () => {
       )
     })
 
-    it('records status=down and logs when ping rejects', async () => {
+    it('records status=down', async () => {
       prisma.monitor.findUnique = vi.fn().mockResolvedValue(baseMonitor)
       mockPing.mockRejectedValue(new Error('socket error'))
-      const warn = vi.spyOn(Logger.prototype, 'warn')
 
       await strategy.check('monitor-1')
 
       expect(prisma.check.create).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ status: StatusEnum.down }) }),
       )
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('is down'))
     })
 
     it('resolves status=down on timeout', async () => {

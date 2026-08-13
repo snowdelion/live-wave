@@ -1,5 +1,6 @@
-import { Logger, NotFoundException } from '@nestjs/common'
+import { NotFoundException } from '@nestjs/common'
 
+import type { Logger } from '@/shared/logger/logger.service'
 import type { RedisService } from '@/shared/redis/redis.service'
 
 import { OverviewService } from './overview.service'
@@ -43,20 +44,22 @@ function makePrisma(overrides: Record<string, unknown> = {}) {
   }
 }
 
+const mockLogger = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(() => mockLogger),
+} as unknown as Logger
+
 describe('OverviewService', () => {
   let service: OverviewService
   let prisma: ReturnType<typeof makePrisma>
 
-  let loggerErrorSpy: ReturnType<typeof vi.spyOn>
-
   beforeEach(() => {
     prisma = makePrisma()
-    service = new OverviewService(prisma as never, mockRedis)
-    loggerErrorSpy = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
-  })
 
-  afterEach(() => {
-    loggerErrorSpy.mockRestore()
+    service = new OverviewService(prisma as never, mockRedis, mockLogger)
   })
 
   describe('getOverview', () => {
@@ -116,7 +119,10 @@ describe('OverviewService', () => {
 
       await expect(service.getOverview('user-1', 'monitor-1')).rejects.toThrow('oops')
 
-      expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringContaining('oops'), err.stack)
+      expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining('oops'), {
+        context: expect.any(String),
+        stack: err.stack,
+      })
     })
 
     it('calls logger.error with "Unknown error" and no stack for non-Error throws', async () => {
@@ -125,10 +131,10 @@ describe('OverviewService', () => {
 
       await expect(service.getOverview('user-1', 'monitor-1')).rejects.toBe('raw string error')
 
-      expect(loggerErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Unknown error'),
-        undefined,
-      )
+      expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining('Unknown error'), {
+        context: expect.any(String),
+        stack: undefined,
+      })
     })
   })
 })

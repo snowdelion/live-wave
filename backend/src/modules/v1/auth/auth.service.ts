@@ -4,13 +4,13 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
-  Logger,
   UnauthorizedException,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
 import bcrypt from 'bcrypt'
 
+import { Logger } from '@/shared/logger/logger.service'
 import { PrismaService } from '@/shared/prisma/prisma.service'
 import { REDIS_KEYS } from '@/shared/redis/redis.constants'
 import { RedisService } from '@/shared/redis/redis.service'
@@ -23,21 +23,25 @@ import { TelegramAuthDto } from './dto/requests/telegram-auth.dto'
 export class AuthService {
   private readonly accessSecret?: string
   private readonly refreshSecret?: string
-  private readonly logger = new Logger()
-
+  private logger: Logger
   constructor(
     private prisma: PrismaService,
     private redis: RedisService,
     private jwtService: JwtService,
     private config: ConfigService,
+    baseLogger: Logger,
   ) {
     this.accessSecret = this.config.get<string>('JWT_ACCESS_SECRET')
     this.refreshSecret = this.config.get<string>('JWT_REFRESH_SECRET')
+    this.logger = baseLogger.child({ context: AuthService.name })
   }
 
   async signUpEmail(dto: SignUpEmailDto) {
     const existing = await this.prisma.user.count({ where: { email: dto.email.toLowerCase() } })
-    if (existing > 0) throw new ForbiddenException('Email already taken')
+    if (existing > 0) {
+      this.logger.warn('User attempted to register using an existing email', { email: dto.email })
+      throw new ForbiddenException('Email already taken')
+    }
 
     const hashedPassword = await bcrypt.hash(dto.password.trim(), 10)
     const newUser = await this.prisma.user.create({
@@ -46,7 +50,7 @@ export class AuthService {
     })
     if (!newUser.email) throw new BadRequestException('Email not found')
 
-    this.logger.debug(`User "${newUser.id}" with "${newUser.email}" registered successfully`)
+    this.logger.log('User registered via email', { userId: newUser.id, email: newUser.email })
     const { accessToken, refreshToken } = await this.generateTokens({
       userId: newUser.id,
       email: newUser.email,
@@ -59,12 +63,18 @@ export class AuthService {
       where: { email: dto.email.toLowerCase() },
       select: { password: true, id: true, email: true },
     })
-    if (!user?.password) throw new ForbiddenException('Incorrect email or password')
+    if (!user || !user.password || !user.email) {
+      this.logger.warn('Failed sign-in: user not found', { email: dto.email })
+      throw new ForbiddenException('Incorrect email or password')
+    }
 
     const isValid = await bcrypt.compare(dto.password.trim(), user.password.trim())
-    if (!isValid) throw new ForbiddenException('Incorrect email or password')
-    if (!user.email) throw new ForbiddenException('Incorrect email or password')
+    if (!isValid) {
+      this.logger.warn('Failed sign-in: invalid password', { email: user.email })
+      throw new ForbiddenException('Incorrect email or password')
+    }
 
+    this.logger.log('User signed in via email', { userId: user.id, email: user.email })
     const { accessToken, refreshToken } = await this.generateTokens({
       userId: user.id,
       email: user.email?.toLowerCase(),
@@ -73,10 +83,16 @@ export class AuthService {
   }
 
   async telegramAuth(dto: TelegramAuthDto) {
-    if (!this.verifyTelegramData(dto)) throw new UnauthorizedException('Invalid Telegram data')
+    if (!this.verifyTelegramData(dto)) {
+      this.logger.error('Invalid Telegram data', { telegramId: dto.id })
+      throw new UnauthorizedException('Invalid Telegram data')
+    }
 
     const now = Math.floor(Date.now() / 1000)
-    if (now - dto.auth_date > 300) throw new UnauthorizedException('Telegram login expired')
+    if (now - dto.auth_date > 300) {
+      this.logger.warn('Telegram login expired', { telegramId: dto.id })
+      throw new UnauthorizedException('Telegram login expired')
+    }
 
     const user = await this.prisma.user.upsert({
       where: { telegramId: String(dto.id) },
@@ -92,6 +108,10 @@ export class AuthService {
       select: { id: true, telegramId: true },
     })
 
+    this.logger.log('User authenticated via Telegram', {
+      userId: user.id,
+      telegramId: user.telegramId,
+    })
     const { accessToken, refreshToken } = await this.generateTokens({
       userId: user.id,
       telegramId: user.telegramId,
@@ -108,7 +128,9 @@ export class AuthService {
 
     const token = this.config.get<string>('TELEGRAM_BOT_TOKEN')
     if (!token) {
-      this.logger.error('TELEGRAM_BOT_TOKEN is not set')
+      this.logger.error('TELEGRAM_BOT_TOKEN is not set', {
+        hasBotToken: !!this.config.get<string>('TELEGRAM_BOT_TOKEN'),
+      })
       return false
     }
 
@@ -119,8 +141,12 @@ export class AuthService {
       .join('\n')
 
     const hmac = crypto.createHmac('sha256', secret).update(checkString).digest('hex')
+    const success = hmac === hash
 
-    return hmac === hash
+    if (success) this.logger.debug('Telegram data verified', { telegramId: data.id })
+    else this.logger.warn('Telegram data verification failed', { telegramId: data.id })
+
+    return success
   }
 
   async generateTokens({
@@ -157,23 +183,29 @@ export class AuthService {
     })
     const userRefreshToken = await this.redis.get(REDIS_KEYS.refreshToken(payload.sub))
 
-    if (!user || !userRefreshToken)
+    if (!user || !userRefreshToken) {
+      this.logger.warn('User not found or no refresh token', { userId: payload.sub })
       throw new UnauthorizedException('User not found or no refresh token')
+    }
 
     const hashed = crypto.createHash('sha256').update(refreshToken).digest('hex')
-    if (hashed !== userRefreshToken) throw new UnauthorizedException('Invalid refresh token')
+    if (hashed !== userRefreshToken) {
+      this.logger.warn('Refresh token hash mismatch', { userId: user.id })
+      throw new UnauthorizedException('Invalid refresh token')
+    }
 
+    this.logger.debug('Access token refreshed', { userId: user.id })
     const newAccessToken = this.jwtService.sign(
       { sub: user.id, email: user.email, telegramId: user.telegramId },
       { secret: this.accessSecret, expiresIn: '15m' },
     )
-
     return { accessToken: newAccessToken }
   }
 
   async invalidateRefreshToken(refreshToken: string) {
     const payload = this.getPayload(refreshToken)
     await this.redis.del(REDIS_KEYS.refreshToken(payload.sub))
+    this.logger.log('Refresh token invalidated', { userId: payload.sub })
   }
 
   private getPayload(refreshToken: string): { sub: string } {
@@ -182,7 +214,9 @@ export class AuthService {
         secret: this.refreshSecret,
       })
     } catch {
-      this.logger.warn(`Invalid "${refreshToken}" refresh token in "getPayload"`)
+      this.logger.error(`Invalid refresh token in format "getPayload"`, {
+        tokenPreview: `${refreshToken.slice(0, 10)}...`,
+      })
       throw new UnauthorizedException('Invalid refresh token')
     }
   }

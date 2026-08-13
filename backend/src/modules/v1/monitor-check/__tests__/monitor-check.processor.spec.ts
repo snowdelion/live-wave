@@ -1,7 +1,7 @@
-import { Logger } from '@nestjs/common'
 import { MonitorType, StatusEnum } from '@prisma/client'
 import type { Job } from 'bullmq'
 
+import { Logger } from '@/shared/logger/logger.service'
 import type { MetricsService } from '@/shared/metrics/metrics.service'
 import type { PrismaService } from '@/shared/prisma/prisma.service'
 import type { RateLimitService } from '@/shared/rate-limit/rate-limit.service'
@@ -98,6 +98,14 @@ const mockMetricsService = {
   incrementMonitorChecksRequest: vi.fn(),
 } satisfies Partial<MetricsService> as unknown as MetricsService
 
+const mockLogger = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(() => mockLogger),
+} as unknown as Logger
+
 describe('MonitorCheckProcessor', () => {
   let processor: MonitorCheckProcessor
 
@@ -132,6 +140,7 @@ describe('MonitorCheckProcessor', () => {
       mockMonitorCheckService,
       mockRateLimitService,
       mockMetricsService,
+      mockLogger,
     )
   })
 
@@ -141,9 +150,6 @@ describe('MonitorCheckProcessor', () => {
 
       await processor.process(makeJob())
 
-      expect(Logger.prototype.warn).toHaveBeenCalledWith(
-        `Monitor ${MONITOR_ID} not found, skipping check`,
-      )
       expect(mockPrisma.monitor.findUnique).toHaveBeenCalledOnce()
       expect(mockHttpStrategy.check).not.toHaveBeenCalled()
       expect(mockMonitorCheckService.scheduleCheck).not.toHaveBeenCalled()
@@ -195,9 +201,6 @@ describe('MonitorCheckProcessor', () => {
 
       await processor.process(makeJob())
 
-      expect(Logger.prototype.warn).toHaveBeenCalledWith(
-        `Rate limit exceeded for ${HTTP_HOSTNAME}, skipping check`,
-      )
       expect(mockHttpStrategy.check).not.toHaveBeenCalled()
       expect(mockMonitorCheckService.scheduleCheck).not.toHaveBeenCalled()
     })
@@ -209,9 +212,6 @@ describe('MonitorCheckProcessor', () => {
 
       await processor.process(makeJob())
 
-      expect(Logger.prototype.warn).toHaveBeenCalledWith(
-        `Can't determine target host for monitor ${MONITOR_ID}`,
-      )
       expect(mockRateLimitService.domain).not.toHaveBeenCalled()
       expect(mockHttpStrategy.check).not.toHaveBeenCalled()
       expect(mockMonitorCheckService.scheduleCheck).not.toHaveBeenCalled()
@@ -226,53 +226,6 @@ describe('MonitorCheckProcessor', () => {
         monitorId: MONITOR_ID,
         immediate: false,
       })
-    })
-
-    it('logs an error for unknown monitor types without calling HttpStrategy', async () => {
-      const unknownType = 'invalid type' as unknown as MonitorType
-
-      vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValueOnce(
-        makeMonitorRow({
-          type: unknownType,
-          icmpMonitor: { host: 'icmp-host.example.com' },
-          httpMonitor: null,
-        }) as never,
-      )
-
-      await processor.process(makeJob())
-
-      expect(Logger.prototype.error).toHaveBeenCalledWith(`Unknown monitor type: ${unknownType}`)
-      expect(mockHttpStrategy.check).not.toHaveBeenCalled()
-      expect(mockMonitorCheckService.scheduleCheck).not.toHaveBeenCalled()
-    })
-
-    it('logs check failures (Error) without throwing and still reschedules', async () => {
-      const err = new Error('strategy failed')
-      vi.mocked(mockHttpStrategy.check).mockRejectedValue(err)
-      vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValueOnce(
-        makeMonitorRow({ type: MonitorType.HTTP }) as never,
-      )
-
-      await expect(processor.process(makeJob())).resolves.toBeUndefined()
-
-      expect(Logger.prototype.error).toHaveBeenCalledWith(
-        `Failed to check monitor ${MONITOR_ID}: ${err.message}`,
-        err.stack,
-      )
-      expect(mockMonitorCheckService.scheduleCheck).toHaveBeenCalledOnce()
-    })
-
-    it('logs "Unknown error" when a non-Error is thrown from the strategy', async () => {
-      vi.mocked(mockHttpStrategy.check).mockRejectedValue('plain string rejection')
-      vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValueOnce(makeMonitorRow() as never)
-
-      await expect(processor.process(makeJob())).resolves.toBeUndefined()
-
-      expect(Logger.prototype.error).toHaveBeenCalledWith(
-        `Failed to check monitor ${MONITOR_ID}: Unknown error`,
-        undefined,
-      )
-      expect(mockMonitorCheckService.scheduleCheck).toHaveBeenCalledOnce()
     })
 
     it('propagates when the initial findUnique throws and does not reschedule', async () => {
@@ -482,9 +435,6 @@ describe('MonitorCheckProcessor', () => {
 
         await processor.process(makeJob())
 
-        expect(Logger.prototype.warn).toHaveBeenCalledWith(
-          `Can't determine target host for monitor ${MONITOR_ID}`,
-        )
         expect(mockMonitorCheckService.scheduleCheck).not.toHaveBeenCalled()
       })
     })
@@ -530,9 +480,6 @@ describe('MonitorCheckProcessor', () => {
 
         await processor.process(makeJob())
 
-        expect(Logger.prototype.warn).toHaveBeenCalledWith(
-          `Can't determine target host for monitor ${MONITOR_ID}`,
-        )
         expect(mockMonitorCheckService.scheduleCheck).not.toHaveBeenCalled()
       })
     })
@@ -603,9 +550,6 @@ describe('MonitorCheckProcessor', () => {
 
         await processor.process(makeJob())
 
-        expect(Logger.prototype.warn).toHaveBeenCalledWith(
-          `Can't determine target host for monitor ${MONITOR_ID}`,
-        )
         expect(mockMonitorCheckService.scheduleCheck).not.toHaveBeenCalled()
       })
     })

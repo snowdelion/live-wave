@@ -1,13 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common'
 import Redis from 'ioredis'
 
+import { Logger } from '../logger/logger.service'
 import { logAndThrow } from '../utils/error.utils'
 
 import { REDIS_CLIENT } from './redis.constants'
 
 @Injectable()
 export class RedisService {
-  constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
+  constructor(
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
+    private logger: Logger,
+  ) {}
 
   getClient(): Redis {
     return this.redis
@@ -19,7 +23,7 @@ export class RedisService {
       else await this.redis.set(key, value)
     } catch (e) {
       throw logAndThrow({
-        name: RedisService.name,
+        logger: this.logger,
         context: 'set Redis',
         e,
         exception: Error,
@@ -33,7 +37,7 @@ export class RedisService {
       return await this.redis.get(key)
     } catch (e) {
       throw logAndThrow({
-        name: RedisService.name,
+        logger: this.logger,
         context: 'get Redis',
         e,
         exception: Error,
@@ -47,7 +51,7 @@ export class RedisService {
       await this.redis.del(key)
     } catch (e) {
       throw logAndThrow({
-        name: RedisService.name,
+        logger: this.logger,
         context: 'del Redis',
         e,
         exception: Error,
@@ -65,7 +69,7 @@ export class RedisService {
       return await this.redis.incr(key)
     } catch (e) {
       throw logAndThrow({
-        name: RedisService.name,
+        logger: this.logger,
         context: 'incr Redis',
         e,
         exception: Error,
@@ -79,7 +83,7 @@ export class RedisService {
       await this.redis.expire(key, seconds)
     } catch (e) {
       throw logAndThrow({
-        name: RedisService.name,
+        logger: this.logger,
         context: 'expire Redis',
         e,
         exception: Error,

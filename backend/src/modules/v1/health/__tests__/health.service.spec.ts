@@ -1,11 +1,11 @@
 import { HttpStatus } from '@nestjs/common'
+import type { Logger } from 'nestjs-pino'
 
 import type { PrismaService } from '@/shared/prisma/prisma.service'
 import type { RedisService } from '@/shared/redis/redis.service'
 
 import { HealthService } from '../health.service'
 
-// --- helpers ---
 const mockPrisma = {
   $queryRaw: vi.fn(),
 } as unknown as PrismaService
@@ -14,7 +14,14 @@ const mockRedis = {
   ping: vi.fn(),
 } as unknown as RedisService
 
-// --- tests ---
+const mockLogger = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(() => mockLogger),
+} as unknown as Logger
+
 describe('HealthService', () => {
   let service: HealthService
 
@@ -23,6 +30,7 @@ describe('HealthService', () => {
     service = new HealthService(
       mockPrisma as unknown as PrismaService,
       mockRedis as unknown as RedisService,
+      mockLogger,
     )
   })
 

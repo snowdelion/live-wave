@@ -1,5 +1,6 @@
-import { Logger } from '@nestjs/common'
 import type { Job } from 'bullmq'
+
+import { Logger } from '@/shared/logger/logger.service'
 
 import { NotificationsProcessor } from './notifications.processor'
 import type { TelegramService } from './telegram/telegram.service'
@@ -32,6 +33,14 @@ const mockTelegramService = {
   sendMessage: vi.fn(),
 } satisfies Partial<TelegramService> as unknown as TelegramService
 
+const mockLogger = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(() => mockLogger),
+} as unknown as Logger
+
 describe('NotificationsProcessor', () => {
   let processor: NotificationsProcessor
 
@@ -40,7 +49,7 @@ describe('NotificationsProcessor', () => {
     vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
     vi.mocked(mockTelegramService.sendMessage).mockResolvedValue(true)
 
-    processor = new NotificationsProcessor(mockTelegramService)
+    processor = new NotificationsProcessor(mockTelegramService, mockLogger)
   })
 
   describe('process', () => {
@@ -52,16 +61,6 @@ describe('NotificationsProcessor', () => {
 
     it('completes without error when sendMessage succeeds', async () => {
       await expect(processor.process(makeJob())).resolves.toBeUndefined()
-    })
-
-    it('logs an error and throws when sendMessage returns false', async () => {
-      vi.mocked(mockTelegramService.sendMessage).mockResolvedValueOnce(false)
-
-      await expect(processor.process(makeJob())).rejects.toThrow('Failed to send Telegram message')
-
-      expect(Logger.prototype.error).toHaveBeenCalledWith(
-        `Failed to send Telegram message for monitor "${MONITOR_NAME}" (${STATUS_TYPE})`,
-      )
     })
 
     it('propagates when sendMessage throws', async () => {

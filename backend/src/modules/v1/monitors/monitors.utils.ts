@@ -1,4 +1,4 @@
-import { BadRequestException, Logger } from '@nestjs/common'
+import { BadRequestException } from '@nestjs/common'
 import {
   type DnsMonitor,
   type HttpMonitor,
@@ -73,7 +73,6 @@ export function monitorRequestData(userId: string, type: MonitorType, dto: Creat
   }
 }
 
-const logger = new Logger('MonitorUtils')
 export async function handleHttpTransaction(
   tx: Tx,
   id: string,
@@ -99,9 +98,6 @@ export async function handleHttpTransaction(
   })
   if (!updatedHttpMonitor) throw new Error('HTTP monitor not found after update')
 
-  logger.debug(
-    `HTTP monitor ${updatedHttpMonitor?.id} updated successfully. From ${JSON.stringify(existing)} to ${JSON.stringify(updatedHttpMonitor)}`,
-  )
   return updatedHttpMonitor as Monitor & { httpMonitor: HttpMonitor }
 }
 
@@ -129,9 +125,6 @@ export async function handleIcmpTransaction(
   })
   if (!updatedIcmpMonitor) throw new Error('HTTP monitor not found after update')
 
-  logger.debug(
-    `ICMP monitor ${updatedIcmpMonitor?.id} updated successfully. From ${JSON.stringify(existing)} to ${JSON.stringify(updatedIcmpMonitor)}`,
-  )
   return updatedIcmpMonitor as Monitor & { icmpMonitor: IcmpMonitor }
 }
 
@@ -160,9 +153,6 @@ export async function handleTcpTransaction(
   })
   if (!updatedTcpMonitor) throw new Error('HTTP monitor not found after update')
 
-  logger.debug(
-    `TCP monitor ${updatedTcpMonitor?.id} updated successfully. From ${JSON.stringify(existing)} to ${JSON.stringify(updatedTcpMonitor)}`,
-  )
   return updatedTcpMonitor as Monitor & { tcpMonitor: TcpMonitor }
 }
 
@@ -191,9 +181,6 @@ export async function handleDnsTransaction(
   })
   if (!updatedDnsMonitor) throw new Error('HTTP monitor not found after update')
 
-  logger.log(
-    `Dns monitor ${updatedDnsMonitor?.id} updated successfully. From ${JSON.stringify(existing)} to ${JSON.stringify(updatedDnsMonitor)}`,
-  )
   return updatedDnsMonitor as Monitor & { dnsMonitor: DnsMonitor }
 }
 

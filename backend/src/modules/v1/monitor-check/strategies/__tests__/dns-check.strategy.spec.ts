@@ -1,6 +1,7 @@
+import type { Logger } from 'nestjs-pino'
+
 import { DnsStrategy } from '../dns-check.strategy'
 
-// --- mocks ---
 const mockResolve = vi.hoisted(() => vi.fn())
 vi.mock('dns/promises', () => ({ default: { resolve: mockResolve } }))
 
@@ -14,11 +15,10 @@ vi.mock('@nestjs/common', () => ({
 
 vi.mock('@/shared/prisma/prisma.service', () => ({ PrismaService: class {} }))
 vi.mock('@prisma/client', () => ({
-  RecordType: {},
+  RecordType: { A: 'A', MX: 'MX', TXT: 'TXT', CNAME: 'CNAME' },
   StatusEnum: { up: 'up', down: 'down' },
 }))
 
-// --- helpers ---
 function buildPrisma(overrides: Record<string, unknown> = {}) {
   return {
     monitor: {
@@ -46,7 +46,14 @@ function buildMonitor(dnsOverrides: Record<string, unknown> = {}) {
   }
 }
 
-// --- tests ---
+const mockLogger = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(() => mockLogger),
+} as unknown as Logger
+
 describe('DnsStrategy', () => {
   let strategy: DnsStrategy
   let prisma: ReturnType<typeof buildPrisma>
@@ -54,7 +61,7 @@ describe('DnsStrategy', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     prisma = buildPrisma()
-    strategy = new DnsStrategy(prisma as never)
+    strategy = new DnsStrategy(prisma as never, mockLogger)
   })
 
   describe('check()', () => {

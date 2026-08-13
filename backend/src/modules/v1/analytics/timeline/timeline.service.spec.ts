@@ -1,5 +1,7 @@
-import { Logger, NotFoundException } from '@nestjs/common'
+import { NotFoundException } from '@nestjs/common'
 import { StatusEnum } from '@prisma/client'
+
+import { Logger } from '@/shared/logger/logger.service'
 
 import { getTimelineSql } from '../analytics.sql'
 
@@ -28,6 +30,14 @@ const makeTimelineRaw = () => [
   },
 ]
 
+const mockLogger = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(() => mockLogger),
+} as unknown as Logger
+
 function makePrisma(overrides: Record<string, unknown> = {}) {
   return {
     monitor: {
@@ -50,7 +60,7 @@ describe('TimelineService', () => {
 
   beforeEach(() => {
     prisma = makePrisma()
-    service = new TimelineService(prisma as never)
+    service = new TimelineService(prisma as never, mockLogger)
     loggerErrorSpy = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
   })
 

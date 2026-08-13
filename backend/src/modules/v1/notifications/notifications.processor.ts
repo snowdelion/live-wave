@@ -1,16 +1,20 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq'
-import { Logger } from '@nestjs/common'
 import { Job } from 'bullmq'
 
 import { BULL_NAMES } from '@/shared/bull/bull.constants'
+import { Logger } from '@/shared/logger/logger.service'
 
 import { TelegramService } from './telegram/telegram.service'
 
 @Processor(BULL_NAMES.NOTIFICATIONS, { concurrency: 3 })
 export class NotificationsProcessor extends WorkerHost {
-  private readonly logger = new Logger(NotificationsProcessor.name)
-  constructor(private telegramService: TelegramService) {
+  private logger: Logger
+  constructor(
+    private telegramService: TelegramService,
+    baseLogger: Logger,
+  ) {
     super()
+    this.logger = baseLogger.child({ context: NotificationsProcessor.name })
   }
 
   async process(
@@ -24,10 +28,14 @@ export class NotificationsProcessor extends WorkerHost {
     const { chatId, message, statusType, monitorName } = job.data
     const success = await this.telegramService.sendMessage(chatId, message)
     if (!success) {
-      this.logger.error(
-        `Failed to send Telegram message for monitor "${monitorName}" (${statusType})`,
-      )
+      this.logger.error('Failed to send Telegram message', {
+        monitorName,
+        statusType,
+        chatId,
+        jobId: job.id,
+      })
       throw new Error('Failed to send Telegram message')
     }
+    this.logger.debug('Telegram message sent', { monitorName, statusType, chatId, jobId: job.id })
   }
 }

@@ -1,10 +1,15 @@
 import crypto from 'crypto'
 
 import { ForbiddenException, BadRequestException, UnauthorizedException } from '@nestjs/common'
+import type { ConfigService } from '@nestjs/config'
+import type { JwtService } from '@nestjs/jwt'
 import bcrypt from 'bcrypt'
 import type { Mock } from 'vitest'
 
+import type { Logger } from '@/shared/logger/logger.service'
+import type { PrismaService } from '@/shared/prisma/prisma.service'
 import { REDIS_KEYS } from '@/shared/redis/redis.constants'
+import type { RedisService } from '@/shared/redis/redis.service'
 
 import { AuthService } from '../auth.service'
 
@@ -15,56 +20,47 @@ vi.mock('bcrypt', () => ({
   },
 }))
 
+const ACCESS_SECRET = 'access-secret'
+const REFRESH_SECRET = 'refresh-secret'
+
+const logger = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  verbose: vi.fn(),
+  child: vi.fn(() => logger),
+} as unknown as Logger
+vi.mock('@/shared/logger/logger.service', () => ({
+  Logger: vi.fn(() => logger),
+}))
+const prisma = {
+  user: {
+    count: vi.fn(),
+    create: vi.fn(),
+    findUnique: vi.fn(),
+    upsert: vi.fn(),
+    delete: vi.fn(),
+  },
+} as unknown as PrismaService
+const redis = { set: vi.fn(), get: vi.fn(), del: vi.fn() } as unknown as RedisService
+const jwtService = { sign: vi.fn(), verify: vi.fn() } as unknown as JwtService
+const config = { get: vi.fn() } as unknown as ConfigService
+
 describe('AuthService', () => {
   let service: AuthService
-  let prisma: any
-  let redis: any
-  let jwtService: any
-  let config: any
-
-  const ACCESS_SECRET = 'access-secret'
-  const REFRESH_SECRET = 'refresh-secret'
 
   beforeEach(() => {
     vi.clearAllMocks()
 
-    prisma = {
-      user: {
-        count: vi.fn(),
-        create: vi.fn(),
-        upsert: vi.fn(),
-        findUnique: vi.fn(),
-        delete: vi.fn(),
-      },
-    }
-
-    redis = {
-      set: vi.fn(),
-      get: vi.fn(),
-      del: vi.fn(),
-    }
-
-    jwtService = {
-      sign: vi.fn(),
-      verify: vi.fn(),
-    }
-
-    config = {
-      get: vi.fn((key: string) => {
-        if (key === 'JWT_ACCESS_SECRET') return ACCESS_SECRET
-        if (key === 'JWT_REFRESH_SECRET') return REFRESH_SECRET
-        return undefined
-      }),
-    }
-
-    service = new AuthService(prisma, redis, jwtService, config)
+    service = new AuthService(prisma, redis, jwtService, config, logger)
   })
 
   describe('signUpEmail', () => {
     const dto = { email: 'Test@Example.com', password: '  password123  ' }
 
     it('throws ForbiddenException if email already taken', async () => {
-      prisma.user.count.mockResolvedValue(1)
+      vi.mocked(prisma.user.count).mockResolvedValue(1)
 
       await expect(service.signUpEmail(dto as any)).rejects.toThrow(ForbiddenException)
       expect(prisma.user.count).toHaveBeenCalledWith({
@@ -73,10 +69,13 @@ describe('AuthService', () => {
     })
 
     it('creates a user with lowercase email and hashed trimmed password', async () => {
-      prisma.user.count.mockResolvedValue(0)
+      vi.mocked(prisma.user.count).mockResolvedValue(0)
       ;(bcrypt.hash as Mock).mockResolvedValue('hashed-pw')
-      prisma.user.create.mockResolvedValue({ id: 'user-1', email: 'test@example.com' })
-      jwtService.sign.mockReturnValue('signed-token')
+      vi.mocked(prisma.user.create).mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+      } as any)
+      vi.mocked(jwtService.sign).mockReturnValue('signed-token')
 
       const result = await service.signUpEmail(dto as any)
 
@@ -89,18 +88,21 @@ describe('AuthService', () => {
     })
 
     it('throws BadRequestException if created user has no email', async () => {
-      prisma.user.count.mockResolvedValue(0)
+      vi.mocked(prisma.user.count).mockResolvedValue(0)
       ;(bcrypt.hash as Mock).mockResolvedValue('hashed-pw')
-      prisma.user.create.mockResolvedValue({ id: 'user-1', email: null })
+      vi.mocked(prisma.user.create).mockResolvedValue({ id: 'user-1', email: null } as any)
 
       await expect(service.signUpEmail(dto as any)).rejects.toThrow(BadRequestException)
     })
 
     it('generates tokens and stores hashed refresh token in redis after signup', async () => {
-      prisma.user.count.mockResolvedValue(0)
+      vi.mocked(prisma.user.count).mockResolvedValue(0)
       ;(bcrypt.hash as Mock).mockResolvedValue('hashed-pw')
-      prisma.user.create.mockResolvedValue({ id: 'user-1', email: 'test@example.com' })
-      jwtService.sign.mockReturnValue('signed-token')
+      vi.mocked(prisma.user.create).mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+      } as any)
+      vi.mocked(jwtService.sign).mockReturnValue('signed-token')
 
       await service.signUpEmail(dto as any)
 
@@ -117,27 +119,27 @@ describe('AuthService', () => {
     const dto = { email: 'Test@Example.com', password: '  password123  ' }
 
     it('throws ForbiddenException if user not found or has no password', async () => {
-      prisma.user.findUnique.mockResolvedValue(null)
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(null)
 
       await expect(service.signInEmail(dto as any)).rejects.toThrow(ForbiddenException)
     })
 
     it('throws ForbiddenException if user has no password set', async () => {
-      prisma.user.findUnique.mockResolvedValue({
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
         id: 'u1',
         email: 'test@example.com',
         password: null,
-      })
+      } as any)
 
       await expect(service.signInEmail(dto as any)).rejects.toThrow(ForbiddenException)
     })
 
     it('throws ForbiddenException if password is invalid', async () => {
-      prisma.user.findUnique.mockResolvedValue({
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
         id: 'u1',
         email: 'test@example.com',
         password: 'hashed-pw',
-      })
+      } as any)
       ;(bcrypt.compare as Mock).mockResolvedValue(false)
 
       await expect(service.signInEmail(dto as any)).rejects.toThrow(ForbiddenException)
@@ -145,24 +147,24 @@ describe('AuthService', () => {
     })
 
     it('throws ForbiddenException if user has no email', async () => {
-      prisma.user.findUnique.mockResolvedValue({
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
         id: 'u1',
         email: null,
         password: 'hashed-pw',
-      })
+      } as any)
       ;(bcrypt.compare as Mock).mockResolvedValue(true)
 
       await expect(service.signInEmail(dto as any)).rejects.toThrow(ForbiddenException)
     })
 
     it('returns tokens on successful sign in', async () => {
-      prisma.user.findUnique.mockResolvedValue({
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
         id: 'u1',
         email: 'Test@Example.com',
         password: 'hashed-pw',
-      })
+      } as any)
       ;(bcrypt.compare as Mock).mockResolvedValue(true)
-      jwtService.sign.mockReturnValue('signed-token')
+      vi.mocked(jwtService.sign).mockReturnValue('signed-token')
 
       const result = await service.signInEmail(dto as any)
 
@@ -195,13 +197,13 @@ describe('AuthService', () => {
     }
 
     beforeEach(() => {
-      config.get.mockImplementation((key: string) => {
+      vi.mocked(config.get).mockImplementation((key: string) => {
         if (key === 'JWT_ACCESS_SECRET') return ACCESS_SECRET
         if (key === 'JWT_REFRESH_SECRET') return REFRESH_SECRET
         if (key === 'TELEGRAM_BOT_TOKEN') return BOT_TOKEN
         return undefined
       })
-      service = new AuthService(prisma, redis, jwtService, config)
+      service = new AuthService(prisma, redis, jwtService, config, logger)
     })
 
     it('throws UnauthorizedException if telegram hash is invalid', async () => {
@@ -223,9 +225,12 @@ describe('AuthService', () => {
       const dto = { ...baseDto, auth_date }
       dto.hash = computeHash(dto, BOT_TOKEN)
 
-      prisma.user.findUnique.mockResolvedValue(null)
-      prisma.user.upsert.mockResolvedValue({ id: 'user-1', telegramId: String(dto.id) })
-      jwtService.sign.mockReturnValue('signed-token')
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(null)
+      vi.mocked(prisma.user.upsert).mockResolvedValue({
+        id: 'user-1',
+        telegramId: String(dto.id),
+      } as any)
+      vi.mocked(jwtService.sign).mockReturnValue('signed-token')
 
       const result = await service.telegramAuth(dto as any)
 
@@ -250,9 +255,12 @@ describe('AuthService', () => {
       const dto = { ...baseDto, username: undefined, auth_date }
       dto.hash = computeHash(dto, BOT_TOKEN)
 
-      prisma.user.findUnique.mockResolvedValue(null)
-      prisma.user.upsert.mockResolvedValue({ id: 'user-1', telegramId: String(dto.id) })
-      jwtService.sign.mockReturnValue('signed-token')
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(null)
+      vi.mocked(prisma.user.upsert).mockResolvedValue({
+        id: 'user-1',
+        telegramId: String(dto.id),
+      } as any)
+      vi.mocked(jwtService.sign).mockReturnValue('signed-token')
 
       await service.telegramAuth(dto as any)
 
@@ -276,12 +284,12 @@ describe('AuthService', () => {
       const dto = { ...baseDto, auth_date }
       dto.hash = computeHash(dto, BOT_TOKEN)
 
-      prisma.user.upsert.mockResolvedValue({
+      vi.mocked(prisma.user.upsert).mockResolvedValue({
         id: 'existing-user',
         telegramId: String(dto.id),
-      })
+      } as any)
 
-      jwtService.sign.mockReturnValue('signed-token')
+      vi.mocked(jwtService.sign).mockReturnValue('signed-token')
 
       const result = await service.telegramAuth(dto as any)
 
@@ -309,7 +317,9 @@ describe('AuthService', () => {
 
   describe('generateTokens', () => {
     it('signs access and refresh tokens with correct secrets and expirations', async () => {
-      jwtService.sign.mockReturnValueOnce('access-token').mockReturnValueOnce('refresh-token')
+      vi.mocked(jwtService.sign)
+        .mockReturnValueOnce('access-token')
+        .mockReturnValueOnce('refresh-token')
 
       const result = await service.generateTokens({ userId: 'user-1', email: 'test@example.com' })
 
@@ -327,7 +337,9 @@ describe('AuthService', () => {
     })
 
     it('stores sha256 hash of refresh token in redis with correct key and ttl', async () => {
-      jwtService.sign.mockReturnValueOnce('access-token').mockReturnValueOnce('refresh-token')
+      vi.mocked(jwtService.sign)
+        .mockReturnValueOnce('access-token')
+        .mockReturnValueOnce('refresh-token')
 
       await service.generateTokens({ userId: 'user-1', email: 'test@example.com' })
 
@@ -342,7 +354,7 @@ describe('AuthService', () => {
 
   describe('refreshAccessToken', () => {
     it('throws UnauthorizedException if refresh token is invalid (verify throws)', async () => {
-      jwtService.verify.mockImplementation(() => {
+      vi.mocked(jwtService.verify).mockImplementation(() => {
         throw new Error('bad token')
       })
 
@@ -350,36 +362,45 @@ describe('AuthService', () => {
     })
 
     it('throws UnauthorizedException if user not found', async () => {
-      jwtService.verify.mockReturnValue({ sub: 'user-1' })
-      prisma.user.findUnique.mockResolvedValue(null)
-      redis.get.mockResolvedValue('some-hash')
+      vi.mocked(jwtService.verify).mockReturnValue({ sub: 'user-1' })
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(null)
+      vi.mocked(redis.get).mockResolvedValue('some-hash')
 
       await expect(service.refreshAccessToken('valid-token')).rejects.toThrow(UnauthorizedException)
     })
 
     it('throws UnauthorizedException if no refresh token stored in redis', async () => {
-      jwtService.verify.mockReturnValue({ sub: 'user-1' })
-      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', email: 'test@example.com' })
-      redis.get.mockResolvedValue(null)
+      vi.mocked(jwtService.verify).mockReturnValue({ sub: 'user-1' })
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+      } as any)
+      vi.mocked(redis.get).mockResolvedValue(null)
 
       await expect(service.refreshAccessToken('valid-token')).rejects.toThrow(UnauthorizedException)
     })
 
     it('throws UnauthorizedException if stored hash does not match provided token hash', async () => {
-      jwtService.verify.mockReturnValue({ sub: 'user-1' })
-      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', email: 'test@example.com' })
-      redis.get.mockResolvedValue('some-other-hash')
+      vi.mocked(jwtService.verify).mockReturnValue({ sub: 'user-1' })
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+      } as any)
+      vi.mocked(redis.get).mockResolvedValue('some-other-hash')
 
       await expect(service.refreshAccessToken('valid-token')).rejects.toThrow(UnauthorizedException)
     })
 
     it('returns a new access token when refresh token is valid and matches', async () => {
-      jwtService.verify.mockReturnValue({ sub: 'user-1' })
-      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', email: 'test@example.com' })
+      vi.mocked(jwtService.verify).mockReturnValue({ sub: 'user-1' })
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+      } as any)
 
       const matchingHash = crypto.createHash('sha256').update('valid-token').digest('hex')
-      redis.get.mockResolvedValue(matchingHash)
-      jwtService.sign.mockReturnValue('new-access-token')
+      vi.mocked(redis.get).mockResolvedValue(matchingHash)
+      vi.mocked(jwtService.sign).mockReturnValue('new-access-token')
 
       const result = await service.refreshAccessToken('valid-token')
 
@@ -391,11 +412,14 @@ describe('AuthService', () => {
     })
 
     it('calls jwtService.verify with the refresh secret', async () => {
-      jwtService.verify.mockReturnValue({ sub: 'user-1' })
-      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', email: 'test@example.com' })
+      vi.mocked(jwtService.verify).mockReturnValue({ sub: 'user-1' })
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+      } as any)
       const matchingHash = crypto.createHash('sha256').update('valid-token').digest('hex')
-      redis.get.mockResolvedValue(matchingHash)
-      jwtService.sign.mockReturnValue('new-access-token')
+      vi.mocked(redis.get).mockResolvedValue(matchingHash)
+      vi.mocked(jwtService.sign).mockReturnValue('new-access-token')
 
       await service.refreshAccessToken('valid-token')
 
@@ -405,7 +429,7 @@ describe('AuthService', () => {
 
   describe('invalidateRefreshToken', () => {
     it('throws UnauthorizedException if token is invalid', async () => {
-      jwtService.verify.mockImplementation(() => {
+      vi.mocked(jwtService.verify).mockImplementation(() => {
         throw new Error('bad token')
       })
 
@@ -416,7 +440,7 @@ describe('AuthService', () => {
     })
 
     it('deletes the refresh token from redis using the payload sub', async () => {
-      jwtService.verify.mockReturnValue({ sub: 'user-1' })
+      vi.mocked(jwtService.verify).mockReturnValue({ sub: 'user-1' })
 
       await service.invalidateRefreshToken('valid-token')
 

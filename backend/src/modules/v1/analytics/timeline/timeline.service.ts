@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { StatusEnum } from '@prisma/client'
 
+import { Logger } from '@/shared/logger/logger.service'
 import { PrismaService } from '@/shared/prisma/prisma.service'
 import { logAndThrow } from '@/shared/utils/error.utils'
 
@@ -8,16 +9,31 @@ import { getTimelineSql } from '../analytics.sql'
 
 @Injectable()
 export class TimelineService {
-  constructor(private prisma: PrismaService) {}
+  private logger: Logger
+  constructor(
+    private prisma: PrismaService,
+    baseLogger: Logger,
+  ) {
+    this.logger = baseLogger.child({ context: TimelineService.name })
+  }
 
   async getTimeline(userId: string, monitorId: string, startDate: Date) {
     const monitor = await this.prisma.monitor.findUnique({
       where: { id: monitorId },
       select: { userId: true },
     })
-    if (!monitor || monitor.userId !== userId) throw new NotFoundException('Monitor not found')
+    if (!monitor || monitor.userId !== userId) {
+      this.logger.warn('Monitor not found or access forbidden', {
+        hasMonitor: !!monitor,
+        currentUser: userId,
+        monitorUser: monitor?.userId,
+      })
+      throw new NotFoundException('Monitor not found')
+    }
 
-    return await this.getRawTimeline(monitorId, startDate)
+    const result = await this.getRawTimeline(monitorId, startDate)
+    this.logger.debug('Timeline data fetched successfully', { monitorId, startDate })
+    return result
   }
 
   private async getRawChecks(monitorId: string, startDate: Date) {
@@ -41,9 +57,18 @@ export class TimelineService {
       const totalChecks = await this.prisma.check.count({
         where: { monitorId, checkedAt: { gte: startDate, lte: new Date() } },
       })
-      if (totalChecks < 40) return await this.getRawChecks(monitorId, startDate)
+      if (totalChecks < 40) {
+        this.logger.debug('Returning raw checks without P95', { monitorId, startDate, totalChecks })
+        return await this.getRawChecks(monitorId, startDate)
+      }
 
       const bucketMinutes = this.getBucketMinutes(startDate)
+      this.logger.debug('Fetching timeline with grouping by bucket', {
+        monitorId,
+        startDate,
+        totalChecks,
+        bucketMinutes,
+      })
       const results = await this.prisma.$queryRaw<
         {
           bucket: Date
@@ -52,6 +77,12 @@ export class TimelineService {
           uptime: bigint | null
         }[]
       >(getTimelineSql(monitorId, startDate, bucketMinutes))
+      this.logger.debug('Timeline data fetched', {
+        monitorId,
+        startDate,
+        bucketMinutes,
+        totalChecks,
+      })
 
       return results.map(r => ({
         date: r.bucket,
@@ -60,7 +91,7 @@ export class TimelineService {
         p95ResponseTime: r.p95ResponseTime ? Number(r.p95ResponseTime) : null,
       }))
     } catch (e) {
-      throw logAndThrow({ context: 'get timeline', e, name: TimelineService.name })
+      throw logAndThrow({ context: 'get timeline', e, logger: this.logger })
     }
   }
 

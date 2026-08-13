@@ -1,16 +1,22 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable } from '@nestjs/common'
 import { Method, StatusEnum } from '@prisma/client'
 
+import { Logger } from '@/shared/logger/logger.service'
 import { PrismaService } from '@/shared/prisma/prisma.service'
-import { getErrorMessage, logAndThrow } from '@/shared/utils/error.utils'
+import { getErrorMessage } from '@/shared/utils/error.utils'
 import { httpFetch } from '@/shared/utils/http-fetch.utils'
 
 import type { StrategyResult } from './strategy-result.types'
 
 @Injectable()
 export class HttpStrategy {
-  private readonly logger = new Logger(HttpStrategy.name)
-  constructor(private prisma: PrismaService) {}
+  private logger: Logger
+  constructor(
+    private prisma: PrismaService,
+    baseLogger: Logger,
+  ) {
+    this.logger = baseLogger.child({ context: HttpStrategy.name })
+  }
 
   async check(monitorId: string): StrategyResult {
     const monitor = await this.prisma.monitor.findUnique({
@@ -19,7 +25,7 @@ export class HttpStrategy {
     })
 
     if (!monitor || !monitor.httpMonitor) {
-      this.logger.warn(`Monitor ${monitorId} or its HttpMonitor not found, skipping check`)
+      this.logger.warn('Monitor or its HttpMonitor not found, skipping check', { monitorId })
       return {
         status: StatusEnum.down,
         error: 'Monitor or HttpMonitor not found',
@@ -29,7 +35,6 @@ export class HttpStrategy {
     }
 
     const { id, checkInterval, timeout, httpMonitor } = monitor
-
     return await this.performCheck(id, checkInterval, timeout, httpMonitor.url, httpMonitor.method)
   }
 
@@ -41,15 +46,14 @@ export class HttpStrategy {
     method: Method,
   ) {
     const { status, statusCode, error, responseTime } = await this.getFetchResults({
+      monitorId,
       url,
       timeout,
       method,
     })
 
     if (status === StatusEnum.down)
-      this.logger.warn(
-        `Monitor ${monitorId} is down! Status code: ${statusCode}. Response time: ${responseTime}. ${error ? `Error: ${error}.` : ''}`,
-      )
+      this.logger.warn('HTTP monitor is down', { monitorId, statusCode, responseTime, error })
 
     await this.confirmTransaction({
       monitorId,
@@ -99,22 +103,20 @@ export class HttpStrategy {
     } catch (e) {
       const isNotFound = e instanceof Error && 'code' in e && e.code === 'P2003'
       if (isNotFound) {
-        this.logger.warn(`Monitor ${monitorId} not found, skipping check`)
+        this.logger.warn('HTTP Monitor not found, skipping check', { monitorId })
         return
       }
 
       error = getErrorMessage(e)
       status = StatusEnum.down
-      logAndThrow({
-        name: HttpStrategy.name,
-        context: 'handle check',
-        e,
-        shouldThrow: false,
+      this.logger.error('Transaction failed for HTTP check', {
+        monitorId,
+        error: getErrorMessage(e),
       })
     }
   }
 
-  private async getFetchResults({ url, timeout, method }: GetFetchResultsOptions) {
+  private async getFetchResults({ monitorId, url, timeout, method }: GetFetchResultsOptions) {
     const start = Date.now()
     let status: StatusEnum = StatusEnum.down
     let statusCode: number | null = null
@@ -139,6 +141,7 @@ export class HttpStrategy {
     } catch (e) {
       error = getErrorMessage(e)
       status = StatusEnum.down
+      this.logger.warn('Failed to fetch for monitor check', { url, method, monitorId, timeout })
     } finally {
       responseTime = Date.now() - start
     }
@@ -159,6 +162,7 @@ interface ConfirmTransactionOptions {
 }
 
 interface GetFetchResultsOptions {
+  monitorId: string
   url: string
   timeout: number
   method: Method

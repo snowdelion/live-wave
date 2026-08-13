@@ -1,16 +1,16 @@
 import { InjectQueue } from '@nestjs/bullmq'
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
+import { Injectable, OnModuleInit } from '@nestjs/common'
 import { StatusEnum } from '@prisma/client'
 import { Queue } from 'bullmq'
 
 import { BULL_KEYS, BULL_NAMES } from '@/shared/bull/bull.constants'
+import { Logger } from '@/shared/logger/logger.service'
 import { PrismaService } from '@/shared/prisma/prisma.service'
 import { logAndThrow } from '@/shared/utils/error.utils'
 
 @Injectable()
 export class MonitorCheckService implements OnModuleInit {
-  private readonly logger = new Logger(MonitorCheckService.name)
-
+  private logger: Logger
   constructor(
     private prisma: PrismaService,
     @InjectQueue(BULL_NAMES.QUEUE) private checksQueue: Queue<{ monitorId: string }>,
@@ -21,7 +21,10 @@ export class MonitorCheckService implements OnModuleInit {
       statusType: StatusEnum
       monitorName: string
     }>,
-  ) {}
+    baseLogger: Logger,
+  ) {
+    this.logger = baseLogger.child({ context: MonitorCheckService.name })
+  }
 
   async onModuleInit() {
     try {
@@ -31,6 +34,7 @@ export class MonitorCheckService implements OnModuleInit {
         },
         select: { id: true, type: true, checkInterval: true },
       })
+      this.logger.log('Scheduling initial checks', { monitorsCount: monitors.length })
 
       for (const monitor of monitors)
         await this.scheduleCheck({
@@ -40,7 +44,7 @@ export class MonitorCheckService implements OnModuleInit {
         })
     } catch (e) {
       logAndThrow({
-        name: MonitorCheckService.name,
+        logger: this.logger,
         context: 'check monitors',
         e,
         shouldThrow: false,
@@ -74,7 +78,7 @@ export class MonitorCheckService implements OnModuleInit {
       await this.enqueueCheck(monitorId, delay)
     } catch (e) {
       logAndThrow({
-        name: MonitorCheckService.name,
+        logger: this.logger,
         context: 'schedule check',
         e,
         shouldThrow: false,
@@ -96,6 +100,7 @@ export class MonitorCheckService implements OnModuleInit {
     monitorName: string
   }) {
     try {
+      this.logger.log('Scheduling Telegram notification', { monitorId, chatId })
       await this.notificationsQueue.add(
         BULL_NAMES.SEND_NOTIFICATION,
         {
@@ -108,7 +113,7 @@ export class MonitorCheckService implements OnModuleInit {
       )
     } catch (e) {
       logAndThrow({
-        name: MonitorCheckService.name,
+        logger: this.logger,
         context: 'schedule notification',
         e,
         shouldThrow: false,
@@ -117,7 +122,7 @@ export class MonitorCheckService implements OnModuleInit {
   }
 
   private async enqueueCheck(monitorId: string, delay: number) {
-    this.logger.debug(`Scheduled check for monitor ${monitorId} with delay ${delay}ms`)
+    this.logger.debug('Scheduled check for monitor', { monitorId, delay: delay / 60 / 1000 })
     await this.clearScheduledJobs(monitorId)
     await this.checksQueue.add(
       BULL_NAMES.CHECK,
@@ -138,7 +143,7 @@ export class MonitorCheckService implements OnModuleInit {
           if (job.id && job.id.startsWith(prefix)) await job.remove()
         } catch (e) {
           logAndThrow({
-            name: MonitorCheckService.name,
+            logger: this.logger,
             context: 'remove job',
             e,
             shouldThrow: false,

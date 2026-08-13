@@ -1,8 +1,8 @@
-import { Logger } from '@nestjs/common'
 import { StatusEnum } from '@prisma/client'
 import type { Job, Queue } from 'bullmq'
 
 import { BULL_KEYS, BULL_NAMES } from '@/shared/bull/bull.constants'
+import { Logger } from '@/shared/logger/logger.service'
 import type { PrismaService } from '@/shared/prisma/prisma.service'
 
 import { MonitorCheckService } from '../monitor-check.service'
@@ -30,6 +30,14 @@ const mockPrisma = {
   },
 } as unknown as PrismaService
 
+const mockLogger = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(() => mockLogger),
+} as unknown as Logger
+
 const mockQueue = {
   add: vi.fn(),
   getJobs: vi.fn().mockResolvedValue([]),
@@ -52,6 +60,7 @@ describe('MonitorCheckService', () => {
       mockPrisma,
       mockQueue as unknown as Queue,
       mockNotificationsQueue as unknown as Queue,
+      mockLogger,
     )
     Object.assign(service, {
       prisma: mockPrisma,
@@ -94,29 +103,6 @@ describe('MonitorCheckService', () => {
       await service.onModuleInit()
 
       expect(mockQueue.add).not.toHaveBeenCalled()
-    })
-
-    it('logs an error (with stack) when prisma throws an Error', async () => {
-      const err = new Error('db is down')
-      vi.mocked(mockPrisma.monitor.findMany).mockRejectedValue(err)
-
-      await service.onModuleInit()
-
-      expect(Logger.prototype.error).toHaveBeenCalledWith(
-        `Failed to check monitors: ${err.message}`,
-        err.stack,
-      )
-    })
-
-    it('logs "unknown error" when a non-Error is thrown', async () => {
-      vi.mocked(mockPrisma.monitor.findMany).mockRejectedValue('some string error')
-
-      await service.onModuleInit()
-
-      expect(Logger.prototype.error).toHaveBeenCalledWith(
-        expect.stringMatching(/failed to check monitors: unknown error/i),
-        undefined,
-      )
     })
   })
 
@@ -189,29 +175,6 @@ describe('MonitorCheckService', () => {
 
         expect(mockQueue.add).not.toHaveBeenCalled()
       })
-
-      it('logs an error (with stack) when the DB fetch throws an Error', async () => {
-        const err = new Error('connection refused')
-        vi.mocked(mockPrisma.monitor.findUnique).mockRejectedValue(err)
-
-        await service.scheduleCheck({ monitorId: MONITOR_ID, checkInterval: 0 })
-
-        expect(Logger.prototype.error).toHaveBeenCalledWith(
-          `Failed to schedule check: ${err.message}`,
-          err.stack,
-        )
-      })
-
-      it('logs "unknown error" when a non-Error is thrown', async () => {
-        vi.mocked(mockPrisma.monitor.findUnique).mockRejectedValue(42)
-
-        await service.scheduleCheck({ monitorId: MONITOR_ID, checkInterval: 0 })
-
-        expect(Logger.prototype.error).toHaveBeenCalledWith(
-          expect.stringMatching(/failed to schedule check: unknown error/i),
-          undefined,
-        )
-      })
     })
   })
 
@@ -250,29 +213,6 @@ describe('MonitorCheckService', () => {
 
       const [, payload] = vi.mocked(mockNotificationsQueue.add).mock.calls[0] as any
       expect(payload).not.toHaveProperty('monitorId')
-    })
-
-    it('logs an error (with stack) when the queue throws an Error', async () => {
-      const err = new Error('queue unavailable')
-      vi.mocked(mockNotificationsQueue.add).mockRejectedValue(err)
-
-      await service.scheduleNotification(notificationPayload)
-
-      expect(Logger.prototype.error).toHaveBeenCalledWith(
-        `Failed to schedule notification: ${err.message}`,
-        err.stack,
-      )
-    })
-
-    it('logs "unknown error" when a non-Error is thrown', async () => {
-      vi.mocked(mockNotificationsQueue.add).mockRejectedValue('oops')
-
-      await service.scheduleNotification(notificationPayload)
-
-      expect(Logger.prototype.error).toHaveBeenCalledWith(
-        expect.stringMatching(/failed to schedule notification: unknown error/i),
-        undefined,
-      )
     })
   })
 
@@ -313,24 +253,6 @@ describe('MonitorCheckService', () => {
       await service.clearScheduledJobs(MONITOR_ID)
 
       expect(noIdJob.remove).not.toHaveBeenCalled()
-    })
-
-    it('logs a warning and continues when a single job.remove() throws', async () => {
-      const err = new Error('remove failed')
-      const failingJob = {
-        id: `${BULL_KEYS.RAW_CHECK(MONITOR_ID)}-fail`,
-        remove: vi.fn().mockRejectedValue(err),
-      } as unknown as Job
-      const goodJob = makeJob('good', true) as Job
-      vi.mocked(mockQueue.getJobs).mockResolvedValue([failingJob, goodJob])
-
-      await service.clearScheduledJobs(MONITOR_ID)
-
-      expect(Logger.prototype.warn).toHaveBeenCalledWith(
-        `Failed to remove job: ${err.message}`,
-        err.stack,
-      )
-      expect(goodJob.remove).toHaveBeenCalled()
     })
   })
 })

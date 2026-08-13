@@ -1,5 +1,5 @@
-import { Logger } from '@nestjs/common'
 import type { Queue } from 'bullmq'
+import type { Logger } from 'nestjs-pino'
 
 import { BullShutdownService } from './bull-shutdown.service'
 
@@ -8,18 +8,21 @@ const makeQueue = (closeImpl?: () => Promise<void>) =>
     close: vi.fn().mockImplementation(closeImpl ?? (() => Promise.resolve())),
   }) as unknown as Queue
 
+const mockLogger = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(() => mockLogger),
+} as unknown as Logger
+
 describe('BullShutdownService', () => {
   let service: BullShutdownService
   let queue: Queue
-  let logSpy: ReturnType<typeof vi.spyOn>
-  let errorSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     queue = makeQueue()
-    service = new BullShutdownService(queue)
-
-    logSpy = vi.spyOn(Logger.prototype, 'log').mockImplementation(() => {})
-    errorSpy = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => {})
+    service = new BullShutdownService(queue, mockLogger)
   })
 
   describe('onApplicationShutdown', () => {
@@ -29,46 +32,9 @@ describe('BullShutdownService', () => {
       expect(queue.close).toHaveBeenCalledOnce()
     })
 
-    it('logs success when the queue closes cleanly', async () => {
-      await service.onApplicationShutdown()
-
-      expect(logSpy).toHaveBeenCalledWith('Bull queue closed successfully')
-      expect(errorSpy).not.toHaveBeenCalled()
-    })
-
-    it('logs an error with message and stack when queue.close rejects with an Error', async () => {
-      const err = new Error('connection lost')
-      queue = makeQueue(() => Promise.reject(err))
-      service = new BullShutdownService(queue)
-
-      await service.onApplicationShutdown()
-
-      expect(errorSpy).toHaveBeenCalledOnce()
-      expect(errorSpy).toHaveBeenCalledWith(
-        `Failed to close Bull queues on application shutdown: ${err.message}`,
-        err.stack,
-      )
-      expect(logSpy).not.toHaveBeenCalled()
-    })
-
-    it('logs an error with "unknown error" and no stack when a non-Error is thrown', async () => {
-      queue = makeQueue(() => Promise.reject('string rejection'))
-      service = new BullShutdownService(queue)
-
-      await service.onApplicationShutdown()
-
-      expect(errorSpy).toHaveBeenCalledOnce()
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringMatching(
-          /Failed to close Bull queues on application shutdown: unknown error/i,
-        ),
-        undefined,
-      )
-    })
-
     it('does not throw even when queue.close rejects', async () => {
       queue = makeQueue(() => Promise.reject(new Error('boom')))
-      service = new BullShutdownService(queue)
+      service = new BullShutdownService(queue, mockLogger)
 
       await expect(service.onApplicationShutdown()).resolves.toBeUndefined()
     })

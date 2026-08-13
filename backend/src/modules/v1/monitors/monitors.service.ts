@@ -2,7 +2,6 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
-  Logger,
   NotFoundException,
 } from '@nestjs/common'
 import {
@@ -14,6 +13,7 @@ import {
   TcpMonitor,
 } from '@prisma/client'
 
+import { Logger } from '@/shared/logger/logger.service'
 import { PrismaService } from '@/shared/prisma/prisma.service'
 import { logAndThrow } from '@/shared/utils/error.utils'
 
@@ -35,16 +35,21 @@ import {
 
 @Injectable()
 export class MonitorsService {
-  private readonly logger = new Logger(MonitorsService.name)
+  private logger: Logger
   constructor(
     private prisma: PrismaService,
     private monitorCheckService: MonitorCheckService,
-  ) {}
+    baseLogger: Logger,
+  ) {
+    this.logger = baseLogger.child({ context: MonitorsService.name })
+  }
 
   async create(userId: string, dto: CreateMonitorDto) {
     const monitorsCount = await this.prisma.monitor.count({ where: { userId } })
-    if (monitorsCount >= 5)
+    if (monitorsCount >= 5) {
+      this.logger.warn('User attempted to create monitor beyond limit', { userId })
       throw new ForbiddenException('You have reached the maximum number of monitors')
+    }
 
     const monitorType = dto.type
     const newMonitor = await this.prisma.monitor.create({
@@ -57,7 +62,7 @@ export class MonitorsService {
       },
     })
 
-    this.logger.debug(`Created ${monitorType} monitor ${newMonitor.id}`)
+    this.logger.log('Created monitor', { monitorId: newMonitor.id, monitorType, userId })
     await this.monitorCheckService.scheduleCheck({
       monitorId: newMonitor.id,
       checkInterval: newMonitor.checkInterval,
@@ -153,9 +158,10 @@ export class MonitorsService {
         dnsMonitor: true,
       },
     })
-    if (!monitor) throw new NotFoundException('Uptime monitoring service not found')
-    if (monitor.userId !== userId)
-      throw new ForbiddenException('Uptime monitoring service not found')
+    if (!monitor || monitor.userId !== userId) {
+      this.logger.warn('Monitor not found or access denied', { userId, monitorId: id })
+      throw new NotFoundException('Monitor not found')
+    }
 
     const { httpMonitor, icmpMonitor, tcpMonitor, dnsMonitor, userId: _userId, ...rest } = monitor
     const domain = getDomainByType({
@@ -176,7 +182,10 @@ export class MonitorsService {
       where: { id },
       include: { httpMonitor: true, icmpMonitor: true, tcpMonitor: true, dnsMonitor: true },
     })
-    if (!existing || existing.userId !== userId) throw new NotFoundException('Monitor not found')
+    if (!existing || existing.userId !== userId) {
+      this.logger.warn('Monitor not found or access denied', { userId, monitorId: id })
+      throw new NotFoundException('Monitor not found')
+    }
 
     const updateData: Partial<Pick<Monitor, 'name' | 'checkInterval' | 'timeout'>> = {}
     if (dto.name !== undefined) updateData.name = dto.name
@@ -185,46 +194,63 @@ export class MonitorsService {
 
     switch (existing.type) {
       case MonitorType.HTTP:
-        if (!existing.httpMonitor) throw new BadRequestException('HTTP monitor data missing')
+        if (!existing.httpMonitor) {
+          this.logger.warn('httpMonitor data is missing', { monitorId: id, userId })
+          throw new BadRequestException('HTTP monitor data missing')
+        }
         return await this.updateMonitor<{ httpMonitor: HttpMonitor }>(
           id,
           existing as Monitor & { httpMonitor: HttpMonitor },
           updateData,
           dto,
           handleHttpTransaction,
+          userId,
         )
 
       case MonitorType.ICMP:
-        if (!existing.icmpMonitor) throw new BadRequestException('ICMP monitor data missing')
+        if (!existing.icmpMonitor) {
+          this.logger.warn('icmpMonitor data is missing', { monitorId: id, userId })
+          throw new BadRequestException('ICMP monitor data missing')
+        }
         return await this.updateMonitor<{ icmpMonitor: IcmpMonitor }>(
           id,
           existing as Monitor & { icmpMonitor: IcmpMonitor },
           updateData,
           dto,
           handleIcmpTransaction,
+          userId,
         )
 
       case MonitorType.TCP:
-        if (!existing.tcpMonitor) throw new BadRequestException('ICMP monitor data missing')
+        if (!existing.tcpMonitor) {
+          this.logger.warn('tcpMonitor data is missing', { monitorId: id, userId })
+          throw new BadRequestException('TCP monitor data missing')
+        }
         return await this.updateMonitor<{ tcpMonitor: TcpMonitor }>(
           id,
           existing as Monitor & { tcpMonitor: TcpMonitor },
           updateData,
           dto,
           handleTcpTransaction,
+          userId,
         )
 
       case MonitorType.DNS:
-        if (!existing.dnsMonitor) throw new BadRequestException('ICMP monitor data missing')
+        if (!existing.dnsMonitor) {
+          this.logger.warn('dnsMonitor data is missing', { monitorId: id, userId })
+          throw new BadRequestException('DNS monitor data missing')
+        }
         return await this.updateMonitor<{ dnsMonitor: DnsMonitor }>(
           id,
           existing as Monitor & { dnsMonitor: DnsMonitor },
           updateData,
           dto,
           handleDnsTransaction,
+          userId,
         )
 
       default:
+        this.logger.warn('Unknown monitor type', { monitorType: existing.type, userId })
         throw new BadRequestException(`Unknown monitor type`)
     }
   }
@@ -241,26 +267,34 @@ export class MonitorsService {
       updateData: UpdateData,
       dto: UpdateMonitorDto,
     ) => Promise<Monitor & T>,
+    userId: string,
   ) {
     const updatedMonitor = await this.prisma.$transaction(async tx =>
       transactionHandler(tx, id, existing, updateData, dto),
     )
 
     await this.rescheduleIfNeeded(id, existing.checkInterval, updateData.checkInterval)
-    this.logger.debug(`${existing.type} monitor "${id}" updated successfully`)
+    this.logger.log('Monitor updated', { monitorType: existing.type, monitorId: id, userId })
     return updatedMonitor
   }
 
   async delete(userId: string, id: string) {
     try {
-      const monitor = await this.prisma.monitor.findUnique({ where: { id } })
-      if (!monitor || monitor?.userId !== userId) throw new NotFoundException('Monitor not found')
+      const monitor = await this.prisma.monitor.findUnique({
+        where: { id },
+        select: { id: true, userId: true },
+      })
+      if (!monitor || monitor.userId !== userId) {
+        this.logger.warn('Monitor not found or access denied', { userId, monitorId: id })
+        throw new NotFoundException('Monitor not found')
+      }
 
       await this.prisma.monitor.delete({ where: { id } })
       await this.monitorCheckService.clearScheduledJobs(monitor.id)
+      this.logger.log('Monitor deleted', { userId, monitorId: id })
     } catch (e) {
       throw logAndThrow({
-        name: MonitorsService.name,
+        logger: this.logger,
         context: 'delete monitor',
         e,
         exception: NotFoundException,
@@ -274,11 +308,13 @@ export class MonitorsService {
     oldInterval: number,
     newInterval: number | undefined,
   ) {
-    if (newInterval !== undefined && newInterval !== oldInterval)
+    if (newInterval !== undefined && newInterval !== oldInterval) {
+      this.logger.debug('Rescheduling monitor', { monitorId, oldInterval, newInterval })
       await this.monitorCheckService.scheduleCheck({
         monitorId,
         checkInterval: newInterval,
         immediate: false,
       })
+    }
   }
 }

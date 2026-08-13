@@ -1,12 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable } from '@nestjs/common'
 
+import { Logger } from '../logger/logger.service'
 import { REDIS_KEYS } from '../redis/redis.constants'
 import { RedisService } from '../redis/redis.service'
 
 @Injectable()
 export class RateLimitService {
-  private readonly logger = new Logger(RateLimitService.name)
-  constructor(private redis: RedisService) {}
+  constructor(
+    private redis: RedisService,
+    private logger: Logger,
+  ) {}
 
   async domain({ domain, maxPerMinute = 6, expireSeconds = 60 }: DomainOptions) {
     const key = REDIS_KEYS.domainRateLimit(domain)
@@ -15,7 +18,7 @@ export class RateLimitService {
     if (current === 1) await this.redis.expire(key, expireSeconds)
 
     if (current > maxPerMinute) {
-      this.logger.warn(`Rate limit exceeded for ${domain} (${current}/${maxPerMinute} per minute)`)
+      this.logger.warn('Rate limit exceeded', { domain, current, maxPerMinute })
       return true
     }
 

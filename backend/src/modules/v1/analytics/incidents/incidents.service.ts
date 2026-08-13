@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 
+import { Logger } from '@/shared/logger/logger.service'
 import { PrismaService } from '@/shared/prisma/prisma.service'
 import { logAndThrow } from '@/shared/utils/error.utils'
 
@@ -7,7 +8,13 @@ import { getIncidentsCountSql, getIncidentsSql } from '../analytics.sql'
 
 @Injectable()
 export class IncidentsService {
-  constructor(private prisma: PrismaService) {}
+  private logger: Logger
+  constructor(
+    private prisma: PrismaService,
+    baseLogger: Logger,
+  ) {
+    this.logger = baseLogger.child({ context: IncidentsService.name })
+  }
 
   async getIncidents(
     userId: string,
@@ -18,7 +25,14 @@ export class IncidentsService {
       where: { id: monitorId },
       select: { userId: true },
     })
-    if (!monitor || monitor.userId !== userId) throw new NotFoundException('Monitor not found')
+    if (!monitor || monitor.userId !== userId) {
+      this.logger.warn('Monitor not found or access forbidden', {
+        hasMonitor: !!monitor,
+        currentUser: userId,
+        monitorUser: monitor?.userId,
+      })
+      throw new NotFoundException('Monitor not found')
+    }
 
     const incidents = await this.getIncidentsList(monitorId, startDate)
     const total = await this.getIncidentsCount(monitorId, startDate)
@@ -31,6 +45,10 @@ export class IncidentsService {
       const incidents = await this.prisma.$queryRaw<IncidentRaw[]>(
         getIncidentsSql(monitorId, startDate),
       )
+      this.logger.debug('Incidents list fetched from DB', {
+        monitorId,
+        startDate,
+      })
 
       return incidents.map(i => {
         const durationMs = i.durationMs !== null ? Number(i.durationMs) : null
@@ -55,7 +73,7 @@ export class IncidentsService {
         }
       })
     } catch (e) {
-      throw logAndThrow({ context: 'get incidents list', e, name: IncidentsService.name })
+      throw logAndThrow({ context: 'get incidents list', e, logger: this.logger })
     }
   }
 
@@ -64,9 +82,13 @@ export class IncidentsService {
       const result = await this.prisma.$queryRaw<{ count: number }[]>(
         getIncidentsCountSql(monitorId, startDate),
       )
+      this.logger.debug('Incidents count fetched from DB', {
+        monitorId,
+        startDate,
+      })
       return Number(result[0]?.count ?? 0)
     } catch (e) {
-      throw logAndThrow({ context: 'get incidents count', e, name: IncidentsService.name })
+      throw logAndThrow({ context: 'get incidents count', e, logger: this.logger })
     }
   }
 }

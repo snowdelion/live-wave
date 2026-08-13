@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable } from '@nestjs/common'
 import { StatusEnum } from '@prisma/client'
-import { ping, PingResult } from 'node-ping-rs'
+import { ping } from 'node-ping-rs'
 
+import { Logger } from '@/shared/logger/logger.service'
 import { PrismaService } from '@/shared/prisma/prisma.service'
 import { getErrorMessage } from '@/shared/utils/error.utils'
 
@@ -9,8 +10,13 @@ import type { StrategyResult } from './strategy-result.types'
 
 @Injectable()
 export class IcmpStrategy {
-  private logger = new Logger(IcmpStrategy.name)
-  constructor(private prisma: PrismaService) {}
+  private logger: Logger
+  constructor(
+    private prisma: PrismaService,
+    baseLogger: Logger,
+  ) {
+    this.logger = baseLogger.child({ context: IcmpStrategy.name })
+  }
 
   async check(monitorId: string): StrategyResult {
     const monitor = await this.prisma.monitor.findUnique({
@@ -18,7 +24,7 @@ export class IcmpStrategy {
       include: { icmpMonitor: true },
     })
     if (!monitor?.icmpMonitor) {
-      this.logger.warn(`Monitor ${monitorId} or its IcmpMonitor not found, skipping check`)
+      this.logger.warn('Monitor or its IcmpMonitor not found, skipping check', { monitorId })
       return {
         status: StatusEnum.down,
         error: 'Monitor or IcmpMonitor not found',
@@ -44,9 +50,7 @@ export class IcmpStrategy {
     const { timeoutPromise, timeoutId } = this.getTimeout(timeout)
 
     try {
-      const pingPromise = ping(host)
-      const result = await Promise.race([pingPromise, timeoutPromise])
-
+      const result = await Promise.race([ping(host), timeoutPromise])
       if (result.success) status = StatusEnum.up
       else error = this.getFormattedIcmpError(result.error, timeout)
     } catch (e) {
@@ -59,7 +63,7 @@ export class IcmpStrategy {
     }
 
     if (status === StatusEnum.down)
-      this.logger.warn(`Monitor ${monitorId} (${host}) is down! Error: ${error}`)
+      this.logger.warn('ICMP monitor is down', { monitorId, host, error })
 
     await this.confirmTransaction({ monitorId, status, responseTime, error, checkInterval, host })
     return { status, error, responseTime, checkedAt: new Date() }
@@ -67,11 +71,12 @@ export class IcmpStrategy {
 
   private getTimeout(ms: number) {
     let timeoutId: NodeJS.Timeout | null = null
-    const timeoutPromise = new Promise<Partial<PingResult>>(resolve => {
-      timeoutId = setTimeout(() => {
-        resolve({ success: false, error: `Ping timeout after ${ms}ms`, time: Date.now() })
-      }, ms)
-    })
+    const timeoutPromise = new Promise<never>(
+      (_, rej) =>
+        (timeoutId = setTimeout(() => {
+          rej(new Error(`Ping timeout after ${ms}ms`))
+        }, ms)),
+    )
 
     return { timeoutId, timeoutPromise }
   }
@@ -93,20 +98,33 @@ export class IcmpStrategy {
     checkInterval,
     host,
   }: ConfirmTransactionOptions) {
-    await this.prisma.$transaction([
-      this.prisma.check.create({
-        data: { monitorId, status, responseTime, error, details: { host } },
-      }),
+    try {
+      await this.prisma.$transaction([
+        this.prisma.check.create({
+          data: { monitorId, status, responseTime, error, details: { host } },
+        }),
 
-      this.prisma.monitor.update({
-        where: { id: monitorId },
-        data: {
-          lastCheckedAt: new Date(),
-          lastStatus: status,
-          nextCheckAt: new Date(Date.now() + checkInterval * 60 * 1000),
-        },
-      }),
-    ])
+        this.prisma.monitor.update({
+          where: { id: monitorId },
+          data: {
+            lastCheckedAt: new Date(),
+            lastStatus: status,
+            nextCheckAt: new Date(Date.now() + checkInterval * 60 * 1000),
+          },
+        }),
+      ])
+    } catch (e) {
+      if (e instanceof Error && 'code' in e && e.code === 'P2003') {
+        this.logger.warn('ICMP Monitor not found, skipping check', { monitorId })
+        return
+      }
+      error = getErrorMessage(e)
+      status = StatusEnum.down
+      this.logger.error('Transaction failed for ICMP check', {
+        monitorId,
+        error: getErrorMessage(e),
+      })
+    }
   }
 }
 

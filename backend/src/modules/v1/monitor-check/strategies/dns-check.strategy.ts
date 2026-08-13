@@ -1,8 +1,9 @@
 import dns from 'dns/promises'
 
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable } from '@nestjs/common'
 import { RecordType, StatusEnum } from '@prisma/client'
 
+import { Logger } from '@/shared/logger/logger.service'
 import { PrismaService } from '@/shared/prisma/prisma.service'
 import { getErrorMessage } from '@/shared/utils/error.utils'
 
@@ -10,8 +11,13 @@ import type { StrategyResult } from './strategy-result.types'
 
 @Injectable()
 export class DnsStrategy {
-  private readonly logger = new Logger(DnsStrategy.name)
-  constructor(private prisma: PrismaService) {}
+  private logger: Logger
+  constructor(
+    private prisma: PrismaService,
+    baseLogger: Logger,
+  ) {
+    this.logger = baseLogger.child({ context: DnsStrategy.name })
+  }
 
   async check(monitorId: string): StrategyResult {
     const monitor = await this.prisma.monitor.findUnique({
@@ -19,7 +25,7 @@ export class DnsStrategy {
       include: { dnsMonitor: true },
     })
     if (!monitor?.dnsMonitor) {
-      this.logger.warn(`Monitor ${monitorId} or its DnsMonitor not found, skipping check`)
+      this.logger.warn('Monitor or its DnsMonitor not found, skipping check', { monitorId })
       return {
         status: StatusEnum.down,
         error: 'Monitor or DnsMonitor not found',
@@ -51,7 +57,7 @@ export class DnsStrategy {
     })
 
     if (status === StatusEnum.down)
-      this.logger.warn(`Monitor ${monitorId} (${host} ${recordType}) is down: ${error}`)
+      this.logger.warn('DNS monitor is down', { monitorId, host, recordType, error })
 
     await this.confirmTransaction({
       monitorId,
@@ -73,18 +79,24 @@ export class DnsStrategy {
     let responseTime: number | null = null
     let resolvedValue: string | null = null
     let success = false
+    let timeoutId: NodeJS.Timeout | null = null
 
     try {
-      const promise = dns.resolve(host, recordType ?? 'A')
-      const result = await Promise.race([promise, this.getTimeoutPromise(timeout)])
+      const promise = new Promise(
+        (_, rej) =>
+          (timeoutId = setTimeout(() => rej(new Error(`DNS timeout after ${timeout}ms`)), timeout)),
+      )
+      const result = await Promise.race([dns.resolve(host, recordType ?? RecordType.A), promise])
 
       resolvedValue = this.formatDnsRecord(result, recordType)
       success = true
     } catch (e) {
       const rawError = getErrorMessage(e, `DNS query failed (${host})`)
       error = this.normalizeDnsError(rawError, host, timeout)
+      this.logger.warn('DNS query failed', { host, recordType, rawError })
     } finally {
       responseTime = Date.now() - start
+      if (timeoutId) clearTimeout(timeoutId)
     }
 
     status = success ? StatusEnum.up : StatusEnum.down
@@ -116,12 +128,6 @@ export class DnsStrategy {
     return parts.join(', ')
   }
 
-  private getTimeoutPromise(ms: number): Promise<void> {
-    return new Promise((_, rej) =>
-      setTimeout(() => rej(new Error(`DNS timeout after ${ms}ms`)), ms),
-    )
-  }
-
   private async confirmTransaction({
     monitorId,
     status,
@@ -132,26 +138,39 @@ export class DnsStrategy {
     recordType,
     resolvedValue,
   }: ConfirmTransactionOptions) {
-    await this.prisma.$transaction([
-      this.prisma.check.create({
-        data: {
-          monitorId,
-          status,
-          responseTime,
-          error,
-          details: { host, recordType, resolvedValue },
-        },
-      }),
+    try {
+      await this.prisma.$transaction([
+        this.prisma.check.create({
+          data: {
+            monitorId,
+            status,
+            responseTime,
+            error,
+            details: { host, recordType, resolvedValue },
+          },
+        }),
 
-      this.prisma.monitor.update({
-        where: { id: monitorId },
-        data: {
-          lastCheckedAt: new Date(),
-          lastStatus: status,
-          nextCheckAt: new Date(Date.now() + checkInterval * 60 * 1000),
-        },
-      }),
-    ])
+        this.prisma.monitor.update({
+          where: { id: monitorId },
+          data: {
+            lastCheckedAt: new Date(),
+            lastStatus: status,
+            nextCheckAt: new Date(Date.now() + checkInterval * 60 * 1000),
+          },
+        }),
+      ])
+    } catch (e) {
+      if (e instanceof Error && 'code' in e && e.code === 'P2003') {
+        this.logger.warn('DNS Monitor not found, skipping check', { monitorId })
+        return
+      }
+      error = getErrorMessage(e)
+      status = StatusEnum.down
+      this.logger.error('Transaction failed for DNS check', {
+        monitorId,
+        error: getErrorMessage(e),
+      })
+    }
   }
 
   private normalizeDnsError(errorMsg: string, host: string, timeout: number): string {

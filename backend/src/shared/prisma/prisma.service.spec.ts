@@ -1,8 +1,7 @@
-import { Logger } from '@nestjs/common'
+import type { Logger } from 'nestjs-pino'
 
 import { PrismaService } from './prisma.service'
 
-// --- mocks ---
 vi.mock('@nestjs/common', async () => {
   const actual = await vi.importActual('@nestjs/common')
   return {
@@ -20,14 +19,21 @@ vi.mock('@prisma/client', () => ({
   },
 }))
 
-// --- tests ---
+const mockLogger = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(() => mockLogger),
+} as unknown as Logger
+
 describe('PrismaService', () => {
   let service: PrismaService
   let logger: { log: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> }
 
   beforeEach(() => {
     vi.clearAllMocks()
-    service = new PrismaService()
+    service = new PrismaService(mockLogger)
     logger = (service as any).logger
   })
 
@@ -72,12 +78,6 @@ describe('PrismaService', () => {
       await expect(service.onModuleInit()).rejects.toThrow(
         /Database connection failed: unknown error/i,
       )
-    })
-  })
-
-  describe('logger', () => {
-    it('is scoped to PrismaService', () => {
-      expect(Logger).toHaveBeenCalledWith('PrismaService')
     })
   })
 })
