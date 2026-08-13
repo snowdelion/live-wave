@@ -6,12 +6,13 @@ import cookieParser from 'cookie-parser'
 import helmet from 'helmet'
 
 import { AppModule } from './app.module'
+import { Logger } from './shared/logger/logger.service'
 import { MetricsInterceptor } from './shared/metrics/interceptors/metrics.interceptor'
 import { MetricsFilter } from './shared/metrics/metrics.filter'
 import { MetricsService } from './shared/metrics/metrics.service'
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule)
+  const app = await NestFactory.create(AppModule, { bufferLogs: true })
   const configService = app.get(ConfigService)
 
   const config = new DocumentBuilder()
@@ -42,6 +43,7 @@ async function bootstrap() {
   })
   app.enableShutdownHooks()
   app.use(cookieParser())
+  app.useLogger(app.get(Logger))
 
   await app.listen(configService.get<number>('PORT', 8000))
 }
