@@ -1,5 +1,6 @@
 import type { Queue } from 'bullmq'
-import type { Logger } from 'nestjs-pino'
+
+import type { Logger } from '@/shared/logger/logger.service'
 
 import { BullShutdownService } from './bull-shutdown.service'
 

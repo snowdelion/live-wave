@@ -1,5 +1,4 @@
-import type { Logger } from 'nestjs-pino'
-
+import type { Logger } from '../logger/logger.service'
 import { REDIS_KEYS } from '../redis/redis.constants'
 import type { RedisService } from '../redis/redis.service'
 

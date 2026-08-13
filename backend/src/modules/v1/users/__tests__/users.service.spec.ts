@@ -1,6 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common'
-import type { Logger } from 'nestjs-pino'
 
+import type { Logger } from '@/shared/logger/logger.service'
 import { REDIS_KEYS } from '@/shared/redis/redis.constants'
 
 import { UsersService } from '../users.service'

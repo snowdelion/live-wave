@@ -1,6 +1,6 @@
 import { HttpStatus } from '@nestjs/common'
-import type { Logger } from 'nestjs-pino'
 
+import type { Logger } from '@/shared/logger/logger.service'
 import type { PrismaService } from '@/shared/prisma/prisma.service'
 import type { RedisService } from '@/shared/redis/redis.service'
 

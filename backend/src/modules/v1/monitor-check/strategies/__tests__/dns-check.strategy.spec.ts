@@ -1,4 +1,4 @@
-import type { Logger } from 'nestjs-pino'
+import type { Logger } from '@/shared/logger/logger.service'
 
 import { DnsStrategy } from '../dns-check.strategy'
 
