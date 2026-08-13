@@ -103,13 +103,18 @@ export class IcmpStrategy {
         this.prisma.check.create({
           data: { monitorId, status, responseTime, error, details: { host } },
         }),
-
         this.prisma.monitor.update({
           where: { id: monitorId },
           data: {
             lastCheckedAt: new Date(),
             lastStatus: status,
             nextCheckAt: new Date(Date.now() + checkInterval * 60 * 1000),
+          },
+        }),
+        this.prisma.check.deleteMany({
+          where: {
+            monitorId,
+            checkedAt: { lt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000) },
           },
         }),
       ])
