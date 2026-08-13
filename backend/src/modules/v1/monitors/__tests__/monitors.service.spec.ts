@@ -2,8 +2,28 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 import { Method, type Monitor, MonitorType, RecordType, type PrismaClient } from '@prisma/client'
 
 import type { PrismaService } from '@/shared/prisma/prisma.service'
+import { logAndThrow } from '@/shared/utils/error.utils'
 
 import { MonitorsService } from '../monitors.service'
+
+vi.mock('@/shared/utils/error.utils', () => ({
+  logAndThrow: vi.fn(({ exceptionContext, e }) => {
+    const msg =
+      e instanceof Error
+        ? `${exceptionContext}: ${e.message}`
+        : `${exceptionContext}: unknown error`
+    throw new NotFoundException(msg)
+  }),
+}))
+
+vi.mock('@/shared/utils/error.utils', () => ({
+  logAndThrow: vi.fn(),
+}))
+
+vi.mock('../monitors.sql', () => ({
+  getTrendSql: vi.fn(() => 'TREND_SQL'),
+  getIncidentsCountSql: vi.fn(() => 'INCIDENTS_SQL'),
+}))
 
 const mockTx = {
   monitor: {
@@ -29,17 +49,7 @@ const mockPrisma = {
     update: vi.fn(),
     delete: vi.fn(),
   },
-  $queryRaw: vi.fn().mockResolvedValue([
-    {
-      monitorId: MONITOR_ID,
-      total: 10,
-      up: 10,
-      avgResponse: 30,
-      minResponse: 10,
-      maxResponse: 50,
-      sparkline: [30, 40, 50],
-    },
-  ]),
+  $queryRaw: vi.fn(),
   $transaction: vi.fn(async (cb: (tx: typeof mockTx) => unknown) => cb(mockTx)),
 } as unknown as PrismaService
 
@@ -48,7 +58,16 @@ const mockMonitorCheckService = {
   clearScheduledJobs: vi.fn(),
 }
 
-const makeService = () => new MonitorsService(mockPrisma, mockMonitorCheckService as any)
+const mockLoggerInstance: any = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+}
+mockLoggerInstance.child = vi.fn().mockReturnValue(mockLoggerInstance)
+
+const makeService = () =>
+  new MonitorsService(mockPrisma, mockMonitorCheckService as any, mockLoggerInstance)
 
 const baseMonitor = {
   id: MONITOR_ID,
@@ -136,6 +155,15 @@ const createHttpDto = {
 
 beforeEach(() => {
   vi.resetAllMocks()
+  mockLoggerInstance.child.mockReturnValue(mockLoggerInstance)
+  vi.mocked(logAndThrow).mockImplementation(({ exceptionContext, e }: any) => {
+    const msg =
+      e instanceof Error
+        ? `${exceptionContext}: ${e.message}`
+        : `${exceptionContext}: unknown error`
+    throw new NotFoundException(msg)
+  })
+
   vi.mocked(mockPrisma.monitor.count).mockResolvedValue(0)
   vi.mocked(mockPrisma.$transaction).mockImplementation(
     async (cb: (tx: typeof mockTx) => unknown) => cb(mockTx),
@@ -376,15 +404,18 @@ describe('findAllByUserId', () => {
       httpMonitor: { url: 'https://example.com' },
     }
     vi.mocked(mockPrisma.monitor.findMany).mockResolvedValue([monitorData as unknown as Monitor])
-    vi.mocked(mockPrisma.$queryRaw).mockResolvedValue([
-      {
-        monitorId: MONITOR_ID,
-        total: 10,
-        up: 10,
-        avgResponse: 30,
-        sparkline: [30, 40, 50],
-      },
-    ])
+
+    vi.mocked(mockPrisma.$queryRaw)
+      .mockResolvedValueOnce([
+        {
+          monitorId: MONITOR_ID,
+          total: 10,
+          up: 10,
+          avgResponse: 30,
+          sparkline: [30, 40, 50],
+        },
+      ])
+      .mockResolvedValueOnce([{ monitorId: MONITOR_ID, count: BigInt(2) }])
 
     const service = makeService()
     const result = await service.findAllByUserId(USER_ID)
@@ -405,7 +436,7 @@ describe('findAllByUserId', () => {
       orderBy: { createdAt: 'desc' },
     })
 
-    expect(mockPrisma.$queryRaw).toHaveBeenCalled()
+    expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(2)
 
     expect(result.monitors[0]).toMatchObject({
       id: MONITOR_ID,
@@ -417,6 +448,8 @@ describe('findAllByUserId', () => {
       weekUptime: 100,
       domain: 'https://example.com',
     })
+
+    expect(result.incidentsCount).toBe(2)
   })
 })
 
@@ -458,7 +491,7 @@ describe('findById', () => {
     await expect(service.findById(USER_ID, MONITOR_ID)).rejects.toThrow(NotFoundException)
   })
 
-  it('throws ForbiddenException when monitor belongs to another user', async () => {
+  it('throws NotFoundException when monitor belongs to another user', async () => {
     vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue({
       ...baseMonitor,
       userId: OTHER_USER_ID,
@@ -466,7 +499,7 @@ describe('findById', () => {
     } as any)
 
     const service = makeService()
-    await expect(service.findById(USER_ID, MONITOR_ID)).rejects.toThrow(ForbiddenException)
+    await expect(service.findById(USER_ID, MONITOR_ID)).rejects.toThrow(NotFoundException)
   })
 })
 

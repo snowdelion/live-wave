@@ -56,6 +56,14 @@ const mockRedis = {
   del: vi.fn(),
 }
 
+const mockLogger = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(() => mockLogger),
+}
+
 describe('TelegramService', () => {
   let service: TelegramService
 
@@ -63,7 +71,12 @@ describe('TelegramService', () => {
     vi.clearAllMocks()
     vi.useFakeTimers()
     global.fetch = vi.fn()
-    service = new TelegramService(mockPrisma as any, mockConfig as any, mockRedis as any)
+    service = new TelegramService(
+      mockPrisma as any,
+      mockConfig as any,
+      mockRedis as any,
+      mockLogger as any,
+    )
   })
 
   afterEach(() => vi.useRealTimers())
@@ -75,7 +88,12 @@ describe('TelegramService', () => {
 
     it('warns and skips baseUrl when token or username is missing', () => {
       const configNoToken = { get: vi.fn().mockReturnValue(undefined) }
-      const s = new TelegramService(mockPrisma as any, configNoToken as any, mockRedis as any)
+      const s = new TelegramService(
+        mockPrisma as any,
+        configNoToken as any,
+        mockRedis as any,
+        mockLogger as any,
+      )
       expect(s).toBeDefined()
     })
   })
@@ -83,7 +101,12 @@ describe('TelegramService', () => {
   describe('linkChatId', () => {
     it('throws BadRequestException if bot config is missing', async () => {
       const configNoToken = { get: vi.fn().mockReturnValue(undefined) }
-      const s = new TelegramService(mockPrisma as any, configNoToken as any, mockRedis as any)
+      const s = new TelegramService(
+        mockPrisma as any,
+        configNoToken as any,
+        mockRedis as any,
+        mockLogger as any,
+      )
 
       await expect(s.linkChatId('u1')).rejects.toThrow(BadRequestException)
     })
@@ -181,7 +204,12 @@ describe('TelegramService', () => {
   describe('onApplicationBootstrap', () => {
     it('skips if token or webhook URL is missing', async () => {
       const configNoToken = { get: vi.fn().mockReturnValue(undefined) }
-      const s = new TelegramService(mockPrisma as any, configNoToken as any, mockRedis as any)
+      const s = new TelegramService(
+        mockPrisma as any,
+        configNoToken as any,
+        mockRedis as any,
+        mockLogger as any,
+      )
 
       await s.onApplicationBootstrap()
 
@@ -332,7 +360,12 @@ describe('TelegramService', () => {
 
     it('returns false immediately when bot token is missing', async () => {
       const configNoToken = { get: vi.fn().mockReturnValue(undefined) }
-      const s = new TelegramService(mockPrisma as any, configNoToken as any, mockRedis as any)
+      const s = new TelegramService(
+        mockPrisma as any,
+        configNoToken as any,
+        mockRedis as any,
+        mockLogger as any,
+      )
 
       const ok = await s.sendMessage('42', 'hello')
 

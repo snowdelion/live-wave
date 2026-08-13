@@ -1,11 +1,19 @@
+import { Injectable } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { PassportStrategy } from '@nestjs/passport'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 
-export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor() {
-    const secret = process.env.JWT_ACCESS_SECRET
-    if (!secret) throw new Error('JWT_ACCESS_SECRET is required')
+import { Logger } from '@/shared/logger/logger.service'
 
+@Injectable()
+export class JwtStrategy extends PassportStrategy(Strategy) {
+  constructor(baseLogger: Logger, config: ConfigService) {
+    const logger = baseLogger.child({ context: JwtStrategy.name })
+    const secret = config.get<string>('JWT_ACCESS_SECRET')
+    if (!secret) {
+      logger.error('JWT_ACCESS_SECRET is not set in environment variables')
+      throw new Error('JWT_ACCESS_SECRET is required')
+    }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,

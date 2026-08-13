@@ -1,4 +1,6 @@
-import { Logger, NotFoundException } from '@nestjs/common'
+import { NotFoundException } from '@nestjs/common'
+
+import type { Logger } from '@/shared/logger/logger.service'
 
 import { IncidentsService } from './incidents.service'
 
@@ -10,6 +12,8 @@ vi.mock('../analytics.sql', () => ({
   getUptimeItemSql: vi.fn(),
 }))
 
+vi.mock('@/shared/logger/logger.service')
+
 const makeIncidentRaw = (overrides = {}) => [
   {
     startAt: new Date('2024-01-02T10:00:00Z'),
@@ -19,6 +23,14 @@ const makeIncidentRaw = (overrides = {}) => [
     ...overrides,
   },
 ]
+
+const mockLogger = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(() => mockLogger),
+} as unknown as Logger
 
 function makePrisma(overrides: Record<string, unknown> = {}) {
   return {
@@ -38,16 +50,10 @@ describe('IncidentsService', () => {
   let service: IncidentsService
   let prisma: ReturnType<typeof makePrisma>
 
-  let loggerErrorSpy: ReturnType<typeof vi.spyOn>
-
   beforeEach(() => {
     prisma = makePrisma()
-    service = new IncidentsService(prisma as never)
-    loggerErrorSpy = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
-  })
 
-  afterEach(() => {
-    loggerErrorSpy.mockRestore()
+    service = new IncidentsService(prisma as never, mockLogger)
   })
 
   describe('getIncidents', () => {
@@ -166,10 +172,10 @@ describe('IncidentsService', () => {
 
       await expect(service.getIncidents('user-1', 'monitor-1', new Date())).rejects.toBe(42)
 
-      expect(loggerErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Unknown error'),
-        undefined,
-      )
+      expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining('Unknown error'), {
+        context: expect.any(String),
+        stack: undefined,
+      })
     })
   })
 })

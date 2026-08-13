@@ -1,6 +1,5 @@
-import { Test, type TestingModule } from '@nestjs/testing'
+import type { Logger } from '@/shared/logger/logger.service'
 
-import { REDIS_CLIENT } from '../redis.constants'
 import { RedisService } from '../redis.service'
 
 const mockRedis = {
@@ -11,7 +10,15 @@ const mockRedis = {
   incr: vi.fn(),
   expire: vi.fn(),
   multi: vi.fn(),
-}
+} as any
+
+const mockLogger = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(() => mockLogger),
+} as unknown as Logger
 
 describe('RedisService', () => {
   let service: RedisService
@@ -19,11 +26,7 @@ describe('RedisService', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [RedisService, { provide: REDIS_CLIENT, useValue: mockRedis }],
-    }).compile()
-
-    service = module.get<RedisService>(RedisService)
+    service = new RedisService(mockRedis, mockLogger)
   })
 
   describe('set', () => {

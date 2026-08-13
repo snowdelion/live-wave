@@ -1,11 +1,14 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
+import { Injectable, OnApplicationShutdown, OnModuleInit } from '@nestjs/common'
 import { PrismaClient } from '@prisma/client'
 
+import { Logger } from '../logger/logger.service'
 import { logAndThrow } from '../utils/error.utils'
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit {
-  private readonly logger = new Logger(PrismaService.name)
+export class PrismaService extends PrismaClient implements OnModuleInit, OnApplicationShutdown {
+  constructor(private logger: Logger) {
+    super()
+  }
 
   async onModuleInit() {
     try {
@@ -13,7 +16,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
       this.logger.log('Database connected successfully')
     } catch (e) {
       throw logAndThrow({
-        name: PrismaService.name,
+        logger: this.logger,
         context: 'connect to the database',
         e,
         exception: Error,
@@ -21,5 +24,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
         shouldSetCause: true,
       })
     }
+  }
+
+  async onApplicationShutdown(signal?: string) {
+    await this.$disconnect()
+    this.logger.log('Prisma disconnected', { signal })
   }
 }

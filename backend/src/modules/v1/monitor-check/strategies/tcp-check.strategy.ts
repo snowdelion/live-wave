@@ -1,8 +1,9 @@
 import net from 'net'
 
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable } from '@nestjs/common'
 import { StatusEnum } from '@prisma/client'
 
+import { Logger } from '@/shared/logger/logger.service'
 import { PrismaService } from '@/shared/prisma/prisma.service'
 import { getErrorMessage } from '@/shared/utils/error.utils'
 
@@ -10,8 +11,13 @@ import type { StrategyResult } from './strategy-result.types'
 
 @Injectable()
 export class TcpStrategy {
-  private readonly logger = new Logger(TcpStrategy.name)
-  constructor(private prisma: PrismaService) {}
+  private logger: Logger
+  constructor(
+    private prisma: PrismaService,
+    baseLogger: Logger,
+  ) {
+    this.logger = baseLogger.child({ context: TcpStrategy.name })
+  }
 
   async check(monitorId: string): StrategyResult {
     const monitor = await this.prisma.monitor.findUnique({
@@ -20,7 +26,7 @@ export class TcpStrategy {
     })
 
     if (!monitor || !monitor.tcpMonitor) {
-      this.logger.warn(`Monitor ${monitorId} or its TcpMonitor not found, skipping check`)
+      this.logger.warn('Monitor or its TcpMonitor not found, skipping check', { monitorId })
       return {
         status: StatusEnum.down,
         error: 'Monitor or TcpMonitor not found',
@@ -52,11 +58,12 @@ export class TcpStrategy {
     const start = Date.now()
 
     try {
-      await this.checkTcpPort({ host, port, timeoutMs: timeout })
+      await this.checkTcpPort({ host, port, timeout })
       status = StatusEnum.up
     } catch (e) {
       error = this.normalizeTcpError(e, host, port, timeout)
       status = StatusEnum.down
+      this.logger.warn('TCP monitor is down', { monitorId, host, port, timeout })
     } finally {
       responseTime = Date.now() - start
     }
@@ -74,18 +81,17 @@ export class TcpStrategy {
     return { status, error, responseTime, checkedAt: new Date() }
   }
 
-  private checkTcpPort({ host, port, timeoutMs }: CheckTcpPortOptions): Promise<void> {
+  private checkTcpPort({ host, port, timeout }: CheckTcpPortOptions): Promise<void> {
     return new Promise((res, rej) => {
       const socket = new net.Socket()
 
-      socket.setTimeout(timeoutMs)
+      socket.setTimeout(timeout)
       socket.once('timeout', () => {
         socket.destroy()
-        rej(new Error(`Connection timeout after ${timeoutMs}ms`))
+        rej(new Error(`Connection timeout after ${timeout}ms`))
       })
 
       socket.once('error', rej)
-
       socket.connect(port, host, () => {
         socket.destroy()
         res()
@@ -102,20 +108,33 @@ export class TcpStrategy {
     host,
     port,
   }: ConfirmTransactionOptions) {
-    await this.prisma.$transaction([
-      this.prisma.check.create({
-        data: { monitorId, status, responseTime, error, details: { host, port } },
-      }),
+    try {
+      await this.prisma.$transaction([
+        this.prisma.check.create({
+          data: { monitorId, status, responseTime, error, details: { host, port } },
+        }),
 
-      this.prisma.monitor.update({
-        where: { id: monitorId },
-        data: {
-          lastCheckedAt: new Date(),
-          lastStatus: status,
-          nextCheckAt: new Date(Date.now() + checkInterval * 60 * 1000),
-        },
-      }),
-    ])
+        this.prisma.monitor.update({
+          where: { id: monitorId },
+          data: {
+            lastCheckedAt: new Date(),
+            lastStatus: status,
+            nextCheckAt: new Date(Date.now() + checkInterval * 60 * 1000),
+          },
+        }),
+      ])
+    } catch (e) {
+      if (e instanceof Error && 'code' in e && e.code === 'P2003') {
+        this.logger.warn('TCP Monitor not found, skipping check', { monitorId })
+        return
+      }
+      error = getErrorMessage(e)
+      status = StatusEnum.down
+      this.logger.error('Transaction failed for TCP check', {
+        monitorId,
+        error: getErrorMessage(e),
+      })
+    }
   }
 
   private normalizeTcpError(e: unknown, host: string, port: number, timeout: number) {
@@ -140,7 +159,7 @@ interface PerformCheckOptions {
 interface CheckTcpPortOptions {
   host: string
   port: number
-  timeoutMs: number
+  timeout: number
 }
 
 interface ConfirmTransactionOptions {

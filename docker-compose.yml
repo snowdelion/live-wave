@@ -59,11 +59,23 @@ services:
     networks:
       - app-network
 
+  loki:
+    image: grafana/loki:latest
+    volumes:
+      - ./observability/loki/loki-config.yml:/etc/loki/loki-config.yml
+      - loki_data:/loki
+    ports:
+      - '3100:3100'
+    command: -config.file=/etc/loki/loki-config.yml
+    networks:
+      - app-network
+
 volumes:
   postgres_data:
   redis_data:
   grafana_data:
   prometheus_data:
+  loki_data:
 
 networks:
   app-network:

@@ -1,7 +1,8 @@
-import { Logger, type NotFoundException } from '@nestjs/common'
+import { type NotFoundException } from '@nestjs/common'
+
+import type { Logger } from '../logger/logger.service'
 
 export function logAndThrow({
-  name,
   context,
   e,
   exception,
@@ -10,13 +11,13 @@ export function logAndThrow({
   loggerType = 'error',
   fallback = 'Unknown error',
   shouldSetCause = false,
+  logger,
 }: LogAndThrowOptions) {
   const isError = e instanceof Error
   const msg = getErrorMessage(e, fallback)
   const stack = isError ? e.stack : undefined
 
-  const logger = new Logger(name)
-  logger[loggerType](`Failed to ${context}: ${msg}`, stack)
+  logger[loggerType](`Failed to ${context}: ${msg}`, { context, stack })
 
   if (shouldThrow) {
     if (exception) {
@@ -29,14 +30,14 @@ export function logAndThrow({
 }
 
 interface LogAndThrowOptions {
-  name: string
   context: string
   e: unknown
+  logger: Logger
 
   exceptionContext?: string
   exception?: typeof NotFoundException | typeof Error
   shouldThrow?: boolean
-  loggerType?: 'error' | 'warn' | 'debug' | 'log'
+  loggerType?: 'error' | 'warn' | 'debug' | 'log' | 'verbose'
   fallback?: string
   shouldSetCause?: boolean
 }

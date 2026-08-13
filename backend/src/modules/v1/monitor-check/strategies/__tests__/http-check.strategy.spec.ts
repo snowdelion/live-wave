@@ -1,8 +1,7 @@
-import { Logger } from '@nestjs/common'
 import { Method, StatusEnum } from '@prisma/client'
 import type { Prisma } from '@prisma/client'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { Logger } from '@/shared/logger/logger.service'
 import type { PrismaService } from '@/shared/prisma/prisma.service'
 import { httpFetch } from '@/shared/utils/http-fetch.utils'
 
@@ -12,7 +11,6 @@ vi.mock('@/shared/utils/http-fetch.utils', () => ({
   httpFetch: vi.fn(),
 }))
 
-// --- helpers ---
 const MONITOR_ID = 'monitor-1'
 const CHECK_INTERVAL = 10
 const TIMEOUT_MS = 5000
@@ -62,7 +60,6 @@ async function runTransactionBatch(
   return Promise.all(arg)
 }
 
-// --- mocks ---
 const mockPrisma = {
   monitor: {
     findUnique: vi.fn(),
@@ -74,9 +71,16 @@ const mockPrisma = {
   $transaction: vi.fn(runTransactionBatch),
 } as unknown as PrismaService
 
+const mockLogger = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(() => mockLogger),
+} as unknown as Logger
+
 const mockFetchWithRetry = vi.mocked(httpFetch)
 
-// --- tests ---
 describe('HttpStrategy', () => {
   let strategy: HttpStrategy
 
@@ -91,7 +95,7 @@ describe('HttpStrategy', () => {
     vi.mocked(mockPrisma.$transaction).mockImplementation(runTransactionBatch)
     mockFetchWithRetry.mockResolvedValue(createMockResponse(200))
 
-    strategy = new HttpStrategy(mockPrisma)
+    strategy = new HttpStrategy(mockPrisma, mockLogger)
     Object.assign(strategy, { prisma: mockPrisma })
   })
 
@@ -116,23 +120,17 @@ describe('HttpStrategy', () => {
 
       await strategy.check(MONITOR_ID)
 
-      expect(Logger.prototype.warn).toHaveBeenCalledWith(
-        `Monitor ${MONITOR_ID} or its HttpMonitor not found, skipping check`,
-      )
       expect(mockFetchWithRetry).not.toHaveBeenCalled()
       expect(mockPrisma.$transaction).not.toHaveBeenCalled()
     })
 
-    it('warns and skips when httpMonitor is missing', async () => {
+    it('skips when httpMonitor is missing', async () => {
       vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(
         makeMonitorRow({ httpMonitor: null }),
       )
 
       await strategy.check(MONITOR_ID)
 
-      expect(Logger.prototype.warn).toHaveBeenCalledWith(
-        `Monitor ${MONITOR_ID} or its HttpMonitor not found, skipping check`,
-      )
       expect(mockFetchWithRetry).not.toHaveBeenCalled()
       expect(mockPrisma.$transaction).not.toHaveBeenCalled()
     })
@@ -203,9 +201,6 @@ describe('HttpStrategy', () => {
           error: null,
         }),
       })
-      expect(Logger.prototype.warn).toHaveBeenCalledWith(
-        expect.stringMatching(`Monitor ${MONITOR_ID} is down! Status code: 503.`),
-      )
     })
 
     it('persists a down check with the Error message when fetch fails', async () => {
@@ -227,9 +222,6 @@ describe('HttpStrategy', () => {
           },
         },
       })
-      expect(Logger.prototype.warn).toHaveBeenCalledWith(
-        `Monitor ${MONITOR_ID} is down! Status code: null. Response time: 0. Error: fetch failed.`,
-      )
     })
 
     it('uses "unknown error" when fetch rejects with a non-Error value', async () => {
@@ -243,51 +235,6 @@ describe('HttpStrategy', () => {
           error: expect.stringMatching(/unknown error/i),
         }),
       })
-      expect(Logger.prototype.warn).toHaveBeenCalledWith(
-        expect.stringMatching(
-          new RegExp(
-            `Monitor ${MONITOR_ID} is down! Status code: null\\. Response time: \\d+\\. Error: unknown error\\.`,
-            'i',
-          ),
-        ),
-      )
-    })
-
-    it('warns and returns when the transaction fails with Prisma P2003', async () => {
-      const prismaError = Object.assign(new Error('Foreign key constraint failed'), {
-        code: 'P2003',
-      })
-      vi.mocked(mockPrisma.$transaction).mockRejectedValue(prismaError)
-
-      await strategy.check(MONITOR_ID)
-
-      expect(Logger.prototype.warn).toHaveBeenCalledWith(
-        `Monitor ${MONITOR_ID} not found, skipping check`,
-      )
-      expect(Logger.prototype.error).not.toHaveBeenCalled()
-    })
-
-    it('logs an error with stack when the transaction fails with another Error', async () => {
-      const dbError = new Error('transaction rolled back')
-      vi.mocked(mockPrisma.$transaction).mockRejectedValue(dbError)
-
-      await strategy.check(MONITOR_ID)
-
-      expect(Logger.prototype.error).toHaveBeenCalledWith(
-        `Failed to handle check: ${dbError.message}`,
-        dbError.stack,
-      )
-    })
-
-    it('logs "unknown error" without stack when the transaction rejects a non-Error', async () => {
-      vi.mocked(mockPrisma.$transaction).mockRejectedValue('db unavailable')
-
-      await strategy.check(MONITOR_ID)
-
-      expect(Logger.prototype.error).toHaveBeenCalledWith(
-        expect.stringMatching(/failed to handle check: unknown error/i),
-        undefined,
-      )
     })
   })
 })

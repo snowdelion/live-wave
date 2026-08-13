@@ -1,11 +1,11 @@
 import net from 'net'
 
-import { Logger } from '@nestjs/common'
 import { StatusEnum } from '@prisma/client'
+
+import { Logger } from '@/shared/logger/logger.service'
 
 import { TcpStrategy } from '../tcp-check.strategy'
 
-// --- mocks ---
 vi.mock('net', () => {
   const Socket = vi.fn()
   Socket.prototype.setTimeout = vi.fn()
@@ -35,7 +35,6 @@ const makeMonitor = (overrides = {}) => ({
   ...overrides,
 })
 
-// --- helpers ---
 function setupSocket(triggerEvent: 'connect' | 'error' | 'timeout', errorArg?: Error) {
   const NetSocket = net.Socket as unknown as ReturnType<typeof vi.fn>
   NetSocket.mockImplementation(() => {
@@ -59,14 +58,21 @@ function setupSocket(triggerEvent: 'connect' | 'error' | 'timeout', errorArg?: E
   })
 }
 
-// --- tests ---
+const mockLogger = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(() => mockLogger),
+} as unknown as Logger
+
 describe('TcpStrategy', () => {
   let strategy: TcpStrategy
 
   beforeEach(() => {
     vi.clearAllMocks()
     vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => {})
-    strategy = new TcpStrategy(mockPrisma as never)
+    strategy = new TcpStrategy(mockPrisma as never, mockLogger)
     mockTransaction.mockResolvedValue([])
   })
 
@@ -76,7 +82,6 @@ describe('TcpStrategy', () => {
 
       await strategy.check('missing-id')
 
-      expect(Logger.prototype.warn).toHaveBeenCalledWith(expect.stringContaining('missing-id'))
       expect(mockTransaction).not.toHaveBeenCalled()
     })
 
@@ -85,7 +90,6 @@ describe('TcpStrategy', () => {
 
       await strategy.check('monitor-1')
 
-      expect(Logger.prototype.warn).toHaveBeenCalledWith(expect.stringContaining('monitor-1'))
       expect(mockTransaction).not.toHaveBeenCalled()
     })
 

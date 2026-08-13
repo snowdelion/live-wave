@@ -1,15 +1,20 @@
 import { HttpStatus, Injectable } from '@nestjs/common'
 
+import { Logger } from '@/shared/logger/logger.service'
 import { PrismaService } from '@/shared/prisma/prisma.service'
 import { RedisService } from '@/shared/redis/redis.service'
 import { getErrorMessage } from '@/shared/utils/error.utils'
 
 @Injectable()
 export class HealthService {
+  private logger: Logger
   constructor(
     private prisma: PrismaService,
     private redis: RedisService,
-  ) {}
+    baseLogger: Logger,
+  ) {
+    this.logger = baseLogger.child({ context: HealthService.name })
+  }
 
   async getReadinessStatus() {
     const database = await this.checkDatabase()
@@ -36,6 +41,7 @@ export class HealthService {
       return { status: 'up' }
     } catch (e) {
       const message = getErrorMessage(e, 'Service unavailable')
+      this.logger.warn('Health check failed', { component: 'database', message })
       return { status: 'down', error: message }
     }
   }
@@ -46,6 +52,7 @@ export class HealthService {
       return { status: 'up' }
     } catch (e) {
       const message = getErrorMessage(e, 'Service unavailable')
+      this.logger.warn('Health check failed', { component: 'redis', message })
       return { status: 'down', error: message }
     }
   }

@@ -1,3 +1,4 @@
+import type { Logger } from '../logger/logger.service'
 import { REDIS_KEYS } from '../redis/redis.constants'
 import type { RedisService } from '../redis/redis.service'
 
@@ -14,13 +15,21 @@ const mockRedis = {
   incr: vi.fn(),
 }
 
+const mockLogger = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(() => mockLogger),
+} as unknown as Logger
+
 describe('RateLimitService', () => {
   let service: RateLimitService
 
   beforeEach(() => {
     vi.clearAllMocks()
     mockMulti.incr.mockReturnThis()
-    service = new RateLimitService(mockRedis as unknown as RedisService)
+    service = new RateLimitService(mockRedis as unknown as RedisService, mockLogger)
   })
 
   describe('domain', () => {

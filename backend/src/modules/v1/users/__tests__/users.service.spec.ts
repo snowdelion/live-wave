@@ -1,8 +1,17 @@
 import { UnauthorizedException } from '@nestjs/common'
 
+import type { Logger } from '@/shared/logger/logger.service'
 import { REDIS_KEYS } from '@/shared/redis/redis.constants'
 
 import { UsersService } from '../users.service'
+
+const mockLogger = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(() => mockLogger),
+} as unknown as Logger
 
 describe('UsersService', () => {
   let service: UsersService
@@ -27,7 +36,7 @@ describe('UsersService', () => {
       del: vi.fn(),
     }
 
-    service = new UsersService(redis, prisma)
+    service = new UsersService(redis, prisma, mockLogger)
   })
 
   describe('getMe', () => {
@@ -156,6 +165,10 @@ describe('UsersService', () => {
   })
 
   describe('delete', () => {
+    beforeEach(() => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1' })
+    })
+
     it('deletes redis refresh token and the user record', async () => {
       await service.delete('user-1')
 

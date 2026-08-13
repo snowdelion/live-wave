@@ -1,33 +1,30 @@
-import { Logger, NotFoundException } from '@nestjs/common'
+import { NotFoundException } from '@nestjs/common'
+
+import type { Logger } from '@/shared/logger/logger.service'
 
 import { getErrorMessage, logAndThrow } from '../error.utils'
 
-// --- mocks ---
 vi.mock('@nestjs/common', async () => {
   const actual = await vi.importActual('@nestjs/common')
   return {
     ...actual,
-    Logger: vi.fn().mockImplementation(() => ({
-      error: vi.fn(),
-      warn: vi.fn(),
-      debug: vi.fn(),
-      log: vi.fn(),
-    })),
   }
 })
 
-function makeLogger() {
-  return (Logger as unknown as ReturnType<typeof vi.fn>).mock.results.at(-1)?.value as Record<
-    string,
-    ReturnType<typeof vi.fn>
-  >
-}
+const mockLogger = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(() => mockLogger),
+} as unknown as Logger
+
+vi.mock('../../logger/logger.service')
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
-// --- tests ---
 describe('getErrorMessage', () => {
   it('returns the error message when given an Error', () => {
     expect(getErrorMessage(new Error('oops'))).toBe('oops')
@@ -46,60 +43,63 @@ describe('getErrorMessage', () => {
 })
 
 describe('logAndThrow - logging', () => {
-  it('constructs a Logger with the supplied name', () => {
-    expect(() =>
-      logAndThrow({ name: 'MyService', context: 'fetch data', e: new Error('fail') }),
-    ).toThrow()
-
-    expect(Logger).toHaveBeenCalledWith('MyService')
-  })
-
   it('logs at the "error" level by default', () => {
     const e = new Error('boom')
-    expect(() => logAndThrow({ name: 'Svc', context: 'do thing', e })).toThrow()
+    const context = 'do thing'
+    expect(() => logAndThrow({ logger: mockLogger, context, e })).toThrow()
 
-    const logger = makeLogger()
-    expect(logger.error).toHaveBeenCalledOnce()
-    expect(logger.error).toHaveBeenCalledWith(`Failed to do thing: boom`, e.stack)
+    expect(mockLogger.error).toHaveBeenCalledOnce()
+    expect(mockLogger.error).toHaveBeenCalledWith(`Failed to ${context}: boom`, {
+      context,
+      stack: e.stack,
+    })
   })
 
   it('logs at a custom level when loggerType is supplied', () => {
     expect(() =>
-      logAndThrow({ name: 'Svc', context: 'do thing', e: new Error('x'), loggerType: 'warn' }),
+      logAndThrow({
+        logger: mockLogger,
+        context: 'do thing',
+        e: new Error('x'),
+        loggerType: 'warn',
+      }),
     ).toThrow()
 
-    const logger = makeLogger()
-    expect(logger.warn).toHaveBeenCalledOnce()
-    expect(logger.error).not.toHaveBeenCalled()
+    expect(mockLogger.warn).toHaveBeenCalledOnce()
+    expect(mockLogger.error).not.toHaveBeenCalled()
   })
 
   it('passes undefined as the stack when e is not an Error', () => {
-    expect(() => logAndThrow({ name: 'Svc', context: 'ctx', e: 'plain string' })).toThrow()
+    expect(() => logAndThrow({ logger: mockLogger, context: 'ctx', e: 'plain string' })).toThrow()
 
-    const logger = makeLogger()
-    expect(logger.error).toHaveBeenCalledWith('Failed to ctx: Unknown error', undefined)
+    expect(mockLogger.error).toHaveBeenCalledWith('Failed to ctx: Unknown error', {
+      context: 'ctx',
+      stack: undefined,
+    })
   })
 
   it('uses the custom fallback message in the log line', () => {
     expect(() =>
-      logAndThrow({ name: 'Svc', context: 'ctx', e: null, fallback: 'My fallback' }),
+      logAndThrow({ logger: mockLogger, context: 'ctx', e: null, fallback: 'My fallback' }),
     ).toThrow()
 
-    const logger = makeLogger()
-    expect(logger.error).toHaveBeenCalledWith('Failed to ctx: My fallback', undefined)
+    expect(mockLogger.error).toHaveBeenCalledWith('Failed to ctx: My fallback', {
+      context: 'ctx',
+      stack: undefined,
+    })
   })
 })
 
 describe('logAndThrow - throwing', () => {
   it('re-throws the original error when no exception class is provided', () => {
     const original = new Error('original')
-    expect(() => logAndThrow({ name: 'Svc', context: 'ctx', e: original })).toThrow(original)
+    expect(() => logAndThrow({ logger: mockLogger, context: 'ctx', e: original })).toThrow(original)
   })
 
   it('throws an instance of the supplied exception class', () => {
     expect(() =>
       logAndThrow({
-        name: 'Svc',
+        logger: mockLogger,
         context: 'ctx',
         e: new Error('not found'),
         exception: NotFoundException,
@@ -111,7 +111,7 @@ describe('logAndThrow - throwing', () => {
   it('includes exceptionContext and original message in the thrown error', () => {
     expect(() =>
       logAndThrow({
-        name: 'Svc',
+        logger: mockLogger,
         context: 'ctx',
         e: new Error('not found'),
         exception: NotFoundException,
@@ -122,15 +122,14 @@ describe('logAndThrow - throwing', () => {
 
   it('does NOT throw when shouldThrow is false', () => {
     expect(() =>
-      logAndThrow({ name: 'Svc', context: 'ctx', e: new Error('x'), shouldThrow: false }),
+      logAndThrow({ logger: mockLogger, context: 'ctx', e: new Error('x'), shouldThrow: false }),
     ).not.toThrow()
   })
 
   it('still logs when shouldThrow is false', () => {
-    logAndThrow({ name: 'Svc', context: 'ctx', e: new Error('x'), shouldThrow: false })
+    logAndThrow({ logger: mockLogger, context: 'ctx', e: new Error('x'), shouldThrow: false })
 
-    const logger = makeLogger()
-    expect(logger.error).toHaveBeenCalledOnce()
+    expect(mockLogger.error).toHaveBeenCalledOnce()
   })
 })
 
@@ -141,7 +140,7 @@ describe('logAndThrow - shouldSetCause', () => {
 
     try {
       logAndThrow({
-        name: 'Svc',
+        logger: mockLogger,
         context: 'ctx',
         e: original,
         exception: Error,
@@ -160,7 +159,7 @@ describe('logAndThrow - shouldSetCause', () => {
 
     try {
       logAndThrow({
-        name: 'Svc',
+        logger: mockLogger,
         context: 'ctx',
         e: 'string error',
         exception: Error,
@@ -179,7 +178,7 @@ describe('logAndThrow - shouldSetCause', () => {
 
     try {
       logAndThrow({
-        name: 'Svc',
+        logger: mockLogger,
         context: 'ctx',
         e: new Error('x'),
         exception: Error,

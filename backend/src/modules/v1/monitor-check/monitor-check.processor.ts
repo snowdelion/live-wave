@@ -1,9 +1,9 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq'
-import { Logger } from '@nestjs/common'
 import { Monitor, MonitorType, StatusEnum } from '@prisma/client'
 import { Job } from 'bullmq'
 
 import { BULL_NAMES } from '@/shared/bull/bull.constants'
+import { Logger } from '@/shared/logger/logger.service'
 import { MetricsService } from '@/shared/metrics/metrics.service'
 import { PrismaService } from '@/shared/prisma/prisma.service'
 import { RateLimitService } from '@/shared/rate-limit/rate-limit.service'
@@ -19,8 +19,7 @@ import { TcpStrategy } from './strategies/tcp-check.strategy'
 
 @Processor(BULL_NAMES.QUEUE, { concurrency: 5 })
 export class MonitorCheckProcessor extends WorkerHost {
-  private readonly logger = new Logger(MonitorCheckProcessor.name)
-
+  private logger: Logger
   constructor(
     private prisma: PrismaService,
     private httpStrategy: HttpStrategy,
@@ -30,8 +29,10 @@ export class MonitorCheckProcessor extends WorkerHost {
     private monitorCheckService: MonitorCheckService,
     private rateLimitService: RateLimitService,
     private metricsService: MetricsService,
+    baseLogger: Logger,
   ) {
     super()
+    this.logger = baseLogger.child({ context: MonitorCheckProcessor.name })
   }
 
   async process(job: Job<{ monitorId: string }>): Promise<void> {
@@ -54,7 +55,7 @@ export class MonitorCheckProcessor extends WorkerHost {
       })
 
       if (!monitor) {
-        this.logger.warn(`Monitor ${monitorId} not found, skipping check`)
+        this.logger.warn('Monitor not found, skipping check', { monitorId })
         return
       }
 
@@ -63,13 +64,13 @@ export class MonitorCheckProcessor extends WorkerHost {
           monitor.type,
         )
       ) {
-        this.logger.error(`Unknown monitor type: ${monitor.type}`)
+        this.logger.error('Unknown monitor type', { monitorType: monitor.type })
         return
       }
 
       const targetHost = getTargetHost(monitor)
       if (!targetHost) {
-        this.logger.warn(`Can't determine target host for monitor ${monitorId}`)
+        this.logger.warn("Can't determine target host", { monitorId })
         return
       }
 
@@ -79,7 +80,7 @@ export class MonitorCheckProcessor extends WorkerHost {
         maxPerMinute: 6,
       })
       if (isRateLimited) {
-        this.logger.warn(`Rate limit exceeded for ${targetHost}, skipping check`)
+        this.logger.warn('Rate limit exceeded for domain, skipping check', { domain: targetHost })
         return
       }
 
@@ -89,7 +90,7 @@ export class MonitorCheckProcessor extends WorkerHost {
 
       const strategy = this.strategies[monitor.type]
       if (!strategy) {
-        this.logger.error(`Unknown monitor type: ${monitor.type}`)
+        this.logger.error('Unknown monitor type', { monitorType: monitor.type })
         return
       }
       const { status, error, responseTime, checkedAt } = await strategy(monitorId)
@@ -110,7 +111,7 @@ export class MonitorCheckProcessor extends WorkerHost {
       this.metricsService.incrementMonitorChecksRequest('success')
     } catch (e) {
       logAndThrow({
-        name: MonitorCheckProcessor.name,
+        logger: this.logger,
         context: `check monitor ${monitorId}`,
         e,
         shouldThrow: !shouldReschedule,
@@ -131,6 +132,12 @@ export class MonitorCheckProcessor extends WorkerHost {
     monitorId,
   }: SendNotificationIfNeededOptions) {
     if (!oldLastStatus || oldLastStatus === checkConfig.status) return
+    this.logger.log('Monitor status changed', {
+      monitorId,
+      monitorName: monitor.name,
+      oldStatus: oldLastStatus,
+      newStatus: checkConfig.status,
+    })
 
     const alert = await this.prisma.alert.findUnique({
       where: { userId: monitor.userId },
@@ -138,6 +145,10 @@ export class MonitorCheckProcessor extends WorkerHost {
     })
     if (!alert?.enabled || !alert.telegramChatId) return
 
+    this.logger.debug('Trying to send Telegram notification', {
+      monitorId,
+      telegramId: alert.telegramChatId,
+    })
     const message = formatNotificationMessage({
       monitorName: monitor.name,
       monitorType: monitor.type,

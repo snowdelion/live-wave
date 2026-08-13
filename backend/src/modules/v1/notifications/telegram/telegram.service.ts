@@ -4,12 +4,12 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
-  Logger,
   NotFoundException,
   OnApplicationBootstrap,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 
+import { Logger } from '@/shared/logger/logger.service'
 import { PrismaService } from '@/shared/prisma/prisma.service'
 import { REDIS_KEYS } from '@/shared/redis/redis.constants'
 import { RedisService } from '@/shared/redis/redis.service'
@@ -20,17 +20,19 @@ import { TelegramWebhookDto } from './dto/telegram-webhook.dto'
 
 @Injectable()
 export class TelegramService implements OnApplicationBootstrap {
-  private readonly logger = new Logger(TelegramService.name)
   private readonly botToken?: string
   private readonly botUsername?: string
   private readonly baseUrl?: string
   private readonly webhookUrl?: string
-
+  private logger: Logger
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
     private redis: RedisService,
+    baseLogger: Logger,
   ) {
+    this.logger = baseLogger.child({ context: TelegramService.name })
+
     this.webhookUrl = this.configService.get<string>('TELEGRAM_WEBHOOK_URL')
     this.botToken = this.configService.get<string>('TELEGRAM_BOT_TOKEN')
     this.botUsername = this.configService.get<string>('TELEGRAM_BOT_USERNAME')
@@ -41,14 +43,26 @@ export class TelegramService implements OnApplicationBootstrap {
   }
 
   async linkChatId(userId: string) {
-    if (!this.botUsername || !this.botToken)
-      throw new BadRequestException('Telegram bot token or webhook URL not set')
+    if (!this.botUsername || !this.botToken) {
+      this.logger.error('Telegram bot token or bot username not set', {
+        userId,
+        hasBotUsername: !!this.botUsername,
+        hasBotToken: !!this.botToken,
+      })
+      throw new BadRequestException('Telegram bot token or bot username not set')
+    }
 
     const existing = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { telegramId: true, email: true },
     })
-    if (existing?.telegramId) throw new BadRequestException('Telegram already linked')
+    if (existing?.telegramId) {
+      this.logger.warn('User tried link Telegram when already linked', {
+        userId,
+        telegramId: existing.telegramId,
+      })
+      throw new BadRequestException('Telegram already linked')
+    }
 
     const token = randomBytes(32).toString('hex')
     const key = REDIS_KEYS.telegramToken(token)
@@ -57,6 +71,7 @@ export class TelegramService implements OnApplicationBootstrap {
   }
 
   async handleWebhook(update: TelegramWebhookDto) {
+    this.logger.debug('Started "handleWebhook"', { updateId: update.update_id })
     const message = update?.message
     if (!message?.text) return
 
@@ -67,6 +82,7 @@ export class TelegramService implements OnApplicationBootstrap {
 
     const token = text.replace('/start', '').trim()
     if (!token) {
+      this.logger.warn('Invalid Telegram link', { chatId })
       await this.sendMessage(chatId, 'Invalid link')
       return
     }
@@ -74,6 +90,7 @@ export class TelegramService implements OnApplicationBootstrap {
     const key = REDIS_KEYS.telegramToken(token)
     const userId = await this.redis.get(key)
     if (!userId) {
+      this.logger.warn('Link is outdated or used', { chatId })
       await this.sendMessage(chatId, 'Link is outdated or used')
       return
     }
@@ -84,6 +101,10 @@ export class TelegramService implements OnApplicationBootstrap {
     })
 
     if (existingUser && existingUser.id !== userId) {
+      this.logger.warn('User tried to link already linked Telegram account', {
+        currentUser: userId,
+        anotherUser: existingUser.id,
+      })
       await this.sendMessage(chatId, 'This Telegram account is already linked to another user')
       return
     }
@@ -99,12 +120,15 @@ export class TelegramService implements OnApplicationBootstrap {
       chatId,
       "Telegram is linked successfully! You'll get notifications when monitor status changes (up/down)",
     )
-    this.logger.debug(`User "${userId}" linked Telegram chat "${chatId}"`)
+    this.logger.log('User linked Telegram chat', { userId, chatId })
   }
 
   async onApplicationBootstrap() {
     if (!this.botToken || !this.webhookUrl) {
-      this.logger.warn('Telegram bot token or webhook URL not set. Skipping webhook registration')
+      this.logger.error('Telegram bot token or webhook URL not set', {
+        hasWebhookUrl: !!this.webhookUrl,
+        hasBotToken: !!this.botToken,
+      })
       return
     }
 
@@ -119,7 +143,7 @@ export class TelegramService implements OnApplicationBootstrap {
       if (!success) this.logger.warn('Failed to set webhook')
     } catch (e) {
       logAndThrow({
-        name: TelegramService.name,
+        logger: this.logger,
         context: 'set webhook',
         e,
         shouldThrow: false,
@@ -136,11 +160,14 @@ export class TelegramService implements OnApplicationBootstrap {
     const data = (await res.json()) as TelegramApiResponse<boolean>
 
     if (!data.ok) {
-      this.logger.error(`Failed to set webhook: ${data.description}`)
+      this.logger.error('Failed to set webhook', {
+        error: data.description,
+        errorCode: data.error_code,
+      })
       return false
     }
 
-    this.logger.log(`Webhook set: ${data.description}`)
+    this.logger.log('Webhook set', { description: data.description })
     return true
   }
 
@@ -149,7 +176,10 @@ export class TelegramService implements OnApplicationBootstrap {
       const res = await fetch(`https://api.telegram.org/bot${this.botToken}/getWebhookInfo`)
       const data = (await res.json()) as TelegramApiResponse<WebhookInfo>
       if (!data.ok) {
-        this.logger.warn(`Failed to get webhook info: ${data.description}`)
+        this.logger.warn('Failed to get webhook info', {
+          error: data.description,
+          code: data.error_code,
+        })
         return null
       }
 
@@ -164,16 +194,22 @@ export class TelegramService implements OnApplicationBootstrap {
       where: { id: userId },
       select: { telegramId: true, email: true },
     })
-    if (existingUser?.telegramId && !existingUser.email)
+    if (existingUser?.telegramId && !existingUser.email) {
+      this.logger.warn('User tried unlink Telegram without email', {
+        userId,
+        telegramId: existingUser.telegramId,
+      })
       throw new ForbiddenException(
         "You cannot unlink Telegram because you don't have an email associated with your account",
       )
+    }
 
     await this.prisma.alert.upsert({
       where: { userId },
       update: { telegramChatId: null, enabled: false },
       create: { userId, telegramChatId: null, enabled: false },
     })
+    this.logger.log('Telegram has been unlinked', { userId, telegramId: existingUser?.telegramId })
   }
 
   async toggleAlert(userId: string) {
@@ -182,8 +218,10 @@ export class TelegramService implements OnApplicationBootstrap {
         where: { userId },
         select: { enabled: true, telegramChatId: true },
       })
-      if (!oldAlert?.telegramChatId)
+      if (!oldAlert?.telegramChatId) {
+        this.logger.warn('Tried to toggle alert without linked Telegram', { userId })
         throw new NotFoundException('Telegram chat is not linked. Link your chat first')
+      }
       const newEnabled = !oldAlert.enabled
 
       const updatedAlert = await this.prisma.alert.update({
@@ -197,12 +235,17 @@ export class TelegramService implements OnApplicationBootstrap {
         : 'You have disabled notifications. You will no longer receive notifications'
 
       const canSend = await this.sendMessage(oldAlert.telegramChatId, message)
-      if (!canSend) this.logger.warn(`Failed to send Telegram message on toggle alert`)
+      if (!canSend)
+        this.logger.warn('Failed to send Telegram message on toggle alert', {
+          userId,
+          telegramId: oldAlert.telegramChatId,
+        })
 
+      this.logger.log('Changed alert notification settings', { userId, enabled: newEnabled })
       return updatedAlert.enabled
     } catch (e) {
       throw logAndThrow({
-        name: TelegramService.name,
+        logger: this.logger,
         context: `toggle alert for ${userId}`,
         e,
         exception: Error,
@@ -214,7 +257,11 @@ export class TelegramService implements OnApplicationBootstrap {
 
   async sendMessage(chatId: string, text: string, retries = 3): Promise<boolean> {
     if (!this.botToken || !chatId || !this.baseUrl) {
-      this.logger.warn(`Cannot send Telegram message: bot token or chat ID missing`)
+      this.logger.warn("Can't send Telegram message: bot token or chat ID missing", {
+        chatId,
+        hasBotToken: !!this.botToken,
+        hasBaseUrl: !!this.baseUrl,
+      })
       return false
     }
 
@@ -238,14 +285,19 @@ export class TelegramService implements OnApplicationBootstrap {
         })
         if (!res.ok) {
           const errorText = await res.text()
+          this.logger.error('Telegram API error', {
+            chatId,
+            statusCode: res.status,
+            message: errorText,
+          })
           throw new Error(`Telegram API error: ${res.status} ${errorText}`)
         }
 
-        this.logger.debug(`Telegram message sent successfully to ${chatId}`)
+        this.logger.log('Telegram message sent', { chatId })
         return true
       } catch (e) {
         logAndThrow({
-          name: TelegramService.name,
+          logger: this.logger,
           context: `send Telegram message (attempt ${att}/${retries})`,
           e,
           shouldThrow: false,
@@ -266,6 +318,7 @@ export class TelegramService implements OnApplicationBootstrap {
     })
 
     if (!alert) {
+      this.logger.debug('There is no alert, creating new', { userId })
       const newAlert = await this.prisma.alert.create({
         data: { userId, enabled: false },
         select: { enabled: true },

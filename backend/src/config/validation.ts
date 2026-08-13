@@ -19,6 +19,9 @@ const envSchema = z.object({
 
   GF_SECURITY_ADMIN_PASSWORD: z.string().optional(),
   METRICS_BEARER_TOKEN: z.string().optional(),
+
+  LOG_LEVEL: z.string().default('info'),
+  LOKI_HOST: z.string().default('http://127.0.0.1:3100'),
 })
 
 export type EnvironmentVariables = z.infer<typeof envSchema>
