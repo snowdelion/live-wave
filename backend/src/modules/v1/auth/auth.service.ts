@@ -187,7 +187,7 @@ export class AuthService {
     const userRefreshToken = await this.redis.get(REDIS_KEYS.refreshToken(payload.sub))
 
     if (!user || !userRefreshToken) {
-      this.logger.warn('User not found or no refresh token', { userId: payload.sub })
+      this.logger.warn('User not found or no refresh token in Redis', { userId: payload.sub })
       this.cookieService.clearRefreshToken(res)
       await this.redis.del(REDIS_KEYS.refreshToken(payload.sub))
       throw new UnauthorizedException('User not found or no refresh token')
