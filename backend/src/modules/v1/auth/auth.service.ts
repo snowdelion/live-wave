@@ -9,7 +9,9 @@ import {
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
 import bcrypt from 'bcrypt'
+import { Response } from 'express'
 
+import { CookieService } from '@/shared/cookie/cookie.service'
 import { Logger } from '@/shared/logger/logger.service'
 import { PrismaService } from '@/shared/prisma/prisma.service'
 import { REDIS_KEYS } from '@/shared/redis/redis.constants'
@@ -29,6 +31,7 @@ export class AuthService {
     private redis: RedisService,
     private jwtService: JwtService,
     private config: ConfigService,
+    private cookieService: CookieService,
     baseLogger: Logger,
   ) {
     this.accessSecret = this.config.get<string>('JWT_ACCESS_SECRET')
@@ -175,7 +178,7 @@ export class AuthService {
     return { accessToken, refreshToken }
   }
 
-  async refreshAccessToken(refreshToken: string) {
+  async refreshAccessToken(refreshToken: string, res: Response) {
     const payload = this.getPayload(refreshToken)
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
@@ -185,12 +188,16 @@ export class AuthService {
 
     if (!user || !userRefreshToken) {
       this.logger.warn('User not found or no refresh token', { userId: payload.sub })
+      this.cookieService.clearRefreshToken(res)
+      await this.redis.del(REDIS_KEYS.refreshToken(payload.sub))
       throw new UnauthorizedException('User not found or no refresh token')
     }
 
     const hashed = crypto.createHash('sha256').update(refreshToken).digest('hex')
     if (hashed !== userRefreshToken) {
       this.logger.warn('Refresh token hash mismatch', { userId: user.id })
+      this.cookieService.clearRefreshToken(res)
+      await this.redis.del(REDIS_KEYS.refreshToken(payload.sub))
       throw new UnauthorizedException('Invalid refresh token')
     }
 

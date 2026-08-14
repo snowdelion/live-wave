@@ -4,8 +4,10 @@ import { ForbiddenException, BadRequestException, UnauthorizedException } from '
 import type { ConfigService } from '@nestjs/config'
 import type { JwtService } from '@nestjs/jwt'
 import bcrypt from 'bcrypt'
+import type { Response } from 'express'
 import type { Mock } from 'vitest'
 
+import type { CookieService } from '@/shared/cookie/cookie.service'
 import type { Logger } from '@/shared/logger/logger.service'
 import type { PrismaService } from '@/shared/prisma/prisma.service'
 import { REDIS_KEYS } from '@/shared/redis/redis.constants'
@@ -22,6 +24,11 @@ vi.mock('bcrypt', () => ({
 
 const ACCESS_SECRET = 'access-secret'
 const REFRESH_SECRET = 'refresh-secret'
+
+const res = {
+  cookie: vi.fn(),
+  clearCookie: vi.fn(),
+} as unknown as Response
 
 const logger = {
   log: vi.fn(),
@@ -46,6 +53,7 @@ const prisma = {
 const redis = { set: vi.fn(), get: vi.fn(), del: vi.fn() } as unknown as RedisService
 const jwtService = { sign: vi.fn(), verify: vi.fn() } as unknown as JwtService
 const config = { get: vi.fn() } as unknown as ConfigService
+const cookieService = { clearRefreshToken: vi.fn() } as unknown as CookieService
 
 describe('AuthService', () => {
   let service: AuthService
@@ -53,7 +61,7 @@ describe('AuthService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    service = new AuthService(prisma, redis, jwtService, config, logger)
+    service = new AuthService(prisma, redis, jwtService, config, cookieService, logger)
   })
 
   describe('signUpEmail', () => {
@@ -203,7 +211,7 @@ describe('AuthService', () => {
         if (key === 'TELEGRAM_BOT_TOKEN') return BOT_TOKEN
         return undefined
       })
-      service = new AuthService(prisma, redis, jwtService, config, logger)
+      service = new AuthService(prisma, redis, jwtService, config, cookieService, logger)
     })
 
     it('throws UnauthorizedException if telegram hash is invalid', async () => {
@@ -358,7 +366,9 @@ describe('AuthService', () => {
         throw new Error('bad token')
       })
 
-      await expect(service.refreshAccessToken('bad-token')).rejects.toThrow(UnauthorizedException)
+      await expect(service.refreshAccessToken('bad-token', res)).rejects.toThrow(
+        UnauthorizedException,
+      )
     })
 
     it('throws UnauthorizedException if user not found', async () => {
@@ -366,7 +376,9 @@ describe('AuthService', () => {
       vi.mocked(prisma.user.findUnique).mockResolvedValue(null)
       vi.mocked(redis.get).mockResolvedValue('some-hash')
 
-      await expect(service.refreshAccessToken('valid-token')).rejects.toThrow(UnauthorizedException)
+      await expect(service.refreshAccessToken('valid-token', res)).rejects.toThrow(
+        UnauthorizedException,
+      )
     })
 
     it('throws UnauthorizedException if no refresh token stored in redis', async () => {
@@ -377,7 +389,9 @@ describe('AuthService', () => {
       } as any)
       vi.mocked(redis.get).mockResolvedValue(null)
 
-      await expect(service.refreshAccessToken('valid-token')).rejects.toThrow(UnauthorizedException)
+      await expect(service.refreshAccessToken('valid-token', res)).rejects.toThrow(
+        UnauthorizedException,
+      )
     })
 
     it('throws UnauthorizedException if stored hash does not match provided token hash', async () => {
@@ -388,7 +402,9 @@ describe('AuthService', () => {
       } as any)
       vi.mocked(redis.get).mockResolvedValue('some-other-hash')
 
-      await expect(service.refreshAccessToken('valid-token')).rejects.toThrow(UnauthorizedException)
+      await expect(service.refreshAccessToken('valid-token', res)).rejects.toThrow(
+        UnauthorizedException,
+      )
     })
 
     it('returns a new access token when refresh token is valid and matches', async () => {
@@ -402,7 +418,7 @@ describe('AuthService', () => {
       vi.mocked(redis.get).mockResolvedValue(matchingHash)
       vi.mocked(jwtService.sign).mockReturnValue('new-access-token')
 
-      const result = await service.refreshAccessToken('valid-token')
+      const result = await service.refreshAccessToken('valid-token', res)
 
       expect(jwtService.sign).toHaveBeenCalledWith(
         { sub: 'user-1', email: 'test@example.com' },
@@ -421,7 +437,7 @@ describe('AuthService', () => {
       vi.mocked(redis.get).mockResolvedValue(matchingHash)
       vi.mocked(jwtService.sign).mockReturnValue('new-access-token')
 
-      await service.refreshAccessToken('valid-token')
+      await service.refreshAccessToken('valid-token', res)
 
       expect(jwtService.verify).toHaveBeenCalledWith('valid-token', { secret: REFRESH_SECRET })
     })

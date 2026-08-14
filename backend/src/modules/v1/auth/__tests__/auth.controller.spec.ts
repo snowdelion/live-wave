@@ -1,16 +1,25 @@
 import { UnauthorizedException } from '@nestjs/common'
-import type { Request, Response } from 'express'
+import type { Response } from 'express'
 
 import type { CookieService } from '@/shared/cookie/cookie.service'
+import type { Logger } from '@/shared/logger/logger.service'
 
 import { AuthController } from '../auth.controller'
 import type { AuthService } from '../auth.service'
+
+const logger = {
+  log: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(() => logger),
+} as unknown as Logger
 
 describe('AuthController', () => {
   let controller: AuthController
   let authService: any
   let cookieService: any
-  let res: Partial<Response>
+  let res: Response
 
   beforeEach(() => {
     authService = {
@@ -29,9 +38,13 @@ describe('AuthController', () => {
     res = {
       cookie: vi.fn(),
       clearCookie: vi.fn(),
-    }
+    } as unknown as Response
 
-    controller = new AuthController(authService as AuthService, cookieService as CookieService)
+    controller = new AuthController(
+      authService as AuthService,
+      cookieService as CookieService,
+      logger,
+    )
   })
 
   describe('signUpEmail', () => {
@@ -88,28 +101,30 @@ describe('AuthController', () => {
 
   describe('refreshToken', () => {
     it('throws UnauthorizedException if refreshToken cookie is missing', async () => {
-      await expect(controller.refreshToken(undefined as any)).rejects.toThrow(UnauthorizedException)
+      await expect(controller.refreshToken(undefined as any, res)).rejects.toThrow(
+        UnauthorizedException,
+      )
       expect(authService.refreshAccessToken).not.toHaveBeenCalled()
     })
 
     it('throws UnauthorizedException if refreshToken cookie is an empty string', async () => {
-      await expect(controller.refreshToken('')).rejects.toThrow(UnauthorizedException)
+      await expect(controller.refreshToken('', res)).rejects.toThrow(UnauthorizedException)
       expect(authService.refreshAccessToken).not.toHaveBeenCalled()
     })
 
     it('returns a new access token when refresh token is present', async () => {
       authService.refreshAccessToken.mockResolvedValue({ accessToken: 'new-access-token' })
 
-      const result = await controller.refreshToken('refresh-token')
+      const result = await controller.refreshToken('refresh-token', res)
 
-      expect(authService.refreshAccessToken).toHaveBeenCalledWith('refresh-token')
+      expect(authService.refreshAccessToken).toHaveBeenCalledWith('refresh-token', res)
       expect(result).toEqual({ accessToken: 'new-access-token' })
     })
 
     it('propagates errors from authService.refreshAccessToken', async () => {
       authService.refreshAccessToken.mockRejectedValue(new UnauthorizedException('invalid'))
 
-      await expect(controller.refreshToken('bad-token')).rejects.toThrow(UnauthorizedException)
+      await expect(controller.refreshToken('bad-token', res)).rejects.toThrow(UnauthorizedException)
     })
   })
 

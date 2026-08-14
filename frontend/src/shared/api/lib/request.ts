@@ -115,6 +115,7 @@ async function tryRefreshToken(): Promise<boolean> {
       })
       if (!response.ok) {
         useAuthStore.getState().clearAccessToken()
+        window.location.href = '/auth'
         return false
       }
 
@@ -125,6 +126,7 @@ async function tryRefreshToken(): Promise<boolean> {
       return true
     } catch {
       useAuthStore.getState().clearAccessToken()
+      window.location.href = '/auth'
       return false
     }
   })()
