@@ -15,6 +15,8 @@ import { Response } from 'express'
 
 import { CookieService } from '@/shared/cookie/cookie.service'
 import { Cookies } from '@/shared/cookie/cookies.decorator'
+import { Logger } from '@/shared/logger/logger.service'
+import { getErrorMessage } from '@/shared/utils/error.utils'
 
 import {
   logOutDocs,
@@ -32,10 +34,14 @@ import { TelegramAuthDto } from './dto/requests/telegram-auth.dto'
 @ApiExtraModels(SignInEmailDto, TelegramAuthDto, SignUpEmailDto)
 @Controller('auth')
 export class AuthController {
+  private logger: Logger
   constructor(
     private authService: AuthService,
     private cookieService: CookieService,
-  ) {}
+    baseLogger: Logger,
+  ) {
+    this.logger = baseLogger.child({ context: AuthController.name })
+  }
 
   @Post('sign-up/email')
   @AuthDocs(signUpEmailDocs)
@@ -71,11 +77,28 @@ export class AuthController {
   @Post('refresh-token')
   @AuthDocs(refreshTokenDocs)
   @Throttle({ short: { ttl: seconds(60), limit: 20 } })
-  async refreshToken(@Cookies('refreshToken') refreshToken: string) {
-    if (!refreshToken) throw new UnauthorizedException('Refresh token not found')
+  async refreshToken(
+    @Cookies('refreshToken') refreshToken: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    try {
+      if (!refreshToken) {
+        this.logger.error('Refresh token not found in response', { refreshToken })
+        this.cookieService.clearRefreshToken(res)
+        throw new UnauthorizedException('Refresh token not found')
+      }
+      this.logger.debug('refreshToken', { refreshToken })
 
-    const { accessToken } = await this.authService.refreshAccessToken(refreshToken)
-    return { accessToken }
+      const { accessToken } = await this.authService.refreshAccessToken(refreshToken, res)
+      return { accessToken }
+    } catch (e) {
+      this.cookieService.clearRefreshToken(res)
+      this.logger.error('Refresh token not found in response', {
+        refreshToken,
+        error: getErrorMessage(e, String(e)),
+      })
+      throw e
+    }
   }
 
   @Post('log-out')
