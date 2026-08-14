@@ -83,7 +83,6 @@ export class AuthController {
   ) {
     try {
       if (!refreshToken) {
-        this.logger.error('Refresh token not found in response', { refreshToken })
         this.cookieService.clearRefreshToken(res)
         throw new UnauthorizedException('Refresh token not found')
       }
@@ -93,10 +92,12 @@ export class AuthController {
       return { accessToken }
     } catch (e) {
       this.cookieService.clearRefreshToken(res)
-      this.logger.error('Refresh token not found in response', {
-        refreshToken,
-        error: getErrorMessage(e, String(e)),
-      })
+      if (e instanceof UnauthorizedException) this.logger.debug('Refresh token missing')
+      else
+        this.logger.warn('Unexpected refresh token error', {
+          error: getErrorMessage(e, String(e)),
+        })
+
       throw e
     }
   }
