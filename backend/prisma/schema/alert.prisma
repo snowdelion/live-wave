@@ -9,4 +9,6 @@ model Alert {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([enabled])
 }
