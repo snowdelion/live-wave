@@ -27,6 +27,7 @@ function buildPrisma(overrides: Record<string, unknown> = {}) {
     },
     check: {
       create: vi.fn().mockResolvedValue({}),
+      deleteMany: vi.fn().mockResolvedValue({}),
     },
     $transaction: vi.fn().mockResolvedValue([]),
     ...overrides,
@@ -92,7 +93,7 @@ describe('DnsStrategy', () => {
       expect(updateCall).toMatchObject({})
       expect(prisma.$transaction).toHaveBeenCalledOnce()
       const ops = prisma.$transaction.mock.calls[0][0]
-      expect(ops).toHaveLength(2)
+      expect(ops).toHaveLength(3)
     })
 
     it('persists a failed check with status "down" on DNS error', async () => {

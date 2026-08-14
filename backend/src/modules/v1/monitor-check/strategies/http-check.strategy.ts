@@ -99,6 +99,12 @@ export class HttpStrategy {
             nextCheckAt: new Date(Date.now() + checkInterval * 60 * 1000),
           },
         }),
+        this.prisma.check.deleteMany({
+          where: {
+            monitorId,
+            checkedAt: { lt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000) },
+          },
+        }),
       ])
     } catch (e) {
       const isNotFound = e instanceof Error && 'code' in e && e.code === 'P2003'

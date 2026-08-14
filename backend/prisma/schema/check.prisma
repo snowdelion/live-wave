@@ -15,5 +15,4 @@ model Check {
   @@index([monitorId])
   @@index([checkedAt])
   @@index([status])
-  @@index([details])
 }

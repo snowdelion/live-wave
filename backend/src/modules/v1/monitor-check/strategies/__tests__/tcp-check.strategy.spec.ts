@@ -19,11 +19,12 @@ const mockTransaction = vi.fn()
 const mockFindUnique = vi.fn()
 
 const mockCheckCreate = vi.fn((args: unknown) => args)
+const mockCheckDelete = vi.fn((args: unknown) => args)
 const mockMonitorUpdate = vi.fn((args: unknown) => args)
 
 const mockPrisma = {
   monitor: { findUnique: mockFindUnique, update: mockMonitorUpdate },
-  check: { create: mockCheckCreate },
+  check: { create: mockCheckCreate, deleteMany: mockCheckDelete },
   $transaction: mockTransaction,
 }
 
@@ -213,7 +214,7 @@ describe('TcpStrategy', () => {
   })
 
   describe('confirmTransaction()', () => {
-    it('runs prisma.$transaction with check.create and monitor.update', async () => {
+    it('runs prisma.$transaction with check.create, check.deleteMany and monitor.update', async () => {
       setupSocket('connect')
       mockFindUnique.mockResolvedValue(makeMonitor())
 
@@ -221,7 +222,7 @@ describe('TcpStrategy', () => {
 
       expect(mockTransaction).toHaveBeenCalledOnce()
       const [[[...ops]]] = mockTransaction.mock.calls
-      expect(ops).toHaveLength(2)
+      expect(ops).toHaveLength(3)
     })
 
     it('passes the correct monitorId to check.create', async () => {

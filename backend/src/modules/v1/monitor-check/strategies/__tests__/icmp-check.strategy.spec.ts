@@ -21,6 +21,7 @@ const makePrisma = () =>
     },
     check: {
       create: vi.fn().mockResolvedValue({}),
+      deleteMany: vi.fn().mockResolvedValue({}),
     },
     $transaction: vi.fn().mockResolvedValue([]),
   }) as unknown as PrismaService

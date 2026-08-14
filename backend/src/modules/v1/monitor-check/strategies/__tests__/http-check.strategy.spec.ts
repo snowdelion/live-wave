@@ -67,6 +67,7 @@ const mockPrisma = {
   },
   check: {
     create: vi.fn(),
+    deleteMany: vi.fn(),
   },
   $transaction: vi.fn(runTransactionBatch),
 } as unknown as PrismaService
