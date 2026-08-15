@@ -47,6 +47,12 @@ vi.mock('../MonitorRow', () => ({
   ),
 }))
 
+vi.mock('../MonitorTableDesktopError', () => ({
+  MonitorTableDesktopError: () => (
+    <div data-testid="monitor-table-error">Error loading monitors</div>
+  ),
+}))
+
 function makeMonitor(overrides: Partial<{ id: string; name: string }> = {}) {
   return { id: 'mon_1', name: 'My Server', ...overrides } as never
 }
@@ -61,6 +67,7 @@ function mockUseMonitorTable(overrides: Partial<ReturnType<typeof useMonitorTabl
     hasNoResults: false,
     noResultsTitle: '',
     noResultsDescription: '',
+    isMonitorsError: false,
   }
 
   const merged = { ...base, ...overrides }
@@ -74,6 +81,23 @@ describe('MonitorTableDesktop', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  describe('error state', () => {
+    it('should render the error component when isMonitorsError is true', () => {
+      mockUseMonitorTable({ isMonitorsError: true })
+
+      render(
+        <MonitorTableDesktop
+          onEdit={onEdit}
+          search=""
+          typeFilter="ALL"
+          onMonitorChange={onMonitorChange}
+        />,
+      )
+
+      expect(screen.getByTestId('monitor-table-error')).toBeInTheDocument()
+    })
   })
 
   describe('empty state (no monitors at all)', () => {

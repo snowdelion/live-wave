@@ -7,6 +7,7 @@ import type { MonitorTableProps } from '../../../model/dashboard.types'
 import { useMonitorTable } from '../../../model/useMonitorTable'
 
 import { MonitorRow } from './MonitorRow'
+import { MonitorTableDesktopError } from './MonitorTableDesktopError'
 
 export function MonitorTableDesktop({
   onEdit,
@@ -23,8 +24,10 @@ export function MonitorTableDesktop({
     hasNoResults,
     noResultsTitle,
     noResultsDescription,
+    isMonitorsError,
   } = useMonitorTable({ search, typeFilter })
 
+  if (isMonitorsError) return <MonitorTableDesktopError />
   if (isEmpty)
     return (
       <EmptyState
@@ -81,7 +84,7 @@ export function MonitorTableDesktop({
           ))}
         </div>
 
-        {filtered?.map(m => (
+        {filtered.map(m => (
           <MonitorRow key={m.id} monitor={m} onEdit={onEdit} setDeleteTarget={setDeleteTarget} />
         ))}
       </div>
@@ -96,7 +99,7 @@ export function MonitorTableDesktop({
           onCancel={() => setDeleteTarget(null)}
           title="DELETE MONITOR"
           description="This will permanently delete the monitor and all its historical data"
-          itemName={deleteTarget?.name}
+          itemName={deleteTarget.name}
         />
       )}
     </>

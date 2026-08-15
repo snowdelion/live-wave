@@ -58,6 +58,7 @@ describe('UserPopover', () => {
     accountName: 'test@example.com',
     error: null,
     user: { email: 'test@example.com' },
+    isUserError: false,
   }
 
   beforeEach(() => {

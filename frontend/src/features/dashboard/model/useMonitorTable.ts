@@ -8,7 +8,7 @@ import {
 } from '@/entities/monitors'
 
 export function useMonitorTable({ search, typeFilter }: UseMonitorTableOptions) {
-  const { data: { monitors } = { monitors: [] } } = useMonitors()
+  const { data: { monitors } = { monitors: [] }, isError: isMonitorsError } = useMonitors()
   const { mutate: deleteMonitor } = useDeleteMonitor()
 
   const [deleteTarget, setDeleteTarget] = useState<UserMonitor | null>(null)
@@ -47,6 +47,7 @@ export function useMonitorTable({ search, typeFilter }: UseMonitorTableOptions) 
     hasNoResults: filtered.length === 0,
     noResultsTitle,
     noResultsDescription,
+    isMonitorsError: isMonitorsError,
   }
 }
 
