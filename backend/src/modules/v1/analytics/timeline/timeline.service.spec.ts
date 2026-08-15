@@ -59,12 +59,15 @@ describe('TimelineService', () => {
   let loggerErrorSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-15T10:30:00.000Z'))
     prisma = makePrisma()
     service = new TimelineService(prisma as never, mockLogger)
     loggerErrorSpy = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     loggerErrorSpy.mockRestore()
   })
 
