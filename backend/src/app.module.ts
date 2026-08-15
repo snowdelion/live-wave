@@ -23,12 +23,17 @@ import { ThrottlerModule } from './shared/throttler/throttler.module'
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         connection: { url: configService.get<string>('REDIS_URL') },
+        limiter: {
+          max: 50,
+          duration: 1000,
+        },
         defaultJobOptions: {
           attempts: 3,
           backoff: { type: 'exponential', delay: 1000 },
           removeOnComplete: true,
           removeOnFail: true,
         },
+        prefix: 'live-wave:bull',
       }),
 
       inject: [ConfigService],
