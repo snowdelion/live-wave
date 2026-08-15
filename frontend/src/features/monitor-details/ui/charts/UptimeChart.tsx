@@ -8,7 +8,11 @@ import {
   YAxis,
 } from 'recharts'
 
-import { useTimeline } from '@/entities/analytics'
+import {
+  useTimeline,
+  type AnalyticsTimeline,
+  type AnalyticsTimelineItem,
+} from '@/entities/analytics'
 import { useIsResizing } from '@/shared/lib'
 
 import { MonitorDetailsChartError } from './MonitorDetailsChartError'
@@ -21,12 +25,18 @@ interface UptimeChartProps {
 }
 
 export function UptimeChart({ monitorId, periodDays }: UptimeChartProps) {
-  const { data: timeline, isPending, error } = useTimeline(monitorId, periodDays)
+  const { data: rawTimeline, isPending, error } = useTimeline(monitorId, periodDays)
   const isResizing = useIsResizing()
 
   if (isPending || isResizing)
     return <MonitorDetailsChartSkeleton periodDays={periodDays} mode="uptime" />
   if (error) return <MonitorDetailsChartError periodDays={periodDays} mode="uptime" />
+
+  let timeline: AnalyticsTimeline = rawTimeline
+  if (rawTimeline.length === 1) {
+    const item = rawTimeline[0] as AnalyticsTimelineItem
+    timeline = [item, { ...item, date: new Date() }]
+  }
 
   return (
     <div className="bg-[#0d120d] border border-[rgba(0,230,118,0.1)] rounded-lg pt-5 px-5 pb-3 chart-no-focus">

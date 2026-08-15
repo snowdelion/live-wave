@@ -1,12 +1,28 @@
 import { render, screen } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { useTimeline } from '@/entities/analytics'
+import { useIsResizing } from '@/shared/lib'
 
 import { UptimeChart } from '../UptimeChart'
 
 vi.mock('@/entities/analytics', () => ({
   useTimeline: vi.fn(),
+}))
+
+vi.mock('@/shared/lib', () => ({
+  useIsResizing: vi.fn(),
+}))
+
+vi.mock('../MonitorDetailsChartError', () => ({
+  MonitorDetailsChartError: ({ periodDays }: any) => (
+    <div data-testid="chart-error">Error {periodDays}</div>
+  ),
+}))
+
+vi.mock('../MonitorDetailsChartSkeleton', () => ({
+  MonitorDetailsChartSkeleton: ({ periodDays }: any) => (
+    <div data-testid="chart-skeleton">Skeleton {periodDays}</div>
+  ),
 }))
 
 vi.mock('recharts', () => ({
@@ -31,6 +47,7 @@ describe('UptimeChart', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(useIsResizing).mockReturnValue(false)
   })
 
   describe('loading and error states', () => {
@@ -43,11 +60,21 @@ describe('UptimeChart', () => {
 
       render(<UptimeChart monitorId={monitorId} periodDays={periodDays} />)
 
-      expect(screen.getByText('UPTIME %')).toBeInTheDocument()
-      expect(screen.getByText(/Uptime over \d+d/)).toBeInTheDocument()
+      expect(screen.getByTestId('chart-skeleton')).toBeInTheDocument()
+      expect(screen.getByTestId('chart-skeleton')).toHaveTextContent(`Skeleton ${periodDays}`)
+    })
 
-      const pulseElements = document.querySelectorAll('.animate-pulse')
-      expect(pulseElements.length).toBeGreaterThan(0)
+    it('renders skeleton when window is resizing', () => {
+      vi.mocked(useTimeline).mockReturnValue({
+        isPending: false,
+        data: [{ date: '2024-01-01', uptime: 100 }],
+        error: null,
+      } as any)
+      vi.mocked(useIsResizing).mockReturnValue(true)
+
+      render(<UptimeChart monitorId={monitorId} periodDays={periodDays} />)
+
+      expect(screen.getByTestId('chart-skeleton')).toBeInTheDocument()
     })
 
     it('renders error component when there is an error', () => {
@@ -59,7 +86,8 @@ describe('UptimeChart', () => {
 
       render(<UptimeChart monitorId={monitorId} periodDays={periodDays} />)
 
-      expect(screen.getByText('Failed to load uptime data')).toBeInTheDocument()
+      expect(screen.getByTestId('chart-error')).toBeInTheDocument()
+      expect(screen.getByTestId('chart-error')).toHaveTextContent(`Error ${periodDays}`)
     })
   })
 
@@ -97,6 +125,18 @@ describe('UptimeChart', () => {
 
       expect(screen.getByTestId('area')).toHaveAttribute('data-datakey', 'uptime')
       expect(screen.getByTestId('x-axis')).toHaveAttribute('data-datakey', 'date')
+    })
+
+    it('duplicates the timeline item if there is only one data point', () => {
+      vi.mocked(useTimeline).mockReturnValue({
+        isPending: false,
+        data: [{ date: '2024-01-01', uptime: 99.9 }],
+        error: null,
+      } as any)
+
+      render(<UptimeChart monitorId={monitorId} periodDays={periodDays} />)
+
+      expect(screen.getByTestId('area-chart')).toHaveAttribute('data-length', '2')
     })
   })
 })

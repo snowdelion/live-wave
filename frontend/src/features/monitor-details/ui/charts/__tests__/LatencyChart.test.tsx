@@ -1,11 +1,28 @@
 import { render, screen } from '@testing-library/react'
 
 import { useTimeline } from '@/entities/analytics'
+import { useIsResizing } from '@/shared/lib'
 
 import { LatencyChart } from '../LatencyChart'
 
 vi.mock('@/entities/analytics', () => ({
   useTimeline: vi.fn(),
+}))
+
+vi.mock('@/shared/lib', () => ({
+  useIsResizing: vi.fn(),
+}))
+
+vi.mock('../MonitorDetailsChartError', () => ({
+  MonitorDetailsChartError: ({ periodDays }: any) => (
+    <div data-testid="chart-error">Error {periodDays}</div>
+  ),
+}))
+
+vi.mock('../MonitorDetailsChartSkeleton', () => ({
+  MonitorDetailsChartSkeleton: ({ periodDays }: any) => (
+    <div data-testid="chart-skeleton">Skeleton {periodDays}</div>
+  ),
 }))
 
 vi.mock('recharts', () => ({
@@ -31,6 +48,7 @@ describe('LatencyChart', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(useIsResizing).mockReturnValue(false)
   })
 
   describe('loading and error states', () => {
@@ -43,11 +61,21 @@ describe('LatencyChart', () => {
 
       render(<LatencyChart monitorId={monitorId} periodDays={periodDays} />)
 
-      expect(screen.getByText('LATENCY TIME')).toBeInTheDocument()
-      expect(screen.getByText(/Average response & Percentile 95th over \d+d/)).toBeInTheDocument()
+      expect(screen.getByTestId('chart-skeleton')).toBeInTheDocument()
+      expect(screen.getByTestId('chart-skeleton')).toHaveTextContent(`Skeleton ${periodDays}`)
+    })
 
-      const pulseElements = document.querySelectorAll('.animate-pulse')
-      expect(pulseElements.length).toBeGreaterThan(0)
+    it('renders skeleton when window is resizing', () => {
+      vi.mocked(useTimeline).mockReturnValue({
+        isPending: false,
+        data: [{ date: '2024-01-01', averageResponseTime: 120 }],
+        error: null,
+      } as any)
+      vi.mocked(useIsResizing).mockReturnValue(true)
+
+      render(<LatencyChart monitorId={monitorId} periodDays={periodDays} />)
+
+      expect(screen.getByTestId('chart-skeleton')).toBeInTheDocument()
     })
 
     it('renders error component when there is an error', () => {
@@ -59,7 +87,8 @@ describe('LatencyChart', () => {
 
       render(<LatencyChart monitorId={monitorId} periodDays={periodDays} />)
 
-      expect(screen.getByText(/Failed to load/i)).toBeInTheDocument()
+      expect(screen.getByTestId('chart-error')).toBeInTheDocument()
+      expect(screen.getByTestId('chart-error')).toHaveTextContent(`Error ${periodDays}`)
     })
   })
 
@@ -97,6 +126,18 @@ describe('LatencyChart', () => {
       expect(screen.getByTestId('area')).toHaveAttribute('data-datakey', 'averageResponseTime')
       expect(screen.getByTestId('line')).toHaveAttribute('data-datakey', 'p95ResponseTime')
       expect(screen.getByTestId('x-axis')).toHaveAttribute('data-datakey', 'date')
+    })
+
+    it('duplicates the timeline item if there is only one data point', () => {
+      vi.mocked(useTimeline).mockReturnValue({
+        isPending: false,
+        data: [{ date: '2024-01-01', averageResponseTime: 120, p95ResponseTime: 150 }],
+        error: null,
+      } as any)
+
+      render(<LatencyChart monitorId={monitorId} periodDays={periodDays} />)
+
+      expect(screen.getByTestId('area-chart')).toHaveAttribute('data-length', '2')
     })
   })
 })
