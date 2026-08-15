@@ -15,10 +15,4 @@ export class GetMeResponseDto {
 
   @ApiProperty({ example: true })
   isNotificationsEnabled!: boolean
-
-  @ApiProperty({ example: 2 })
-  monitorsCount!: number
-
-  @ApiProperty({ example: 168 })
-  checksCount!: number
 }
