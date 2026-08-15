@@ -25,8 +25,6 @@ export class UsersService {
         username: true,
         createdAt: true,
         alert: { select: { enabled: true } },
-        _count: { select: { monitors: true } },
-        monitors: { select: { _count: { select: { checks: true } } } },
       },
     })
     if (!user) {
@@ -34,13 +32,11 @@ export class UsersService {
       throw new UnauthorizedException('User not found')
     }
 
-    const { alert, _count, monitors, ...rest } = user
+    const { alert, ...rest } = user
 
     const formattedUser = {
       ...rest,
       isNotificationsEnabled: alert?.enabled ?? false,
-      monitorsCount: _count?.monitors ?? 0,
-      checksCount: monitors?.[0]?._count?.checks ?? 0,
     }
 
     return formattedUser

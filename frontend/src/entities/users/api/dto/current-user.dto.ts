@@ -6,8 +6,6 @@ export const currentUserSchema = z.object({
   username: z.string().min(1).nullable(),
   createdAt: z.coerce.date(),
   isNotificationsEnabled: z.boolean(),
-  monitorsCount: z.coerce.number().min(0),
-  checksCount: z.coerce.number().min(0),
 })
 
 export type CurrentUser = z.infer<typeof currentUserSchema>
