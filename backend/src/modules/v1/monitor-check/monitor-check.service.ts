@@ -74,7 +74,9 @@ export class MonitorCheckService implements OnModuleInit {
         }
         interval = monitor.checkInterval
       }
-      delay = immediate ? 0 : interval * 60 * 1000
+
+      const randomDelay = Math.floor(Math.random() * 10_000)
+      delay = immediate ? 0 : interval * 60 * 1000 + randomDelay
       await this.enqueueCheck(monitorId, delay)
     } catch (e) {
       logAndThrow({
