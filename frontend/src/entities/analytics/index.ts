@@ -1,5 +1,3 @@
-export { useIncidents } from './model/analytics-queries'
-export { useOverview } from './model/analytics-queries'
-export { useTimeline } from './model/analytics-queries'
-export type { AnalyticsIncident } from './api/dto/analytics-incidents.dto'
-export type { AnalyticsIncidents } from './api/dto/analytics-incidents.dto'
+export { useIncidents, useTimeline, useOverview } from './model/analytics-queries'
+export type { AnalyticsIncident, AnalyticsIncidents } from './api/dto/analytics-incidents.dto'
+export type { AnalyticsTimeline, AnalyticsTimelineItem } from './api/dto/analytics-timeline.dto'
