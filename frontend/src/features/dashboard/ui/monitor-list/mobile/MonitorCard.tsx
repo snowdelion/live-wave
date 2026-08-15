@@ -51,10 +51,16 @@ export const MonitorCard = React.memo(
                 : 'bg-[rgba(0,230,118,0.12)] text-[#00e676] border border-[rgba(0,230,118,0.2)]'
             }`}
           >
-            <span
-              className={`w-1.5 h-1.5 rounded-full ${isDown ? 'bg-[#f44336] animate-pulse' : 'bg-[#00e676]'}`}
-            />
-            {monitor.lastStatus}
+            {monitor.lastStatus ? (
+              <>
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${isDown ? 'bg-[#f44336] animate-pulse' : 'bg-[#00e676]'}`}
+                />
+                {monitor.lastStatus}
+              </>
+            ) : (
+              <span className="text-[#4caf50] font-medium min-w-5 text-center">-</span>
+            )}
           </span>
         </div>
 

@@ -2,7 +2,7 @@ import { Pencil, Trash2, Eye } from 'lucide-react'
 import Link from 'next/link'
 import React from 'react'
 
-import type { UserMonitor } from '@/entities/monitors'
+import { type UserMonitor } from '@/entities/monitors'
 
 import { formatTime, getResponseColor, getUptimeColor } from '../../../lib/dashboard.utils'
 import { TYPE_STYLE } from '../../../lib/monitor.constants'
@@ -55,14 +55,18 @@ export const MonitorRow = React.memo(
         </div>
 
         <div>
-          <span
-            className={`inline-flex items-center gap-[0.35rem] font-jet-brains text-[0.72rem] font-medium ${isDown ? 'text-[#f44336]' : 'text-[#00e676]'}`}
-          >
+          {monitor.lastStatus ? (
             <span
-              className={`w-1.75 h-1.75 rounded-full shadow shrink-0 ${isDown ? 'bg-[#f44336] animate-pulse' : 'bg-[#00e676]'}`}
-            />
-            {monitor.lastStatus}
-          </span>
+              className={`inline-flex items-center gap-[0.35rem] font-jet-brains text-[0.72rem] font-medium ${isDown ? 'text-[#f44336]' : 'text-[#00e676]'}`}
+            >
+              <span
+                className={`w-1.75 h-1.75 rounded-full shadow shrink-0 ${isDown ? 'bg-[#f44336] animate-pulse' : 'bg-[#00e676]'}`}
+              />
+              {monitor.lastStatus}
+            </span>
+          ) : (
+            <span className="text-[#e8f5e8] font-medium">-</span>
+          )}
         </div>
 
         <span className="font-jet-brains text-[0.72rem] text-[#4caf50]">
@@ -91,7 +95,7 @@ export const MonitorRow = React.memo(
 
         <div>
           <SparkLine
-            data={monitor.trend.sparkline}
+            data={monitor.trend.sparkline.length === 0 ? [1] : monitor.trend.sparkline}
             color={isDown ? '#f44336' : '#00e676'}
             width={72}
             height={24}
