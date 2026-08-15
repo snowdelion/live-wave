@@ -10,7 +10,7 @@ import {
 import { useDeleteUser, useUser } from '@/entities/users'
 
 export function useUserPopover() {
-  const { data: user } = useUser()
+  const { data: user, isError: isUserError } = useUser()
   const { data: settings } = useNotificationsSettings()
   const { mutate: deleteUser } = useDeleteUser()
   const { mutate: logout } = useLogout()
@@ -68,5 +68,6 @@ export function useUserPopover() {
     accountName,
     error,
     user,
+    isUserError,
   }
 }

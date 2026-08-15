@@ -2,12 +2,14 @@ import { Monitor as MonitorIcon, TrendingUp, AlertTriangle, Gauge } from 'lucide
 
 import { MonitorStatus, useMonitors } from '@/entities/monitors'
 
+import { StatsCardsError } from './StatsCardsError'
 import { StatsCardsSkeleton } from './StatsCardsSkeleton'
 
 export function StatsCards() {
-  const { data: { monitors } = { monitors: [] }, isPending } = useMonitors()
+  const { data: { monitors } = { monitors: [] }, isPending, isError } = useMonitors()
 
   if (isPending) return <StatsCardsSkeleton />
+  if (isError) return <StatsCardsError />
 
   const total = monitors.length
   const upCount = monitors.filter(m => m.lastStatus === MonitorStatus.up).length

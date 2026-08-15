@@ -14,11 +14,14 @@ export function UserPopover() {
     accountName,
     error,
     user,
+    isUserError,
   } = useUserPopover()
 
   return (
     <Popover className="relative">
-      <PopoverButton className="w-8 h-8 rounded-full bg-[rgba(0,230,118,0.12)] border border-[rgba(0,230,118,0.25)] flex items-center justify-center cursor-pointer hover:opacity-90 active:opacity-80 transition-opacity focus:outline-none">
+      <PopoverButton
+        className={`w-8 h-8 rounded-full border border-[rgba(0,230,118,0.25)] flex items-center justify-center cursor-pointer hover:opacity-90 active:opacity-80 transition-opacity focus:outline-none ${isUserError ? 'bg-red-900/30' : 'bg-[rgba(0,230,118,0.12)]'}`}
+      >
         <span className="font-jet-brains text-[0.6rem] sm:text-[0.65rem] text-[#00e676] font-medium">
           {user?.email?.charAt(0).toUpperCase() || ''}
         </span>
