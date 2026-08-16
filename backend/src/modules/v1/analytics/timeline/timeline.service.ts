@@ -44,12 +44,15 @@ export class TimelineService {
       take: 40,
     })
 
-    return results.map(r => ({
-      date: r.checkedAt,
-      uptime: r.status === StatusEnum.up ? 100 : 0,
-      averageResponseTime: Number(r.responseTime) || null,
-      p95ResponseTime: null,
-    }))
+    return {
+      items: results.map(r => ({
+        date: r.checkedAt,
+        uptime: r.status === StatusEnum.up ? 100 : 0,
+        averageResponseTime: Number(r.responseTime) || null,
+        p95ResponseTime: null,
+      })),
+      shouldShowP95: false,
+    }
   }
 
   private async getRawTimeline(monitorId: string, startDate: Date) {
@@ -84,12 +87,15 @@ export class TimelineService {
         totalChecks,
       })
 
-      return results.map(r => ({
-        date: r.bucket,
-        uptime: r.uptime ? Number(r.uptime) : 0,
-        averageResponseTime: r.averageResponseTime ? Number(r.averageResponseTime) : null,
-        p95ResponseTime: r.p95ResponseTime ? Number(r.p95ResponseTime) : null,
-      }))
+      return {
+        shouldShowP95: totalChecks >= 40,
+        items: results.map(r => ({
+          date: r.bucket,
+          uptime: r.uptime ? Number(r.uptime) : 0,
+          averageResponseTime: r.averageResponseTime ? Number(r.averageResponseTime) : null,
+          p95ResponseTime: r.p95ResponseTime ? Number(r.p95ResponseTime) : null,
+        })),
+      }
     } catch (e) {
       throw logAndThrow({ context: 'get timeline', e, logger: this.logger })
     }

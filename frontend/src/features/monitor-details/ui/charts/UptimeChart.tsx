@@ -10,8 +10,8 @@ import {
 
 import {
   useTimeline,
-  type AnalyticsTimeline,
   type AnalyticsTimelineItem,
+  type AnalyticsTimelineItems,
 } from '@/entities/analytics'
 import { useIsResizing } from '@/shared/lib'
 
@@ -32,10 +32,10 @@ export function UptimeChart({ monitorId, periodDays }: UptimeChartProps) {
     return <MonitorDetailsChartSkeleton periodDays={periodDays} mode="uptime" />
   if (error) return <MonitorDetailsChartError periodDays={periodDays} mode="uptime" />
 
-  let timeline: AnalyticsTimeline = rawTimeline
-  if (rawTimeline.length === 1) {
-    const item = rawTimeline[0] as AnalyticsTimelineItem
-    timeline = [item, { ...item, date: new Date() }]
+  let timelineItems: AnalyticsTimelineItems = rawTimeline.items
+  if (rawTimeline.items.length === 1) {
+    const item = rawTimeline.items[0] as AnalyticsTimelineItem
+    timelineItems = [item, { ...item, date: new Date() }]
   }
 
   return (
@@ -49,7 +49,7 @@ export function UptimeChart({ monitorId, periodDays }: UptimeChartProps) {
         </p>
       </div>
       <ResponsiveContainer width="100%" height={180}>
-        <AreaChart data={timeline} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+        <AreaChart data={timelineItems} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
           <defs>
             <linearGradient id="ug" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#00e676" stopOpacity={0.25} />
@@ -59,7 +59,10 @@ export function UptimeChart({ monitorId, periodDays }: UptimeChartProps) {
           <CartesianGrid stroke="rgba(0,230,118,0.2)" strokeDasharray="8 8" vertical={false} />
           <XAxis dataKey="date" hide />
           <YAxis
-            domain={[Math.max(0, Math.floor(Math.min(...timeline.map(d => d.uptime)) - 2)), 100]}
+            domain={[
+              Math.max(0, Math.floor(Math.min(...timelineItems.map(d => d?.uptime ?? 0)) - 2)),
+              100,
+            ]}
             tick={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, fill: '#2e7d32' }}
             axisLine={false}
             tickLine={false}

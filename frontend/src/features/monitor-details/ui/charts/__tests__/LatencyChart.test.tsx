@@ -93,10 +93,13 @@ describe('LatencyChart', () => {
   })
 
   describe('success state', () => {
-    const mockTimelineData = [
-      { date: '2024-01-01', averageResponseTime: 120, p95ResponseTime: 150 },
-      { date: '2024-01-02', averageResponseTime: 110, p95ResponseTime: 140 },
-    ]
+    const mockTimelineData = {
+      items: [
+        { date: '2024-01-01', averageResponseTime: 120, p95ResponseTime: 150 },
+        { date: '2024-01-02', averageResponseTime: 110, p95ResponseTime: 140 },
+      ],
+      shouldShowP95: false,
+    }
 
     beforeEach(() => {
       vi.mocked(useTimeline).mockReturnValue({
@@ -131,7 +134,10 @@ describe('LatencyChart', () => {
     it('duplicates the timeline item if there is only one data point', () => {
       vi.mocked(useTimeline).mockReturnValue({
         isPending: false,
-        data: [{ date: '2024-01-01', averageResponseTime: 120, p95ResponseTime: 150 }],
+        data: {
+          items: [{ date: '2024-01-01', averageResponseTime: 120, p95ResponseTime: 150 }],
+          shouldShowP95: false,
+        },
         error: null,
       } as any)
 
