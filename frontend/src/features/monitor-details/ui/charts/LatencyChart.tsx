@@ -115,6 +115,34 @@ export function LatencyChart({ monitorId, periodDays }: LatencyChartProps) {
           >
             <span className="w-4 h-0.5 rounded-xs shrink-0" style={{ background: color }} />
             {label}
+            {tip && (
+              <Popover className="relative">
+                <PopoverButton className="cursor-pointer focus:outline-none mt-1.25 sm:mt-1">
+                  <Info size={16} strokeWidth={2} color="#1b5e20" />
+                </PopoverButton>
+
+                <Transition
+                  as={Fragment}
+                  enter="transition duration-75 ease-out"
+                  enterFrom="transform scale-95 opacity-0"
+                  enterTo="transform scale-100 opacity-100"
+                  leave="transition duration-75 ease-out"
+                  leaveFrom="transform scale-100 opacity-100"
+                  leaveTo="transform scale-95 opacity-0"
+                >
+                  <PopoverPanel
+                    className="absolute top-9 w-56 sm:w-64 p-3 bg-[#111f11] border border-[rgba(0,230,118,0.2)] shadow-[inset_0_0_0_1px_rgba(0,230,118,0.05)] text-[#e8f5e8] text-[0.65rem] sm:text-xs rounded-xl z-50
+                        -right-4 sm:left-1/2 sm:-translate-x-1/2 md:-right-4 md:left-auto md:translate-x-0 lg:left-1/2 lg:-translate-x-1/2"
+                  >
+                    95th percentile is shown once 40+ checks are available for reliable calculation
+                    <div
+                      className="absolute w-4 h-4 rotate-45 bg-[#111f11] border-t border-l border-[rgba(0,230,118,0.2)]
+                          right-3.75 -top-2.25 sm:left-1/2 sm:-translate-x-1/2 md:right-3.75 md:left-auto md:translate-x-0 lg:left-1/2 lg:-translate-x-1/2"
+                    />
+                  </PopoverPanel>
+                </Transition>
+              </Popover>
+            )}
           </span>
         ))}
       </div>
