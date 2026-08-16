@@ -109,7 +109,7 @@ describe('SparkLine', () => {
         dataKey: 'value',
         stroke: '#ff0000',
         strokeWidth: 1.9,
-        fill: '',
+        fill: 'transparent',
         dot: false,
         activeDot: { r: 0, fill: 'transparent' },
       }),
