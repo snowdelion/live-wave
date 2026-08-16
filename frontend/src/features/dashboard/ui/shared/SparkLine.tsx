@@ -50,7 +50,7 @@ export function SparkLine({
             dataKey="value"
             stroke={color}
             strokeWidth={1.9}
-            fill={''}
+            fill="transparent"
             dot={false}
             activeDot={{ r: 0, fill: 'transparent' }}
           />
