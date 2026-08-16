@@ -7,7 +7,13 @@ export const analyticsTimelineItemSchema = z.object({
   p95ResponseTime: z.coerce.number().min(0).nullable(),
 })
 
-export const analyticsTimelineSchema = z.array(analyticsTimelineItemSchema)
+export const analyticsTimelineItemsSchema = z.array(analyticsTimelineItemSchema)
+
+export const analyticsTimelineSchema = z.object({
+  items: analyticsTimelineItemsSchema,
+  shouldShowP95: z.boolean(),
+})
 
 export type AnalyticsTimelineItem = z.infer<typeof analyticsTimelineItemSchema>
+export type AnalyticsTimelineItems = z.infer<typeof analyticsTimelineItemsSchema>
 export type AnalyticsTimeline = z.infer<typeof analyticsTimelineSchema>

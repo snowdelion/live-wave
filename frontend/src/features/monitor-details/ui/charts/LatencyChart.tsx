@@ -1,3 +1,6 @@
+import { Popover, PopoverButton, PopoverPanel, Transition } from '@headlessui/react'
+import { Info } from 'lucide-react'
+import { Fragment } from 'react'
 import {
   Area,
   AreaChart,
@@ -11,8 +14,8 @@ import {
 
 import {
   useTimeline,
-  type AnalyticsTimeline,
   type AnalyticsTimelineItem,
+  type AnalyticsTimelineItems,
 } from '@/entities/analytics'
 import { useIsResizing } from '@/shared/lib'
 
@@ -28,10 +31,10 @@ export function LatencyChart({ monitorId, periodDays }: LatencyChartProps) {
     return <MonitorDetailsChartSkeleton periodDays={periodDays} mode="latency" />
   if (error) return <MonitorDetailsChartError periodDays={periodDays} mode="latency" />
 
-  let timeline: AnalyticsTimeline = rawTimeline
-  if (rawTimeline.length === 1) {
-    const item = rawTimeline[0] as AnalyticsTimelineItem
-    timeline = [item, { ...item, date: new Date() }]
+  let timelineItems: AnalyticsTimelineItems = rawTimeline.items
+  if (rawTimeline.items.length === 1) {
+    const item = rawTimeline.items[0] as AnalyticsTimelineItem
+    timelineItems = [item, { ...item, date: new Date() }]
   }
 
   return (
@@ -46,7 +49,7 @@ export function LatencyChart({ monitorId, periodDays }: LatencyChartProps) {
       </div>
 
       <ResponsiveContainer width="100%" height={180}>
-        <AreaChart data={timeline} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+        <AreaChart data={timelineItems} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="rg" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#00e676" stopOpacity={0.2} />
@@ -101,9 +104,9 @@ export function LatencyChart({ monitorId, periodDays }: LatencyChartProps) {
 
       <div className="flex gap-5 mt-2 ml-3">
         {[
-          { color: '#00e676', label: 'Average response' },
-          { color: '#ffd740', label: 'Percentile 95th' },
-        ].map(({ label, color }) => (
+          { color: '#00e676', label: 'Average response', tip: false },
+          { color: '#ffd740', label: 'Percentile 95th', tip: true },
+        ].map(({ label, color, tip }) => (
           <span
             key={label}
             className="inline-flex items-center gap-[0.35rem] font-jet-brains text-[0.65rem] text-[#1b5e20]"

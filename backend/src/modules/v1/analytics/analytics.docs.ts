@@ -1,6 +1,6 @@
 import { AnalyticsIncidentsResponseDto } from './dto/responses/analytics-incidents-response.dto'
 import { AnalyticsOverviewResponseDto } from './dto/responses/analytics-overview-response.dto'
-import { AnalyticsTimelineEntryDto } from './dto/responses/analytics-timeline-response.dto'
+import { AnalyticsTimelineDto } from './dto/responses/analytics-timeline-response.dto'
 
 export const getOverviewDocs = {
   summary: 'Get aggregated analytics for a monitor',
@@ -20,5 +20,5 @@ export const getTimelineDocs = {
   summary: 'Get timeline data for charting',
   description:
     'Returns aggregated check counts (up/down) and average response time grouped into time buckets. Bucket size is auto-adjusted to keep ~100 points. Use `days` or `startDate` to set the period',
-  okResponseType: [AnalyticsTimelineEntryDto],
+  okResponseType: [AnalyticsTimelineDto],
 }

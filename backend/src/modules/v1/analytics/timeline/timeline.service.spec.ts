@@ -97,9 +97,9 @@ describe('TimelineService', () => {
 
       const result = await service.getTimeline('user-1', 'monitor-1', startDate)
 
-      expect(result).toHaveLength(2)
-      expect(result[0]).toMatchObject({ averageResponseTime: 200 })
-      expect(result[0].date).toBeInstanceOf(Date)
+      expect(result.items).toHaveLength(2)
+      expect(result.items[0]).toMatchObject({ averageResponseTime: 200 })
+      expect(result.items[0].date).toBeInstanceOf(Date)
     })
 
     it('returns raw checks when total checks are less than 40', async () => {
@@ -122,13 +122,13 @@ describe('TimelineService', () => {
 
       const result = await service.getTimeline('user-1', 'monitor-1', startDate)
 
-      expect(result).toHaveLength(2)
-      expect(result[0]).toMatchObject({
+      expect(result.items).toHaveLength(2)
+      expect(result.items[0]).toMatchObject({
         uptime: 100,
         averageResponseTime: 100,
         p95ResponseTime: null,
       })
-      expect(result[1]).toMatchObject({
+      expect(result.items[1]).toMatchObject({
         uptime: 0,
         averageResponseTime: null,
         p95ResponseTime: null,
@@ -142,9 +142,9 @@ describe('TimelineService', () => {
         { bucket: new Date(), up: BigInt(5), down: BigInt(0), averageResponseTime: null },
       ])
 
-      const [point] = await service.getTimeline('user-1', 'monitor-1', startDate)
+      const timeline = await service.getTimeline('user-1', 'monitor-1', startDate)
 
-      expect(point.averageResponseTime).toBeNull()
+      expect(timeline.items[0].averageResponseTime).toBeNull()
     })
 
     it('re-throws database errors from getRawTimeline', async () => {

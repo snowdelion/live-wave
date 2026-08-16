@@ -92,11 +92,14 @@ describe('UptimeChart', () => {
   })
 
   describe('success state', () => {
-    const mockTimelineData = [
-      { date: '2024-01-01', uptime: 99.9 },
-      { date: '2024-01-02', uptime: 100 },
-      { date: '2024-01-03', uptime: 98.5 },
-    ]
+    const mockTimelineData = {
+      items: [
+        { date: '2024-01-01', uptime: 99.9 },
+        { date: '2024-01-02', uptime: 100 },
+        { date: '2024-01-03', uptime: 98.5 },
+      ],
+      shouldShowP95: false,
+    }
 
     beforeEach(() => {
       vi.mocked(useTimeline).mockReturnValue({
@@ -130,7 +133,7 @@ describe('UptimeChart', () => {
     it('duplicates the timeline item if there is only one data point', () => {
       vi.mocked(useTimeline).mockReturnValue({
         isPending: false,
-        data: [{ date: '2024-01-01', uptime: 99.9 }],
+        data: { items: [{ date: '2024-01-01', uptime: 99.9 }], shouldShowP95: false },
         error: null,
       } as any)
 
