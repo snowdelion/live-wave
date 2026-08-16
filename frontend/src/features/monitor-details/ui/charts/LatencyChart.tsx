@@ -75,7 +75,9 @@ export function LatencyChart({ monitorId, periodDays }: LatencyChartProps) {
           />
 
           <Tooltip
-            content={<MonitorDetailsTooltip mode="latency" />}
+            content={
+              <MonitorDetailsTooltip mode="latency" shouldShowP95={rawTimeline.shouldShowP95} />
+            }
             cursor={{ stroke: 'rgba(0,230,118,0.3)', strokeDasharray: '10 10' }}
             animationDuration={0}
           />

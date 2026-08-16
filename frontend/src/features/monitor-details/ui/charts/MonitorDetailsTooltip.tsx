@@ -1,7 +1,13 @@
 import dayjs from 'dayjs'
 import { useId } from 'react'
 
-export function MonitorDetailsTooltip({ mode, active, payload, label }: CustomTooltipProps) {
+export function MonitorDetailsTooltip({
+  mode,
+  active,
+  payload,
+  label,
+  shouldShowP95 = false,
+}: CustomTooltipProps) {
   if (!active || !payload || !payload.length) return null
 
   const date = dayjs(label).format('DD.MM.YYYY')
@@ -34,13 +40,17 @@ export function MonitorDetailsTooltip({ mode, active, payload, label }: CustomTo
       color: '#00e676',
       sub: 'ms',
     }
-    const p95 = {
-      ...payload.find(p => p.dataKey === 'p95ResponseTime'),
-      title: 'P95',
-      color: '#ffd740',
-      sub: 'ms',
+    values.push(avg)
+
+    if (shouldShowP95) {
+      const p95 = {
+        ...payload.find(p => p.dataKey === 'p95ResponseTime'),
+        title: 'P95',
+        color: '#ffd740',
+        sub: 'ms',
+      }
+      values.push(p95)
     }
-    values.push(avg, p95)
   }
 
   return (
@@ -106,6 +116,8 @@ export function MonitorDetailsTooltip({ mode, active, payload, label }: CustomTo
 
 interface CustomTooltipProps {
   mode: 'uptime' | 'latency'
+  shouldShowP95?: boolean
+
   payload?: Array<{ dataKey: string; value: number }>
   active?: boolean
   label?: string
