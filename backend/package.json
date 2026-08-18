@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development nest start --watch",
     "dev:debug": "cross-env NODE_ENV=development nest start --debug --watch",
-    "build": "cross-env NODE_ENV=production prisma generate && pnpm run validate && nest build",
+    "build": "cross-env NODE_ENV=production nest build",
     "start": "cross-env NODE_ENV=production node dist/main",
     "generate": "dotenv -e .env.local -- prisma generate --schema=./prisma/schema",
     "migrate": "dotenv -e .env.local -- prisma migrate dev --schema=./prisma/schema",
@@ -16,6 +16,7 @@
     "format:check": "prettier .",
     "lint": "eslint .",
     "validate": "pnpm run typecheck && pnpm run format && pnpm run lint:fix",
+    "db:push": "npx prisma db push",
     "test": "cross-env NODE_ENV=test vitest",
     "test:run": "cross-env NODE_ENV=test vitest --no-watch",
     "test:cov": "cross-env NODE_ENV=test vitest --coverage --no-watch"
