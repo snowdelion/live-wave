@@ -9,6 +9,8 @@
   ],
   "scripts": {
     "docker": "docker-compose up -d --build",
+    "docker:down": "docker-compose down -v --remove-orphans",
+    "docker:reset": "pnpm docker:down && pnpm docker",
     "dev": "pnpm run -r dev",
     "dev:backend": "pnpm --filter backend dev",
     "dev:frontend": "pnpm --filter frontend dev",
@@ -21,6 +23,9 @@
     "validate": "pnpm run validate:backend && pnpm run validate:frontend",
     "validate:backend": "pnpm --filter backend validate",
     "validate:frontend": "pnpm --filter frontend validate",
+    "db:generate": "pnpm --filter backend generate",
+    "db:push": "pnpm --filter backend db:push",
+    "db:studio": "pnpm --filter backend studio",
     "test": "pnpm run -r test --no-watch",
     "prepare": "husky"
   },

@@ -1,4 +1,4 @@
-import { AppError } from '@/shared/api'
+import { API_URL, AppError } from '@/shared/api'
 
 import { AuthViaEmailRequestSchema } from '../dto/auth-via-email.dto'
 import { signInViaEmail } from '../sign-in-via-email'
@@ -39,7 +39,7 @@ describe('signInViaEmail', () => {
 
     expect(requestMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        url: '/api/auth/sign-in/email',
+        url: API_URL.AUTH.SIGN_IN_EMAIL,
         method: 'POST',
         json: validBody,
       }),

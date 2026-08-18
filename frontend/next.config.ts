@@ -1,17 +1,19 @@
 import type { NextConfig } from 'next'
 
-const API_URL = process.env.API_URL || 'http://localhost:8000/api/v1'
+const API_URL = process.env.API_URL || 'http://localhost:8000'
+const API_VERSION = process.env.API_VERSION || 'v1'
 
 const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: API_URL,
+    NEXT_PUBLIC_API_VERSION: API_VERSION,
   },
 
   async rewrites() {
     return [
       {
         source: '/api/:path*',
-        destination: `${API_URL}/:path*`,
+        destination: `${API_URL}/api/:path*`,
       },
     ]
   },
