@@ -1,7 +1,7 @@
 const DEFAULT_VERSION = process.env.NEXT_PUBLIC_API_VERSION || 'v1'
 
 const api = (path: string, version: string = DEFAULT_VERSION) => {
-  return `/${version}/${path}`
+  return `/api/${version}/${path}`
 }
 
 const analytics = 'analytics'
