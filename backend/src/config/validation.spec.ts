@@ -3,9 +3,6 @@ import { validate } from './validation'
 const validConfig = {
   DATABASE_URL: 'postgresql://user:password@localhost:5432/db',
   REDIS_URL: 'redis://localhost:6379',
-  POSTGRES_USER: 'user',
-  POSTGRES_PASSWORD: 'password',
-  POSTGRES_DB: 'db',
   JWT_ACCESS_SECRET: 'access',
   JWT_REFRESH_SECRET: 'refresh',
 }
@@ -37,9 +34,6 @@ describe('validate', () => {
       expect(result.NODE_ENV).toBe('development')
       expect(result.DATABASE_URL).toBe(validConfig.DATABASE_URL)
       expect(result.REDIS_URL).toBe(validConfig.REDIS_URL)
-      expect(result.POSTGRES_USER).toBe('user')
-      expect(result.POSTGRES_PASSWORD).toBe('password')
-      expect(result.POSTGRES_DB).toBe('db')
     })
 
     it('accepts a fully specified valid config', () => {
@@ -67,22 +61,16 @@ describe('validate', () => {
   })
 
   describe('required fields', () => {
-    it.each(['DATABASE_URL', 'REDIS_URL', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_DB'])(
-      'throws when %s is missing',
-      field => {
-        const { [field as keyof typeof validConfig]: _, ...rest } = validConfig
-        expect(() => validate(rest)).toThrow('Environment configuration error')
-      },
-    )
+    it.each(['DATABASE_URL', 'REDIS_URL'])('throws when %s is missing', field => {
+      const { [field as keyof typeof validConfig]: _, ...rest } = validConfig
+      expect(() => validate(rest)).toThrow('Environment configuration error')
+    })
 
-    it.each(['DATABASE_URL', 'REDIS_URL', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_DB'])(
-      'throws when %s is an empty string',
-      field => {
-        expect(() => validate({ ...validConfig, [field]: '' })).toThrow(
-          'Environment configuration error',
-        )
-      },
-    )
+    it.each(['DATABASE_URL', 'REDIS_URL'])('throws when %s is an empty string', field => {
+      expect(() => validate({ ...validConfig, [field]: '' })).toThrow(
+        'Environment configuration error',
+      )
+    })
   })
 
   describe('error messages', () => {
