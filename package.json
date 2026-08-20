@@ -26,6 +26,7 @@
     "db:generate": "pnpm --filter backend generate",
     "db:push": "pnpm --filter backend db:push",
     "db:studio": "pnpm --filter backend studio",
+    "migrate:deploy": "pnpm --filter backend migrate:deploy",
     "test": "pnpm run -r test --no-watch",
     "prepare": "husky"
   },

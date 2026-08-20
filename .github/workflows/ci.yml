@@ -49,6 +49,7 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://user:password@localhost:5432/live-wave?schema=public
+      DIRECT_URL: postgresql://user:password@localhost:5432/live-wave?schema=public
       REDIS_URL: redis://localhost:6379
 
     steps:
