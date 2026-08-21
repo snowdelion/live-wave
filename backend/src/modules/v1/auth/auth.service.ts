@@ -86,6 +86,10 @@ export class AuthService {
   }
 
   async telegramAuth(dto: TelegramAuthDto) {
+    this.logger.debug('Recieved Telegram auth request', {
+      receivedKeys: Object.keys(dto),
+      telegramId: dto.id,
+    })
     if (!this.verifyTelegramData(dto)) {
       this.logger.error('Invalid Telegram data', { telegramId: dto.id })
       throw new UnauthorizedException('Invalid Telegram data')
@@ -145,6 +149,13 @@ export class AuthService {
 
     const hmac = crypto.createHmac('sha256', secret).update(checkString).digest('hex')
     const success = hmac === hash
+
+    this.logger.debug('Telegram hash', {
+      checkString: checkString.replace(/\n/g, '\\n'),
+      expectedHash: hmac,
+      receivedHash: hash,
+      isSuccess: success,
+    })
 
     if (success) this.logger.debug('Telegram data verified', { telegramId: data.id })
     else this.logger.warn('Telegram data verification failed', { telegramId: data.id })
