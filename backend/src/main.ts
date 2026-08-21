@@ -37,8 +37,15 @@ async function bootstrap() {
   })
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
+
+  const allowedOrigins = [
+    'http://127.0.0.1:3000',
+    'https://live-wave-monitoring.vercel.app',
+    configService.get<string>('FRONTEND_URL'),
+  ].filter(Boolean)
+  console.log('CORS allowed origins:', allowedOrigins)
   app.enableCors({
-    origin: configService.get<string>('FRONTEND_URL', 'http://localhost:3000'),
+    origin: allowedOrigins,
     credentials: true,
   })
   app.enableShutdownHooks()

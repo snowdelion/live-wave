@@ -5,20 +5,37 @@ import { useEffect, useState } from 'react'
 import { useSignInTelegram, type AuthViaTelegramRequest } from '@/entities/auth'
 
 export function OAuthButtons() {
-  const { mutate: authTelegram } = useSignInTelegram()
+  const { mutateAsync: authTelegram } = useSignInTelegram()
   const router = useRouter()
 
   const handleTelegramAuth = async (body: AuthViaTelegramRequest) => {
-    authTelegram(body)
-    router.push('/dashboard')
+    console.log('onAuthCallback started. Body::', body)
+    try {
+      console.log('Request to the backend')
+      await authTelegram(body)
+      console.log('The backend responded successfully')
+      router.replace('/dashboard')
+    } catch (e) {
+      console.error('Authorization error:', e)
+    }
   }
 
   const [domainOk, setDomainOk] = useState(true)
 
   useEffect(() => {
-    const isHttps = window.location.protocol === 'https:'
-    const isAllowedHost = window.location.origin.startsWith(process.env.NEXT_PUBLIC_APP_URL || '')
-    setDomainOk(isHttps && isAllowedHost)
+    const currentOrigin = window.location.origin
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+    const isHttps = currentOrigin.startsWith('https:')
+    const isMatch = currentOrigin === appUrl
+
+    console.group('TELEGRAM AUTH DEBUG')
+    console.log('Domain:', currentOrigin)
+    console.log('NEXT_PUBLIC_APP_URL:', appUrl)
+    console.log('HTTPS:', isHttps)
+    console.log('Domains match:', isMatch ? true : false)
+    console.groupEnd()
+
+    setDomainOk(isHttps && isMatch)
   }, [])
 
   if (!domainOk)
@@ -29,7 +46,7 @@ export function OAuthButtons() {
     )
 
   return (
-    <div className="flex flex-col items-ceter gap-2.5 mb-6">
+    <div className="flex flex-col gap-2.5 mb-6">
       <LoginButton
         botUsername="live_wave_bot"
         buttonSize="large"

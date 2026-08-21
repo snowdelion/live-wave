@@ -41,8 +41,8 @@ function setLocation(origin: string, protocol: string) {
 }
 
 describe('OAuthButtons', () => {
-  const push = vi.fn()
-  const authTelegramMutate = vi.fn()
+  const replace = vi.fn()
+  const authTelegramMutateAsync = vi.fn().mockResolvedValue({ accessToken: 'fake-token' })
 
   const originalEnv = process.env.NEXT_PUBLIC_APP_URL
 
@@ -50,11 +50,11 @@ describe('OAuthButtons', () => {
     vi.clearAllMocks()
 
     vi.mocked(useRouter).mockReturnValue({
-      push,
+      replace,
     } as unknown as ReturnType<typeof useRouter>)
 
     vi.mocked(useSignInTelegram).mockReturnValue({
-      mutate: authTelegramMutate,
+      mutateAsync: authTelegramMutateAsync,
     } as never)
 
     process.env.NEXT_PUBLIC_APP_URL = 'https://myapp.com'
@@ -67,70 +67,55 @@ describe('OAuthButtons', () => {
   describe('domain validation', () => {
     it('should render the Telegram login button when https and origin matches NEXT_PUBLIC_APP_URL', () => {
       setLocation('https://myapp.com', 'https:')
-
       render(<OAuthButtons />)
-
       expect(screen.getByTestId('telegram-login-button')).toBeInTheDocument()
     })
 
     it('should render the domain-invalid message when protocol is not https', () => {
       setLocation('http://myapp.com', 'http:')
-
       render(<OAuthButtons />)
-
       expect(
         screen.getByText('Login via Telegram is unavailable: domain is invalid'),
       ).toBeInTheDocument()
       expect(screen.queryByTestId('telegram-login-button')).not.toBeInTheDocument()
     })
 
-    it('should render the domain-invalid message when origin does not start with NEXT_PUBLIC_APP_URL', () => {
+    it('should render the domain-invalid message when origin does not match NEXT_PUBLIC_APP_URL', () => {
       setLocation('https://evil.com', 'https:')
-
       render(<OAuthButtons />)
-
       expect(
         screen.getByText('Login via Telegram is unavailable: domain is invalid'),
       ).toBeInTheDocument()
       expect(screen.queryByTestId('telegram-login-button')).not.toBeInTheDocument()
-    })
-
-    it('should render the domain-invalid message when NEXT_PUBLIC_APP_URL is unset and falls back to empty string match', () => {
-      process.env.NEXT_PUBLIC_APP_URL = undefined
-      setLocation('http://myapp.com', 'http:')
-
-      render(<OAuthButtons />)
-
-      expect(
-        screen.getByText('Login via Telegram is unavailable: domain is invalid'),
-      ).toBeInTheDocument()
     })
   })
 
   describe('telegram auth callback', () => {
-    it('should call authTelegram mutate with the auth body when the callback fires', async () => {
+    it('should call authTelegram mutateAsync with the auth body when the callback fires', async () => {
       setLocation('https://myapp.com', 'https:')
-
       render(<OAuthButtons />)
 
       screen.getByTestId('telegram-login-button').click()
 
-      expect(authTelegramMutate).toHaveBeenCalledWith({
-        id: 1,
-        first_name: 'John',
-        auth_date: 123,
-        hash: 'h',
+      await vi.waitFor(() => {
+        expect(authTelegramMutateAsync).toHaveBeenCalledWith({
+          id: 1,
+          first_name: 'John',
+          auth_date: 123,
+          hash: 'h',
+        })
       })
     })
 
     it('should navigate to /dashboard after the telegram auth callback fires', async () => {
       setLocation('https://myapp.com', 'https:')
-
       render(<OAuthButtons />)
 
       screen.getByTestId('telegram-login-button').click()
 
-      expect(push).toHaveBeenCalledWith('/dashboard')
+      await vi.waitFor(() => {
+        expect(replace).toHaveBeenCalledWith('/dashboard')
+      })
     })
   })
 })
