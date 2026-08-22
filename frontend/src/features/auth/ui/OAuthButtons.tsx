@@ -1,9 +1,9 @@
 import { LoginButton } from '@telegram-auth/react'
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 
 import { API_URL } from '@/shared/api'
 
-export function OAuthButtons() {
+export const OAuthButtons = memo(() => {
   const [domainOk, setDomainOk] = useState(true)
 
   useEffect(() => {
@@ -33,4 +33,4 @@ export function OAuthButtons() {
       />
     </div>
   )
-}
+})

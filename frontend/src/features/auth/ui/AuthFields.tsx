@@ -56,7 +56,7 @@ export function AuthFields({
   ))
 }
 
-export function getAuthFields({
+function getAuthFields({
   showPassword,
   showConfirmPassword,
   isLogin,
