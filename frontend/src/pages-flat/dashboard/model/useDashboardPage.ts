@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import Cookies from 'js-cookie'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
   MonitorType,
@@ -6,6 +7,7 @@ import {
   useMonitors,
   type DetailedMonitor,
 } from '@/entities/monitors'
+import { useAuthStore } from '@/shared/api'
 
 export function useDashboardPage() {
   const [showModal, setShowModal] = useState(false)
@@ -53,6 +55,23 @@ export function useDashboardPage() {
         return base
     }
   }
+
+  const setAccessToken = useAuthStore(s => s.setAccessToken)
+  const hasInitializedAuth = useRef(false)
+  const getAccessTokenCookie = useCallback(() => {
+    const match = document.cookie.match(/(?:^|; )accessToken=([^;]*)/)
+    if (!match || !match[1]) return null
+    return decodeURIComponent(match[1])
+  }, [])
+
+  useEffect(() => {
+    const token = Cookies.get('accessToken')
+    if (token) {
+      setAccessToken(token)
+      Cookies.remove('accessToken', { path: '/' })
+      hasInitializedAuth.current = true
+    }
+  }, [setAccessToken, getAccessTokenCookie])
 
   return {
     getInitial,

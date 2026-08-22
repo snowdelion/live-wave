@@ -67,11 +67,8 @@ export class AuthController {
   @Post('telegram')
   @AuthDocs(telegramDocs)
   @Throttle({ short: { ttl: seconds(60), limit: 5 }, long: { ttl: seconds(3600), limit: 20 } })
-  async telegramAuth(@Body() dto: TelegramAuthDto, @Res({ passthrough: true }) res: Response) {
-    const { accessToken, refreshToken } = await this.authService.telegramAuth(dto)
-
-    this.cookieService.setRefreshToken(res, refreshToken)
-    return { accessToken }
+  async telegramAuth(@Body() dto: TelegramAuthDto) {
+    return await this.authService.telegramAuth(dto)
   }
 
   @Post('refresh-token')

@@ -1,8 +1,8 @@
 const DEFAULT_VERSION = process.env.NEXT_PUBLIC_API_VERSION || 'v1'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3000'
 
-const api = (path: string, version: string = DEFAULT_VERSION) => {
-  return `/api/${version}/${path}`
-}
+const api = (path: string, version: string = DEFAULT_VERSION) => `/api/${version}/${path}`
+const routeApi = (path: string) => `${APP_URL}/api/${path}`
 
 const analytics = 'analytics'
 const auth = 'auth'
@@ -24,7 +24,7 @@ export const API_URL = {
   AUTH: {
     SIGN_IN_EMAIL: api(`${auth}/sign-in/email`),
     SIGN_UP_EMAIL: api(`${auth}/sign-up/email`),
-    SIGN_IN_TELEGRAM: api(`${auth}/telegram`),
+    SIGN_IN_TELEGRAM: routeApi(`${auth}/telegram`),
     LOGOUT: api(`${auth}/log-out`),
     REFRESH_TOKEN: api(`${auth}/refresh-token`),
   },

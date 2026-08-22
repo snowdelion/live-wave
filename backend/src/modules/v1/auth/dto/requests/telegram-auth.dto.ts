@@ -1,10 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger'
+import { Transform } from 'class-transformer'
 import { IsNumber, IsOptional, IsString, IsUrl, Min } from 'class-validator'
 
 export class TelegramAuthDto {
   @ApiProperty({ example: 123456789 })
   @IsNumber()
   @Min(1)
+  @Transform(({ value }) => Number(value))
   id!: number
 
   @ApiProperty({ example: 'User first name' })
@@ -14,6 +16,7 @@ export class TelegramAuthDto {
   @ApiProperty({ example: 175647632 })
   @IsNumber()
   @Min(1)
+  @Transform(({ value }) => Number(value))
   auth_date!: number
 
   @ApiProperty({ example: 'User last name', required: false })
