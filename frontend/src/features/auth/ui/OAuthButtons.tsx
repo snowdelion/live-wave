@@ -1,25 +1,9 @@
 import { LoginButton } from '@telegram-auth/react'
-import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-import { useSignInTelegram, type AuthViaTelegramRequest } from '@/entities/auth'
+import { API_URL } from '@/shared/api'
 
 export function OAuthButtons() {
-  const { mutateAsync: authTelegram } = useSignInTelegram()
-  const router = useRouter()
-
-  const handleTelegramAuth = async (body: AuthViaTelegramRequest) => {
-    console.log('onAuthCallback started. Body::', body)
-    try {
-      console.log('Request to the backend')
-      await authTelegram(body)
-      console.log('The backend responded successfully')
-      router.replace('/dashboard')
-    } catch (e) {
-      console.error('Authorization error:', e)
-    }
-  }
-
   const [domainOk, setDomainOk] = useState(true)
 
   useEffect(() => {
@@ -27,13 +11,6 @@ export function OAuthButtons() {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
     const isHttps = currentOrigin.startsWith('https:')
     const isMatch = currentOrigin === appUrl
-
-    console.group('TELEGRAM AUTH DEBUG')
-    console.log('Domain:', currentOrigin)
-    console.log('NEXT_PUBLIC_APP_URL:', appUrl)
-    console.log('HTTPS:', isHttps)
-    console.log('Domains match:', isMatch ? true : false)
-    console.groupEnd()
 
     setDomainOk(isHttps && isMatch)
   }, [])
@@ -52,7 +29,7 @@ export function OAuthButtons() {
         buttonSize="large"
         cornerRadius={6}
         showAvatar={false}
-        onAuthCallback={(body: AuthViaTelegramRequest) => void handleTelegramAuth(body)}
+        authCallbackUrl={API_URL.AUTH.SIGN_IN_TELEGRAM}
       />
     </div>
   )

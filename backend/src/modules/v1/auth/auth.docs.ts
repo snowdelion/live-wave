@@ -3,7 +3,10 @@ import { HttpStatus } from '@nestjs/common'
 import { SignInEmailDto } from './dto/requests/sign-in.dto'
 import { SignUpEmailDto } from './dto/requests/sign-up.dto'
 import { TelegramAuthDto } from './dto/requests/telegram-auth.dto'
-import { AccessTokenResponseDto } from './dto/responses/access-token-response.dto'
+import {
+  AccessTokenResponseDto,
+  TokensResponseDto,
+} from './dto/responses/access-token-response.dto'
 
 const FORBIDDEN_EXAMPLE = {
   example: {
@@ -62,7 +65,7 @@ export const telegramDocs = {
     'Authenticates a user using Telegram OAuth. Returns access token in response and sets refresh token as httpOnly cookie',
   extraResponses: [
     {
-      type: AccessTokenResponseDto,
+      type: TokensResponseDto,
       status: HttpStatus.OK,
     },
   ],

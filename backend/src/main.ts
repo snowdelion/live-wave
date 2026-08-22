@@ -38,12 +38,14 @@ async function bootstrap() {
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
 
-  const allowedOrigins = [
-    'http://127.0.0.1:3000',
-    'https://live-wave-monitoring.vercel.app',
-    configService.get<string>('FRONTEND_URL'),
-  ].filter(Boolean)
-  console.log('CORS allowed origins:', allowedOrigins)
+  const rawOrigins = configService.get<string>('FRONTEND_URL', 'http://127.0.0.1:3000')
+  const allowedOrigins = rawOrigins
+    .split(',')
+    .map(o => o.trim())
+    .filter(Boolean)
+  new Logger(configService)
+    .child({ context: 'Main' })
+    .log('CORS allowed origins', { origins: allowedOrigins })
   app.enableCors({
     origin: allowedOrigins,
     credentials: true,
