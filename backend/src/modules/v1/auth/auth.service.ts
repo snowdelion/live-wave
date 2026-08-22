@@ -152,8 +152,8 @@ export class AuthService {
 
     this.logger.debug('Telegram hash', {
       checkString: checkString.replace(/\n/g, '\\n'),
-      expectedHash: hmac,
-      receivedHash: hash,
+      expectedHash: `${hmac.slice(0, 8)}...`,
+      receivedHash: `${hash.slice(0, 8)}...`,
       isSuccess: success,
     })
 

@@ -38,12 +38,14 @@ async function bootstrap() {
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
 
-  const rawOrigins = configService.get<string>('FRONTEND_URL') || 'http://127.0.0.1:3000'
+  const rawOrigins = configService.get<string>('FRONTEND_URL', 'http://127.0.0.1:3000')
   const allowedOrigins = rawOrigins
     .split(',')
     .map(o => o.trim())
     .filter(Boolean)
-  console.log('CORS allowed origins:', allowedOrigins)
+  new Logger(configService)
+    .child({ context: 'Main' })
+    .log('CORS allowed origins', { origins: allowedOrigins })
   app.enableCors({
     origin: allowedOrigins,
     credentials: true,

@@ -86,8 +86,6 @@ export class AuthController {
         this.cookieService.clearRefreshToken(res)
         throw new UnauthorizedException('Refresh token not found')
       }
-      this.logger.debug('refreshToken', { refreshToken })
-
       const { accessToken } = await this.authService.refreshAccessToken(refreshToken, res)
       return { accessToken }
     } catch (e) {
