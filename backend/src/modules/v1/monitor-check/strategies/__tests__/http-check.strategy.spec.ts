@@ -1,11 +1,11 @@
 import { Method, StatusEnum } from '@prisma/client'
-import type { Prisma } from '@prisma/client'
 
 import { Logger } from '@/shared/logger/logger.service'
 import type { PrismaService } from '@/shared/prisma/prisma.service'
 import { httpFetch } from '@/shared/utils/http-fetch.utils'
 
 import { HttpStrategy } from '../http-check.strategy'
+import type { StrategyContext } from '../strategy-result.types'
 
 vi.mock('@/shared/utils/http-fetch.utils', () => ({
   httpFetch: vi.fn(),
@@ -16,17 +16,7 @@ const CHECK_INTERVAL = 10
 const TIMEOUT_MS = 5000
 const TEST_URL = 'https://example.com/health'
 
-type MonitorWithHttp = Prisma.MonitorGetPayload<{
-  include: { httpMonitor: true }
-}>
-
-const makeMonitorRow = (
-  overrides: Partial<
-    Pick<MonitorWithHttp, 'id' | 'checkInterval' | 'timeout'> & {
-      httpMonitor: MonitorWithHttp['httpMonitor']
-    }
-  > = {},
-): MonitorWithHttp =>
+const makeMonitorContext = (overrides: Partial<StrategyContext> = {}): StrategyContext =>
   ({
     id: MONITOR_ID,
     name: 'API health',
@@ -45,7 +35,7 @@ const makeMonitorRow = (
       method: Method.HEAD,
     },
     ...overrides,
-  }) as MonitorWithHttp
+  }) as StrategyContext
 
 function createMockResponse(status: number, ok = status >= 200 && status < 300): Response {
   return { status, ok } as Response
@@ -62,7 +52,6 @@ async function runTransactionBatch(
 
 const mockPrisma = {
   monitor: {
-    findUnique: vi.fn(),
     update: vi.fn(),
   },
   check: {
@@ -90,7 +79,6 @@ describe('HttpStrategy', () => {
     vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined)
     vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
 
-    vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(makeMonitorRow())
     vi.mocked(mockPrisma.check.create).mockResolvedValue({} as never)
     vi.mocked(mockPrisma.monitor.update).mockResolvedValue({} as never)
     vi.mocked(mockPrisma.$transaction).mockImplementation(runTransactionBatch)
@@ -106,38 +94,15 @@ describe('HttpStrategy', () => {
   })
 
   describe('check', () => {
-    it('loads the monitor with httpMonitor included', async () => {
-      await strategy.check(MONITOR_ID)
-
-      expect(mockPrisma.monitor.findUnique).toHaveBeenCalledOnce()
-      expect(mockPrisma.monitor.findUnique).toHaveBeenCalledWith({
-        where: { id: MONITOR_ID },
-        include: { httpMonitor: true },
-      })
-    })
-
-    it('warns and skips when the monitor is not found', async () => {
-      vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(null)
-
-      await strategy.check(MONITOR_ID)
-
-      expect(mockFetchWithRetry).not.toHaveBeenCalled()
-      expect(mockPrisma.$transaction).not.toHaveBeenCalled()
-    })
-
-    it('skips when httpMonitor is missing', async () => {
-      vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(
-        makeMonitorRow({ httpMonitor: null }),
-      )
-
-      await strategy.check(MONITOR_ID)
+    it('warns and skips when the monitor context is missing httpMonitor', async () => {
+      await strategy.check(makeMonitorContext({ httpMonitor: undefined } as any))
 
       expect(mockFetchWithRetry).not.toHaveBeenCalled()
       expect(mockPrisma.$transaction).not.toHaveBeenCalled()
     })
 
     it('calls httpFetch with monitor URL, timeout, method, and fixed options', async () => {
-      await strategy.check(MONITOR_ID)
+      await strategy.check(makeMonitorContext())
 
       expect(mockFetchWithRetry).toHaveBeenCalledOnce()
       expect(mockFetchWithRetry).toHaveBeenCalledWith({
@@ -160,17 +125,16 @@ describe('HttpStrategy', () => {
       vi.setSystemTime(new Date('2024-06-01T12:00:00.000Z'))
     })
 
-    it('persists an up check and schedules the next run when the response is ok', async () => {
+    it('persists an up check when the response is ok', async () => {
       mockFetchWithRetry.mockResolvedValue(createMockResponse(204, true))
 
-      await strategy.check(MONITOR_ID)
+      await strategy.check(makeMonitorContext())
 
       expect(mockPrisma.check.create).toHaveBeenCalledWith({
         data: {
           monitorId: MONITOR_ID,
           status: StatusEnum.up,
-          statusCode: 204,
-          responseTime: expect.any(Number) as number,
+          responseTime: 0,
           error: null,
           details: {
             method: 'HEAD',
@@ -178,27 +142,19 @@ describe('HttpStrategy', () => {
           },
         },
       })
-      expect(mockPrisma.monitor.update).toHaveBeenCalledWith({
-        where: { id: MONITOR_ID },
-        data: {
-          lastCheckedAt: new Date('2024-06-01T12:00:00.000Z'),
-          lastStatus: StatusEnum.up,
-          nextCheckAt: new Date('2024-06-01T12:10:00.000Z'),
-        },
-      })
+
       expect(mockPrisma.$transaction).toHaveBeenCalledOnce()
     })
 
     it('persists a down check and warns when the HTTP status is not ok', async () => {
       mockFetchWithRetry.mockResolvedValue(createMockResponse(503, false))
 
-      await strategy.check(MONITOR_ID)
+      await strategy.check(makeMonitorContext())
 
       expect(mockPrisma.check.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           monitorId: MONITOR_ID,
           status: StatusEnum.down,
-          statusCode: 503,
           error: null,
         }),
       })
@@ -208,13 +164,12 @@ describe('HttpStrategy', () => {
       const networkError = new Error('fetch failed')
       mockFetchWithRetry.mockRejectedValue(networkError)
 
-      await strategy.check(MONITOR_ID)
+      await strategy.check(makeMonitorContext())
 
       expect(mockPrisma.check.create).toHaveBeenCalledWith({
         data: {
           monitorId: MONITOR_ID,
           status: StatusEnum.down,
-          statusCode: null,
           responseTime: 0,
           error: 'fetch failed',
           details: {
@@ -228,7 +183,7 @@ describe('HttpStrategy', () => {
     it('uses "unknown error" when fetch rejects with a non-Error value', async () => {
       mockFetchWithRetry.mockRejectedValue('timeout')
 
-      await strategy.check(MONITOR_ID)
+      await strategy.check(makeMonitorContext())
 
       expect(mockPrisma.check.create).toHaveBeenCalledWith({
         data: expect.objectContaining({

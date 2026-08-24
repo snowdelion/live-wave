@@ -1,11 +1,11 @@
-import { BullModule } from '@nestjs/bullmq'
 import { Module } from '@nestjs/common'
+import { ScheduleModule } from '@nestjs/schedule'
 
-import { BullShutdownService } from '@/shared/bull/bull-shutdown.service'
-import { BULL_NAMES } from '@/shared/bull/bull.constants'
 import { MetricsModule } from '@/shared/metrics/metrics.module'
 
-import { MonitorCheckProcessor } from './monitor-check.processor'
+import { TelegramModule } from '../notifications/telegram/telegram.module'
+
+import { MonitorCheckScheduler } from './monitor-check.scheduler'
 import { MonitorCheckService } from './monitor-check.service'
 import { DnsStrategy } from './strategies/dns-check.strategy'
 import { HttpStrategy } from './strategies/http-check.strategy'
@@ -13,16 +13,10 @@ import { IcmpStrategy } from './strategies/icmp-check.strategy'
 import { TcpStrategy } from './strategies/tcp-check.strategy'
 
 @Module({
-  imports: [
-    BullModule.registerQueue({ name: BULL_NAMES.QUEUE }),
-    BullModule.registerQueue({ name: BULL_NAMES.NOTIFICATIONS }),
-    MetricsModule,
-  ],
+  imports: [ScheduleModule, MetricsModule, TelegramModule],
   providers: [
     MonitorCheckService,
-    MonitorCheckProcessor,
-
-    BullShutdownService,
+    MonitorCheckScheduler,
     HttpStrategy,
     TcpStrategy,
     IcmpStrategy,

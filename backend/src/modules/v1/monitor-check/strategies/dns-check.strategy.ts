@@ -7,25 +7,23 @@ import { Logger } from '@/shared/logger/logger.service'
 import { PrismaService } from '@/shared/prisma/prisma.service'
 import { getErrorMessage } from '@/shared/utils/error.utils'
 
-import type { StrategyResult } from './strategy-result.types'
+import { BaseCheckStrategy } from './base-check.strategy'
+import type { StrategyContext, StrategyResult } from './strategy-result.types'
 
 @Injectable()
-export class DnsStrategy {
-  private logger: Logger
+export class DnsStrategy extends BaseCheckStrategy {
   constructor(
-    private prisma: PrismaService,
+    protected prisma: PrismaService,
     baseLogger: Logger,
   ) {
-    this.logger = baseLogger.child({ context: DnsStrategy.name })
+    super(prisma, baseLogger, DnsStrategy.name)
   }
 
-  async check(monitorId: string): StrategyResult {
-    const monitor = await this.prisma.monitor.findUnique({
-      where: { id: monitorId },
-      include: { dnsMonitor: true },
-    })
+  async check(monitor: StrategyContext): Promise<StrategyResult> {
     if (!monitor?.dnsMonitor) {
-      this.logger.warn('Monitor or its DnsMonitor not found, skipping check', { monitorId })
+      this.logger.warn('Monitor or its DnsMonitor not found, skipping check', {
+        monitorId: monitor.id,
+      })
       return {
         status: StatusEnum.down,
         error: 'Monitor or DnsMonitor not found',
@@ -35,21 +33,14 @@ export class DnsStrategy {
     }
 
     return await this.performCheck({
-      monitorId,
+      monitorId: monitor.id,
       host: monitor.dnsMonitor.host,
       recordType: monitor.dnsMonitor.recordType,
       timeout: monitor.timeout,
-      checkInterval: monitor.checkInterval,
     })
   }
 
-  private async performCheck({
-    monitorId,
-    host,
-    recordType,
-    timeout,
-    checkInterval,
-  }: PerformCheckOptions) {
+  private async performCheck({ monitorId, host, recordType, timeout }: PerformCheckOptions) {
     const { status, error, responseTime, resolvedValue } = await this.checkDnsConnection({
       host,
       recordType,
@@ -59,15 +50,11 @@ export class DnsStrategy {
     if (status === StatusEnum.down)
       this.logger.warn('DNS monitor is down', { monitorId, host, recordType, error })
 
-    await this.confirmTransaction({
-      monitorId,
+    await this.confirmCheckResult(monitorId, {
+      error,
       status,
       responseTime,
-      error,
-      checkInterval,
-      host,
-      recordType,
-      resolvedValue,
+      details: { host, recordType, resolvedValue },
     })
     return { status, error, responseTime, checkedAt: new Date() }
   }
@@ -87,7 +74,6 @@ export class DnsStrategy {
           (timeoutId = setTimeout(() => rej(new Error(`DNS timeout after ${timeout}ms`)), timeout)),
       )
       const result = await Promise.race([dns.resolve(host, recordType ?? RecordType.A), promise])
-
       resolvedValue = this.formatDnsRecord(result, recordType)
       success = true
     } catch (e) {
@@ -128,56 +114,6 @@ export class DnsStrategy {
     return parts.join(', ')
   }
 
-  private async confirmTransaction({
-    monitorId,
-    status,
-    responseTime,
-    error,
-    checkInterval,
-    host,
-    recordType,
-    resolvedValue,
-  }: ConfirmTransactionOptions) {
-    try {
-      await this.prisma.$transaction([
-        this.prisma.check.create({
-          data: {
-            monitorId,
-            status,
-            responseTime,
-            error,
-            details: { host, recordType, resolvedValue },
-          },
-        }),
-        this.prisma.monitor.update({
-          where: { id: monitorId },
-          data: {
-            lastCheckedAt: new Date(),
-            lastStatus: status,
-            nextCheckAt: new Date(Date.now() + checkInterval * 60 * 1000),
-          },
-        }),
-        this.prisma.check.deleteMany({
-          where: {
-            monitorId,
-            checkedAt: { lt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000) },
-          },
-        }),
-      ])
-    } catch (e) {
-      if (e instanceof Error && 'code' in e && e.code === 'P2003') {
-        this.logger.warn('DNS Monitor not found, skipping check', { monitorId })
-        return
-      }
-      error = getErrorMessage(e)
-      status = StatusEnum.down
-      this.logger.error('Transaction failed for DNS check', {
-        monitorId,
-        error: getErrorMessage(e),
-      })
-    }
-  }
-
   private normalizeDnsError(errorMsg: string, host: string, timeout: number): string {
     if (/ENOTFOUND|DNS.*lookup|getaddrinfo/i.test(errorMsg))
       return `DNS lookup failed for ${host} host`
@@ -191,19 +127,7 @@ interface PerformCheckOptions {
   monitorId: string
   host: string
   timeout: number
-  checkInterval: number
   recordType: RecordType | null
-}
-
-interface ConfirmTransactionOptions {
-  monitorId: string
-  status: StatusEnum
-  responseTime: number
-  error: string | null
-  checkInterval: number
-  host: string
-  recordType: RecordType | null
-  resolvedValue: string | null
 }
 
 interface CheckDnsConnectionOptions {

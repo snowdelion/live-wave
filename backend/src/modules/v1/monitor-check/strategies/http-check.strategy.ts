@@ -6,123 +6,47 @@ import { PrismaService } from '@/shared/prisma/prisma.service'
 import { getErrorMessage } from '@/shared/utils/error.utils'
 import { httpFetch } from '@/shared/utils/http-fetch.utils'
 
-import type { StrategyResult } from './strategy-result.types'
+import { BaseCheckStrategy } from './base-check.strategy'
+import type { StrategyContext, StrategyResult } from './strategy-result.types'
 
 @Injectable()
-export class HttpStrategy {
-  private logger: Logger
+export class HttpStrategy extends BaseCheckStrategy {
   constructor(
-    private prisma: PrismaService,
+    protected prisma: PrismaService,
     baseLogger: Logger,
   ) {
-    this.logger = baseLogger.child({ context: HttpStrategy.name })
+    super(prisma, baseLogger, HttpStrategy.name)
   }
 
-  async check(monitorId: string): StrategyResult {
-    const monitor = await this.prisma.monitor.findUnique({
-      where: { id: monitorId },
-      include: { httpMonitor: true },
-    })
-
-    if (!monitor || !monitor.httpMonitor) {
-      this.logger.warn('Monitor or its HttpMonitor not found, skipping check', { monitorId })
-      return {
-        status: StatusEnum.down,
-        error: 'Monitor or HttpMonitor not found',
-        responseTime: null,
-        checkedAt: new Date(),
-      }
+  async check(monitor: StrategyContext): Promise<StrategyResult> {
+    if (!monitor.httpMonitor) {
+      this.logger.warn('HttpMonitor not found', { monitorId: monitor.id })
+      return { status: StatusEnum.down, error: null, responseTime: null, checkedAt: new Date() }
     }
-
-    const { id, checkInterval, timeout, httpMonitor } = monitor
-    return await this.performCheck(id, checkInterval, timeout, httpMonitor.url, httpMonitor.method)
-  }
-
-  private async performCheck(
-    monitorId: string,
-    checkInterval: number,
-    timeout: number,
-    url: string,
-    method: Method,
-  ) {
-    const { status, statusCode, error, responseTime } = await this.getFetchResults({
-      monitorId,
-      url,
-      timeout,
-      method,
+    const { status, statusCode, responseTime, error } = await this.performCheck({
+      url: monitor.httpMonitor.url,
+      method: monitor.httpMonitor.method,
+      timeout: monitor.timeout,
+      monitorId: monitor.id,
     })
 
-    if (status === StatusEnum.down)
-      this.logger.warn('HTTP monitor is down', { monitorId, statusCode, responseTime, error })
-
-    await this.confirmTransaction({
-      monitorId,
-      statusCode,
-      responseTime,
-      error,
+    await this.confirmCheckResult(monitor.id, {
       status,
-      checkInterval,
-      url,
-      method,
+      error,
+      details: { url: monitor.httpMonitor.url, method: monitor.httpMonitor.method },
+      responseTime,
     })
-
-    return { status, error, responseTime, checkedAt: new Date() }
-  }
-
-  private async confirmTransaction({
-    monitorId,
-    statusCode,
-    responseTime,
-    error,
-    status,
-    checkInterval,
-    url,
-    method,
-  }: ConfirmTransactionOptions) {
-    try {
-      await this.prisma.$transaction([
-        this.prisma.check.create({
-          data: {
-            monitorId,
-            status,
-            statusCode,
-            responseTime,
-            error,
-            details: { url, method },
-          },
-        }),
-        this.prisma.monitor.update({
-          where: { id: monitorId },
-          data: {
-            lastCheckedAt: new Date(),
-            lastStatus: status,
-            nextCheckAt: new Date(Date.now() + checkInterval * 60 * 1000),
-          },
-        }),
-        this.prisma.check.deleteMany({
-          where: {
-            monitorId,
-            checkedAt: { lt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000) },
-          },
-        }),
-      ])
-    } catch (e) {
-      const isNotFound = e instanceof Error && 'code' in e && e.code === 'P2003'
-      if (isNotFound) {
-        this.logger.warn('HTTP Monitor not found, skipping check', { monitorId })
-        return
-      }
-
-      error = getErrorMessage(e)
-      status = StatusEnum.down
-      this.logger.error('Transaction failed for HTTP check', {
-        monitorId,
-        error: getErrorMessage(e),
+    if (status === StatusEnum.down)
+      this.logger.warn('HTTP monitor is down', {
+        monitorId: monitor.id,
+        statusCode: statusCode,
+        responseTime: responseTime,
+        error: error,
       })
-    }
+    return { status, responseTime, error, checkedAt: new Date() }
   }
 
-  private async getFetchResults({ monitorId, url, timeout, method }: GetFetchResultsOptions) {
+  private async performCheck({ monitorId, url, timeout, method }: GetFetchResultsOptions) {
     const start = Date.now()
     let status: StatusEnum = StatusEnum.down
     let statusCode: number | null = null
@@ -154,17 +78,6 @@ export class HttpStrategy {
 
     return { status, statusCode, error, responseTime }
   }
-}
-
-interface ConfirmTransactionOptions {
-  monitorId: string
-  statusCode: number | null
-  responseTime: number | null
-  error: string | null
-  status: StatusEnum
-  checkInterval: number
-  url: string
-  method: Method
 }
 
 interface GetFetchResultsOptions {

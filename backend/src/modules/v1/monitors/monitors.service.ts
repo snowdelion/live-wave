@@ -17,8 +17,6 @@ import { Logger } from '@/shared/logger/logger.service'
 import { PrismaService } from '@/shared/prisma/prisma.service'
 import { logAndThrow } from '@/shared/utils/error.utils'
 
-import { MonitorCheckService } from '../monitor-check/monitor-check.service'
-
 import { CreateMonitorDto } from './dto/requests/create-monitor.dto'
 import { UpdateMonitorDto } from './dto/requests/update-monitor.dto'
 import { getIncidentsCountSql, getTrendSql } from './monitors.sql'
@@ -38,7 +36,6 @@ export class MonitorsService {
   private logger: Logger
   constructor(
     private prisma: PrismaService,
-    private monitorCheckService: MonitorCheckService,
     baseLogger: Logger,
   ) {
     this.logger = baseLogger.child({ context: MonitorsService.name })
@@ -63,11 +60,6 @@ export class MonitorsService {
     })
 
     this.logger.log('Created monitor', { monitorId: newMonitor.id, monitorType, userId })
-    await this.monitorCheckService.scheduleCheck({
-      monitorId: newMonitor.id,
-      checkInterval: newMonitor.checkInterval,
-      immediate: true,
-    })
     return newMonitor
   }
 
@@ -273,7 +265,6 @@ export class MonitorsService {
       transactionHandler(tx, id, existing, updateData, dto),
     )
 
-    await this.rescheduleIfNeeded(id, existing.checkInterval, updateData.checkInterval)
     this.logger.log('Monitor updated', { monitorType: existing.type, monitorId: id, userId })
     return updatedMonitor
   }
@@ -290,7 +281,6 @@ export class MonitorsService {
       }
 
       await this.prisma.monitor.delete({ where: { id } })
-      await this.monitorCheckService.clearScheduledJobs(monitor.id)
       this.logger.log('Monitor deleted', { userId, monitorId: id })
     } catch (e) {
       throw logAndThrow({
@@ -299,21 +289,6 @@ export class MonitorsService {
         e,
         exception: NotFoundException,
         exceptionContext: 'Uptime monitoring service not found',
-      })
-    }
-  }
-
-  private async rescheduleIfNeeded(
-    monitorId: string,
-    oldInterval: number,
-    newInterval: number | undefined,
-  ) {
-    if (newInterval !== undefined && newInterval !== oldInterval) {
-      this.logger.debug('Rescheduling monitor', { monitorId, oldInterval, newInterval })
-      await this.monitorCheckService.scheduleCheck({
-        monitorId,
-        checkInterval: newInterval,
-        immediate: false,
       })
     }
   }

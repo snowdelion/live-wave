@@ -6,6 +6,7 @@ import { Logger } from '@/shared/logger/logger.service'
 import type { PrismaService } from '@/shared/prisma/prisma.service'
 
 import { IcmpStrategy } from '../icmp-check.strategy'
+import type { StrategyContext } from '../strategy-result.types'
 
 vi.mock('node-ping-rs', () => ({
   ping: vi.fn(),
@@ -34,12 +35,15 @@ const mockLogger = {
   child: vi.fn(() => mockLogger),
 } as unknown as Logger
 
-const baseMonitor = {
-  id: 'monitor-1',
-  timeout: 5000,
-  checkInterval: 1,
-  icmpMonitor: { host: '1.2.3.4' },
-}
+const makeMonitorContext = (overrides = {}): StrategyContext =>
+  ({
+    id: 'monitor-1',
+    type: 'ICMP',
+    timeout: 5000,
+    checkInterval: 1,
+    icmpMonitor: { host: '1.2.3.4' },
+    ...overrides,
+  }) as unknown as StrategyContext
 
 describe('IcmpStrategy', () => {
   let strategy: IcmpStrategy
@@ -58,27 +62,18 @@ describe('IcmpStrategy', () => {
   })
 
   describe('check()', () => {
-    it('skips when monitor is not found', async () => {
-      prisma.monitor.findUnique = vi.fn().mockResolvedValue(null)
+    it('skips and returns down when monitor context is missing icmpMonitor', async () => {
+      const result = await strategy.check({ id: 'monitor-1', type: 'ICMP' } as StrategyContext)
 
-      await strategy.check('missing-id')
-
-      expect(mockPing).not.toHaveBeenCalled()
-    })
-
-    it('skips when icmpMonitor relation is absent', async () => {
-      prisma.monitor.findUnique = vi.fn().mockResolvedValue({ id: 'x', icmpMonitor: null })
-
-      await strategy.check('x')
-
-      expect(mockPing).not.toHaveBeenCalled()
+      expect(result.status).toBe(StatusEnum.down)
+      expect(result.error).toBe('Monitor or IcmpMonitor not found')
+      expect(prisma.$transaction).not.toHaveBeenCalled()
     })
 
     it('calls performCheck with correct args when monitor exists', async () => {
-      prisma.monitor.findUnique = vi.fn().mockResolvedValue(baseMonitor)
       mockPing.mockResolvedValue({ success: true, time: BigInt(42) })
 
-      await strategy.check('monitor-1')
+      await strategy.check(makeMonitorContext())
 
       expect(prisma.$transaction).toHaveBeenCalled()
     })
@@ -86,10 +81,9 @@ describe('IcmpStrategy', () => {
 
   describe('performCheck() - success', () => {
     it('records status=up and uses ping time when finite', async () => {
-      prisma.monitor.findUnique = vi.fn().mockResolvedValue(baseMonitor)
       mockPing.mockResolvedValue({ success: true, time: 55 })
 
-      await strategy.check('monitor-1')
+      await strategy.check(makeMonitorContext())
 
       expect(prisma.check.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -99,10 +93,9 @@ describe('IcmpStrategy', () => {
     })
 
     it('falls back to elapsed time when ping time is non-finite', async () => {
-      prisma.monitor.findUnique = vi.fn().mockResolvedValue(baseMonitor)
       mockPing.mockResolvedValue({ success: true, time: NaN })
 
-      await strategy.check('monitor-1')
+      await strategy.check(makeMonitorContext())
 
       expect(prisma.check.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -117,21 +110,19 @@ describe('IcmpStrategy', () => {
 
   describe('performCheck() - failure', () => {
     it('records status=down when ping returns success=false', async () => {
-      prisma.monitor.findUnique = vi.fn().mockResolvedValue(baseMonitor)
       mockPing.mockResolvedValue({ success: false, error: 'unreachable' })
 
-      await strategy.check('monitor-1')
+      await strategy.check(makeMonitorContext())
 
       expect(prisma.check.create).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ status: StatusEnum.down }) }),
       )
     })
 
-    it('records status=down', async () => {
-      prisma.monitor.findUnique = vi.fn().mockResolvedValue(baseMonitor)
+    it('records status=down on ping rejection', async () => {
       mockPing.mockRejectedValue(new Error('socket error'))
 
-      await strategy.check('monitor-1')
+      await strategy.check(makeMonitorContext())
 
       expect(prisma.check.create).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ status: StatusEnum.down }) }),
@@ -139,10 +130,9 @@ describe('IcmpStrategy', () => {
     })
 
     it('resolves status=down on timeout', async () => {
-      prisma.monitor.findUnique = vi.fn().mockResolvedValue({ ...baseMonitor, timeout: 100 })
       mockPing.mockReturnValue(new Promise(() => {}))
 
-      const checkPromise = strategy.check('monitor-1')
+      const checkPromise = strategy.check(makeMonitorContext({ timeout: 100 }))
       await vi.runAllTimersAsync()
       await checkPromise
 
@@ -157,18 +147,17 @@ describe('IcmpStrategy', () => {
       ['getaddrinfo ENOTFOUND example.com', 'DNS lookup failed'],
       ['DNS resolution failed', 'DNS lookup failed'],
       ['lookup error', 'DNS lookup failed'],
-      ['timeout occurred', `Ping timeout after ${baseMonitor.timeout}ms`],
+      ['timeout occurred', 'Ping timeout after 5000ms'],
       ['Network unreachable', 'Network unreachable'],
       ['permission denied', 'Permission denied'],
       ['some random error', 'No ping reply'],
       ['', 'No ping reply'],
     ]
 
-    it.each(cases)('maps "%s" → "%s"', async (rawError, expectedMsg) => {
-      prisma.monitor.findUnique = vi.fn().mockResolvedValue(baseMonitor)
+    it.each(cases)('maps "%s" to "%s"', async (rawError, expectedMsg) => {
       mockPing.mockResolvedValue({ success: false, error: rawError })
 
-      await strategy.check('monitor-1')
+      await strategy.check(makeMonitorContext())
 
       expect(prisma.check.create).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ error: expectedMsg }) }),
@@ -176,41 +165,25 @@ describe('IcmpStrategy', () => {
     })
   })
 
-  describe('confirmTransaction()', () => {
-    it('creates a check record and updates the monitor in one transaction', async () => {
-      prisma.monitor.findUnique = vi.fn().mockResolvedValue(baseMonitor)
+  describe('confirmCheckResult()', () => {
+    it('creates a check record and deletes old checks in one transaction', async () => {
       mockPing.mockResolvedValue({ success: true, time: 10 })
 
-      await strategy.check('monitor-1')
+      await strategy.check(makeMonitorContext())
 
       expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+
       expect(prisma.check.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ monitorId: 'monitor-1' }) }),
-      )
-      expect(prisma.monitor.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: 'monitor-1' },
-          data: expect.objectContaining({
-            lastStatus: StatusEnum.up,
-            nextCheckAt: expect.any(Date),
-            lastCheckedAt: expect.any(Date),
-          }),
+          data: expect.objectContaining({ monitorId: 'monitor-1' }),
         }),
       )
-    })
 
-    it('sets nextCheckAt ~checkInterval minutes in the future', async () => {
-      const checkInterval = 5
-      prisma.monitor.findUnique = vi.fn().mockResolvedValue({ ...baseMonitor, checkInterval })
-      mockPing.mockResolvedValue({ success: true, time: 10 })
-      const before = Date.now()
-
-      await strategy.check('monitor-1')
-
-      const { data } = (prisma.monitor.update as unknown as MockInstance).mock.calls[0][0]
-      const diff = data.nextCheckAt.getTime() - before
-      expect(diff).toBeGreaterThanOrEqual(checkInterval * 60 * 1000 - 50)
-      expect(diff).toBeLessThanOrEqual(checkInterval * 60 * 1000 + 50)
+      expect(prisma.check.deleteMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ monitorId: 'monitor-1' }),
+        }),
+      )
     })
   })
 })
