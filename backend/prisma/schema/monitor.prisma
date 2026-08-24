@@ -31,6 +31,7 @@ model Monitor {
 
   @@index([userId])
   @@index([lastStatus])
+  @@index([nextCheckAt])
 }
 
 model HttpMonitor {
