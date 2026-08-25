@@ -71,7 +71,7 @@ export function LatencyChart({ monitorId, periodDays }: LatencyChartProps) {
             tickLine={false}
             tickFormatter={v => `${v}`}
             width={35}
-            domain={[0, 'auto']}
+            domain={['auto', 'auto']}
           />
 
           <Tooltip
