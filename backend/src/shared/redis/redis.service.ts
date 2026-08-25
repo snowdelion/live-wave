@@ -13,10 +13,6 @@ export class RedisService {
     private logger: Logger,
   ) {}
 
-  getClient(): Redis {
-    return this.redis
-  }
-
   async set(key: string, value: string, ttlSeconds?: number) {
     try {
       if (ttlSeconds) await this.redis.set(key, value, 'EX', ttlSeconds)
