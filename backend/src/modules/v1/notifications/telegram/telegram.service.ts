@@ -171,7 +171,7 @@ export class TelegramService implements OnApplicationBootstrap {
     return true
   }
 
-  async getWebhookInfo(): Promise<WebhookInfo | null> {
+  private async getWebhookInfo(): Promise<WebhookInfo | null> {
     try {
       const res = await fetch(`https://api.telegram.org/bot${this.botToken}/getWebhookInfo`)
       const data = (await res.json()) as TelegramApiResponse<WebhookInfo>

@@ -1,259 +1,247 @@
 import { StatusEnum } from '@prisma/client'
-import type { Job, Queue } from 'bullmq'
 
-import { BULL_KEYS, BULL_NAMES } from '@/shared/bull/bull.constants'
-import { Logger } from '@/shared/logger/logger.service'
-import type { PrismaService } from '@/shared/prisma/prisma.service'
+import type { Logger } from '@/shared/logger/logger.service'
 
+import type { TelegramService } from '../../notifications/telegram/telegram.service'
 import { MonitorCheckService } from '../monitor-check.service'
 
-const MONITOR_ID = 'monitor-1'
-const CHAT_ID = 'chat-1'
-const CHECK_INTERVAL = 5
-
-const makeMonitorRow = (overrides: { id?: string; checkInterval?: number } = {}) => ({
-  id: MONITOR_ID,
-  type: 'http',
-  checkInterval: CHECK_INTERVAL,
-  ...overrides,
-})
-
-const makeJob = (id: string, startsWith = true): Partial<Job> => ({
-  id: startsWith ? `${BULL_KEYS.RAW_CHECK(MONITOR_ID)}-suffix` : `other-job-${id}`,
-  remove: vi.fn().mockResolvedValue(undefined),
-})
-
-const mockPrisma = {
-  monitor: {
-    findMany: vi.fn(),
-    findUnique: vi.fn(),
-  },
-} as unknown as PrismaService
-
-const mockLogger = {
-  log: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-  debug: vi.fn(),
-  child: vi.fn(() => mockLogger),
-} as unknown as Logger
-
-const mockQueue = {
-  add: vi.fn(),
-  getJobs: vi.fn().mockResolvedValue([]),
-} satisfies Partial<Queue> as unknown as Queue
-
-const mockNotificationsQueue = {
-  add: vi.fn(),
-} satisfies Partial<Queue> as unknown as Queue
+vi.mock('@/shared/utils/error.utils', () => ({
+  getErrorMessage: vi.fn((e: any, fallback?: string) =>
+    e instanceof Error ? e.message : fallback || String(e),
+  ),
+}))
 
 describe('MonitorCheckService', () => {
   let service: MonitorCheckService
+  let mockTelegramService: any
+  let mockLogger: any
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
-    vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined)
-    vi.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined)
-    vi.spyOn(Math, 'random').mockReturnValue(0)
+    vi.useFakeTimers()
+
+    mockTelegramService = {
+      sendMessage: vi.fn().mockResolvedValue(true),
+    }
+
+    mockLogger = {
+      child: vi.fn().mockReturnThis(),
+      debug: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      log: vi.fn(),
+    }
 
     service = new MonitorCheckService(
-      mockPrisma,
-      mockQueue as unknown as Queue,
-      mockNotificationsQueue as unknown as Queue,
-      mockLogger,
+      mockTelegramService as unknown as TelegramService,
+      mockLogger as unknown as Logger,
     )
-    Object.assign(service, {
-      prisma: mockPrisma,
-      checksQueue: mockQueue,
-      notificationQueue: mockNotificationsQueue,
-    })
   })
 
-  describe('onModuleInit', () => {
-    it('fetches due/null monitors and schedules each one', async () => {
-      const monitors = [makeMonitorRow({ id: 'a' }), makeMonitorRow({ id: 'b' })]
-      vi.mocked(mockPrisma.monitor.findMany).mockResolvedValue(monitors as any)
-      vi.mocked(mockQueue.add).mockResolvedValue(undefined as unknown as Job<any>)
-
-      await service.onModuleInit()
-
-      expect(mockPrisma.monitor.findMany).toHaveBeenCalledOnce()
-      expect(mockPrisma.monitor.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ OR: expect.any(Array) }),
-          select: expect.objectContaining({ id: true, checkInterval: true }),
-        }),
-      )
-      expect(mockQueue.add).toHaveBeenCalledTimes(2)
-    })
-
-    it('passes immediate=false so delay is derived from checkInterval', async () => {
-      vi.mocked(mockPrisma.monitor.findMany).mockResolvedValue([makeMonitorRow() as any])
-      vi.mocked(mockQueue.add).mockResolvedValue(undefined as unknown as Job<any>)
-
-      await service.onModuleInit()
-
-      const [, , opts] = vi.mocked(mockQueue.add).mock.calls[0] as any
-      expect(opts.delay).toBe(CHECK_INTERVAL * 60 * 1000)
-    })
-
-    it('does nothing when there are no monitors', async () => {
-      vi.mocked(mockPrisma.monitor.findMany).mockResolvedValue([])
-
-      await service.onModuleInit()
-
-      expect(mockQueue.add).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('scheduleCheck', () => {
-    beforeEach(() => {
-      vi.mocked(mockQueue.add).mockResolvedValue(undefined as unknown as Job<any>)
-    })
-
-    it('enqueues with the correct jobId and payload', async () => {
-      await service.scheduleCheck({ monitorId: MONITOR_ID, checkInterval: CHECK_INTERVAL })
-
-      expect(mockQueue.add).toHaveBeenCalledWith(
-        BULL_NAMES.CHECK,
-        { monitorId: MONITOR_ID },
-        expect.objectContaining({
-          jobId: expect.stringContaining(BULL_KEYS.RAW_CHECK(MONITOR_ID)),
-        }),
-      )
-    })
-
-    it('uses delay=0 when immediate=true', async () => {
-      await service.scheduleCheck({
-        monitorId: MONITOR_ID,
-        checkInterval: CHECK_INTERVAL,
-        immediate: true,
-      })
-
-      const [, , opts] = vi.mocked(mockQueue.add).mock.calls[0] as any
-      expect(opts.delay).toBe(0)
-    })
-
-    it('uses delay derived from checkInterval when immediate=false (default)', async () => {
-      await service.scheduleCheck({
-        monitorId: MONITOR_ID,
-        checkInterval: CHECK_INTERVAL,
-        immediate: false,
-      })
-
-      const [, , opts] = vi.mocked(mockQueue.add).mock.calls[0] as any
-      expect(opts.delay).toBe(CHECK_INTERVAL * 60 * 1000)
-    })
-
-    describe('when checkInterval is falsy (0 / not provided)', () => {
-      it('fetches checkInterval from DB and uses it for the delay', async () => {
-        vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(makeMonitorRow() as any)
-
-        await service.scheduleCheck({ monitorId: MONITOR_ID, checkInterval: 0 })
-
-        expect(mockPrisma.monitor.findUnique).toHaveBeenCalledWith({
-          where: { id: MONITOR_ID },
-          select: { checkInterval: true },
-        })
-
-        const [, , opts] = vi.mocked(mockQueue.add).mock.calls[0] as any
-        expect(opts.delay).toBe(CHECK_INTERVAL * 60 * 1000)
-      })
-
-      it('does NOT enqueue when DB fetch throws', async () => {
-        vi.mocked(mockPrisma.monitor.findUnique).mockRejectedValue(new Error('db blew up'))
-
-        await service.scheduleCheck({ monitorId: MONITOR_ID, checkInterval: 0 })
-
-        expect(mockQueue.add).not.toHaveBeenCalled()
-      })
-
-      it('does NOT enqueue when monitor is not found', async () => {
-        vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(null)
-
-        await service.scheduleCheck({ monitorId: MONITOR_ID, checkInterval: 0 })
-
-        expect(mockQueue.add).not.toHaveBeenCalled()
-      })
-    })
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   describe('scheduleNotification', () => {
-    const notificationPayload = {
-      chatId: CHAT_ID,
-      monitorId: MONITOR_ID,
+    const basePayload = {
+      chatId: 'chat-1',
+      monitorId: 'monitor-1',
       message: 'Monitor is down',
       statusType: StatusEnum.down,
-      monitorName: 'My Monitor',
     }
 
-    beforeEach(() => {
-      vi.mocked(mockNotificationsQueue.add).mockResolvedValue(undefined as unknown as Job<any>)
+    it('should send notification on first call', async () => {
+      await service.scheduleNotification(basePayload)
+
+      expect(mockTelegramService.sendMessage).toHaveBeenCalledWith('chat-1', 'Monitor is down')
+      expect(mockLogger.debug).toHaveBeenCalledWith('Notification sent', {
+        monitorId: 'monitor-1',
+        chatId: 'chat-1',
+      })
     })
 
-    it('enqueues with the correct job name, payload, and jobId', async () => {
-      await service.scheduleNotification(notificationPayload)
+    it('should deduplicate notifications within TTL (5 minutes)', async () => {
+      await service.scheduleNotification(basePayload)
+      mockTelegramService.sendMessage.mockClear()
 
-      expect(mockNotificationsQueue.add).toHaveBeenCalledWith(
-        BULL_NAMES.SEND_NOTIFICATION,
-        {
-          chatId: CHAT_ID,
-          message: notificationPayload.message,
-          statusType: StatusEnum.down,
-          monitorName: notificationPayload.monitorName,
-        },
-        {
-          jobId: BULL_KEYS.SEND_NOTIFICATION(CHAT_ID, MONITOR_ID, StatusEnum.down),
-        },
-      )
+      await service.scheduleNotification(basePayload)
+
+      expect(mockTelegramService.sendMessage).not.toHaveBeenCalled()
+      expect(mockLogger.debug).toHaveBeenCalledWith('Notification deduplicated, skipping', {
+        monitorId: 'monitor-1',
+        chatId: 'chat-1',
+        statusType: StatusEnum.down,
+        lastSent: expect.any(String),
+      })
     })
 
-    it('does not include monitorId in the queue payload', async () => {
-      await service.scheduleNotification(notificationPayload)
+    it('should allow notification after TTL expires', async () => {
+      await service.scheduleNotification(basePayload)
+      mockTelegramService.sendMessage.mockClear()
 
-      const [, payload] = vi.mocked(mockNotificationsQueue.add).mock.calls[0] as any
-      expect(payload).not.toHaveProperty('monitorId')
+      vi.advanceTimersByTime(5 * 60 * 1000 + 1)
+
+      await service.scheduleNotification(basePayload)
+
+      expect(mockTelegramService.sendMessage).toHaveBeenCalledWith('chat-1', 'Monitor is down')
+    })
+
+    it('should allow different status types for same monitor/chat', async () => {
+      await service.scheduleNotification(basePayload)
+      mockTelegramService.sendMessage.mockClear()
+
+      await service.scheduleNotification({
+        ...basePayload,
+        statusType: StatusEnum.up,
+      })
+
+      expect(mockTelegramService.sendMessage).toHaveBeenCalled()
+    })
+
+    it('should allow different monitors for same chat/status', async () => {
+      await service.scheduleNotification(basePayload)
+      mockTelegramService.sendMessage.mockClear()
+
+      await service.scheduleNotification({
+        ...basePayload,
+        monitorId: 'monitor-2',
+      })
+
+      expect(mockTelegramService.sendMessage).toHaveBeenCalled()
+    })
+
+    it('should retry up to 3 times on failure', async () => {
+      mockTelegramService.sendMessage
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockResolvedValueOnce(true)
+
+      const promise = service.scheduleNotification(basePayload)
+
+      await vi.advanceTimersByTimeAsync(2000)
+      await vi.advanceTimersByTimeAsync(4000)
+
+      await promise
+
+      expect(mockTelegramService.sendMessage).toHaveBeenCalledTimes(3)
+      expect(mockLogger.warn).toHaveBeenCalledTimes(2)
+      expect(mockLogger.debug).toHaveBeenCalledWith('Notification sent', expect.any(Object))
+    })
+
+    it('should log error after all retries fail', async () => {
+      mockTelegramService.sendMessage.mockRejectedValue(new Error('Permanent failure'))
+
+      const promise = service.scheduleNotification(basePayload)
+
+      await vi.advanceTimersByTimeAsync(2000)
+      await vi.advanceTimersByTimeAsync(4000)
+
+      await promise
+
+      expect(mockTelegramService.sendMessage).toHaveBeenCalledTimes(3)
+      expect(mockLogger.error).toHaveBeenCalledWith('Failed to send notification after retries', {
+        monitorId: 'monitor-1',
+        error: 'Permanent failure',
+      })
+    })
+
+    it('should not cache timestamp when all retries fail', async () => {
+      mockTelegramService.sendMessage.mockRejectedValue(new Error('Permanent failure'))
+
+      const promise1 = service.scheduleNotification(basePayload)
+      await vi.advanceTimersByTimeAsync(2000)
+      await vi.advanceTimersByTimeAsync(4000)
+      await promise1
+
+      mockTelegramService.sendMessage.mockClear()
+
+      const promise2 = service.scheduleNotification(basePayload)
+      await vi.advanceTimersByTimeAsync(2000)
+      await vi.advanceTimersByTimeAsync(4000)
+      await promise2
+
+      expect(mockTelegramService.sendMessage).toHaveBeenCalledTimes(3)
     })
   })
 
-  describe('clearScheduledJobs', () => {
-    it('queries both waiting and delayed states', async () => {
-      vi.mocked(mockQueue.getJobs).mockResolvedValue([])
+  describe('cleanupCache', () => {
+    it('should cleanup expired entries when cache exceeds 100 items', async () => {
+      for (let i = 0; i < 101; i++) {
+        await service.scheduleNotification({
+          chatId: `chat-${i}`,
+          monitorId: `monitor-${i}`,
+          message: `Message ${i}`,
+          statusType: StatusEnum.down,
+        })
+      }
 
-      await service.clearScheduledJobs(MONITOR_ID)
+      vi.advanceTimersByTime(5 * 60 * 1000 + 1)
 
-      expect(mockQueue.getJobs).toHaveBeenCalledWith(['waiting'])
-      expect(mockQueue.getJobs).toHaveBeenCalledWith(['delayed'])
+      await service.scheduleNotification({
+        chatId: 'chat-new',
+        monitorId: 'monitor-new',
+        message: 'New message',
+        statusType: StatusEnum.down,
+      })
+
+      mockTelegramService.sendMessage.mockClear()
+      await service.scheduleNotification({
+        chatId: 'chat-0',
+        monitorId: 'monitor-0',
+        message: 'Message 0',
+        statusType: StatusEnum.down,
+      })
+
+      expect(mockTelegramService.sendMessage).toHaveBeenCalled()
     })
 
-    it('removes jobs whose id starts with the monitor prefix', async () => {
-      const matchingJob = makeJob('1', true) as Job
-      const otherJob = makeJob('2', false) as Job
-      vi.mocked(mockQueue.getJobs).mockResolvedValue([matchingJob, otherJob])
+    it('should keep cache entries when under 100 items even after TTL', async () => {
+      for (let i = 0; i < 50; i++) {
+        await service.scheduleNotification({
+          chatId: `chat-${i}`,
+          monitorId: `monitor-${i}`,
+          message: `Message ${i}`,
+          statusType: StatusEnum.down,
+        })
+      }
 
-      await service.clearScheduledJobs(MONITOR_ID)
+      vi.advanceTimersByTime(5 * 60 * 1000 + 1)
 
-      expect(matchingJob.remove).toHaveBeenCalled()
-      expect(otherJob.remove).not.toHaveBeenCalled()
+      const cacheSizeBefore = (service as any).sentNotificationsMap.size
+
+      await service.scheduleNotification({
+        chatId: 'chat-new',
+        monitorId: 'monitor-new',
+        message: 'New message',
+        statusType: StatusEnum.down,
+      })
+
+      const cacheSizeAfter = (service as any).sentNotificationsMap.size
+
+      expect(cacheSizeAfter).toBe(cacheSizeBefore + 1)
     })
+  })
 
-    it('does not call remove on jobs whose id does not match the prefix', async () => {
-      const otherJob = makeJob('2', false) as Job
-      vi.mocked(mockQueue.getJobs).mockResolvedValue([otherJob])
+  describe('sendWithRetry', () => {
+    it('should wait with exponential backoff between retries', async () => {
+      mockTelegramService.sendMessage
+        .mockRejectedValueOnce(new Error('Error 1'))
+        .mockResolvedValueOnce(true)
 
-      await service.clearScheduledJobs(MONITOR_ID)
+      const promise = service.scheduleNotification({
+        chatId: 'chat-1',
+        monitorId: 'monitor-1',
+        message: 'Test',
+        statusType: StatusEnum.down,
+      })
 
-      expect(otherJob.remove).not.toHaveBeenCalled()
-    })
+      await vi.advanceTimersByTimeAsync(1999)
+      expect(mockTelegramService.sendMessage).toHaveBeenCalledTimes(1)
 
-    it('skips removal when job has no id', async () => {
-      const noIdJob = { id: undefined, remove: vi.fn() } as unknown as Job
-      vi.mocked(mockQueue.getJobs).mockResolvedValue([noIdJob])
+      await vi.advanceTimersByTimeAsync(1)
+      expect(mockTelegramService.sendMessage).toHaveBeenCalledTimes(2)
 
-      await service.clearScheduledJobs(MONITOR_ID)
-
-      expect(noIdJob.remove).not.toHaveBeenCalled()
+      await promise
     })
   })
 })

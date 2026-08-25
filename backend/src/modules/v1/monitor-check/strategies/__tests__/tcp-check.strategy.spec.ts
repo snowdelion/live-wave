@@ -2,8 +2,9 @@ import net from 'net'
 
 import { StatusEnum } from '@prisma/client'
 
-import { Logger } from '@/shared/logger/logger.service'
+import type { Logger } from '@/shared/logger/logger.service'
 
+import type { StrategyContext } from '../strategy-result.types'
 import { TcpStrategy } from '../tcp-check.strategy'
 
 vi.mock('net', () => {
@@ -28,13 +29,15 @@ const mockPrisma = {
   $transaction: mockTransaction,
 }
 
-const makeMonitor = (overrides = {}) => ({
-  id: 'monitor-1',
-  timeout: 5000,
-  checkInterval: 5,
-  tcpMonitor: { host: 'example.com', port: 80 },
-  ...overrides,
-})
+const makeMonitorContext = (overrides = {}): StrategyContext =>
+  ({
+    id: 'monitor-1',
+    type: 'TCP',
+    timeout: 5000,
+    checkInterval: 5,
+    tcpMonitor: { host: 'example.com', port: 80 },
+    ...overrides,
+  }) as unknown as StrategyContext
 
 function setupSocket(triggerEvent: 'connect' | 'error' | 'timeout', errorArg?: Error) {
   const NetSocket = net.Socket as unknown as ReturnType<typeof vi.fn>
@@ -47,7 +50,6 @@ function setupSocket(triggerEvent: 'connect' | 'error' | 'timeout', errorArg?: E
       once(event: string, cb: (...a: unknown[]) => void) {
         handlers[event] = cb
       },
-
       connect(_port: number, _host: string, cb: () => void) {
         if (triggerEvent === 'connect') return cb()
         if (triggerEvent === 'timeout') return handlers['timeout']?.()
@@ -72,38 +74,26 @@ describe('TcpStrategy', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => {})
     strategy = new TcpStrategy(mockPrisma as never, mockLogger)
     mockTransaction.mockResolvedValue([])
   })
 
   describe('check()', () => {
-    it('warns and returns early when monitor is not found', async () => {
-      mockFindUnique.mockResolvedValue(null)
+    it('warns and returns down when monitor context is missing tcpMonitor', async () => {
+      const result = await strategy.check({ id: 'monitor-1', type: 'TCP' } as StrategyContext)
 
-      await strategy.check('missing-id')
-
+      expect(result.status).toBe(StatusEnum.down)
+      expect(result.error).toBe('Monitor or TcpMonitor not found')
       expect(mockTransaction).not.toHaveBeenCalled()
     })
 
-    it('warns and returns early when tcpMonitor relation is missing', async () => {
-      mockFindUnique.mockResolvedValue({ id: 'monitor-1', tcpMonitor: null })
-
-      await strategy.check('monitor-1')
-
-      expect(mockTransaction).not.toHaveBeenCalled()
-    })
-
-    it('queries the DB with the correct monitorId and includes tcpMonitor', async () => {
+    it('performs check with correct context', async () => {
       setupSocket('connect')
-      mockFindUnique.mockResolvedValue(makeMonitor())
+      const monitorCtx = makeMonitorContext()
 
-      await strategy.check('monitor-1')
+      await strategy.check(monitorCtx)
 
-      expect(mockFindUnique).toHaveBeenCalledWith({
-        where: { id: 'monitor-1' },
-        include: { tcpMonitor: true },
-      })
+      expect(mockTransaction).toHaveBeenCalled()
     })
   })
 
@@ -111,65 +101,44 @@ describe('TcpStrategy', () => {
     beforeEach(() => setupSocket('connect'))
 
     it('records status=up in the transaction', async () => {
-      mockFindUnique.mockResolvedValue(makeMonitor())
+      await strategy.check(makeMonitorContext())
 
-      await strategy.check('monitor-1')
-
-      const [[[checkCreate, monitorUpdate]]] = mockTransaction.mock.calls
-      expect(checkCreate).toMatchObject({ data: { status: StatusEnum.up } })
-      expect(monitorUpdate).toMatchObject({ data: { lastStatus: StatusEnum.up } })
+      const [ops] = mockTransaction.mock.calls[0]
+      expect(ops[0]).toMatchObject({ data: { status: StatusEnum.up } })
     })
 
     it('records a non-null responseTime', async () => {
-      mockFindUnique.mockResolvedValue(makeMonitor())
+      await strategy.check(makeMonitorContext())
 
-      await strategy.check('monitor-1')
-
-      const [[[checkCreate]]] = mockTransaction.mock.calls
-      expect(checkCreate.data.responseTime).toBeGreaterThanOrEqual(0)
+      const [ops] = mockTransaction.mock.calls[0]
+      expect(ops[0].data.responseTime).toBeGreaterThanOrEqual(0)
     })
 
     it('records null error on success', async () => {
-      mockFindUnique.mockResolvedValue(makeMonitor())
+      await strategy.check(makeMonitorContext())
 
-      await strategy.check('monitor-1')
-
-      const [[[checkCreate]]] = mockTransaction.mock.calls
-      expect(checkCreate.data.error).toBeNull()
-    })
-
-    it('sets nextCheckAt based on checkInterval', async () => {
-      mockFindUnique.mockResolvedValue(makeMonitor({ checkInterval: 10 }))
-      const before = Date.now()
-
-      await strategy.check('monitor-1')
-
-      const [[[, monitorUpdate]]] = mockTransaction.mock.calls
-      const next: Date = monitorUpdate.data.nextCheckAt
-      expect(next.getTime()).toBeGreaterThanOrEqual(before + 10 * 60 * 1000)
+      const [ops] = mockTransaction.mock.calls[0]
+      expect(ops[0].data.error).toBeNull()
     })
   })
 
   describe('performCheck() - connection error', () => {
     it('records status=down on socket error', async () => {
       setupSocket('error', new Error('ECONNREFUSED'))
-      mockFindUnique.mockResolvedValue(makeMonitor())
 
-      await strategy.check('monitor-1')
+      await strategy.check(makeMonitorContext())
 
-      const [[[checkCreate, monitorUpdate]]] = mockTransaction.mock.calls
-      expect(checkCreate.data.status).toBe(StatusEnum.down)
-      expect(monitorUpdate.data.lastStatus).toBe(StatusEnum.down)
+      const [ops] = mockTransaction.mock.calls[0]
+      expect(ops[0].data.status).toBe(StatusEnum.down)
     })
 
     it('captures the error message', async () => {
       setupSocket('error', new Error('ECONNREFUSED'))
-      mockFindUnique.mockResolvedValue(makeMonitor())
 
-      await strategy.check('monitor-1')
+      await strategy.check(makeMonitorContext())
 
-      const [[[checkCreate]]] = mockTransaction.mock.calls
-      expect(checkCreate.data.error).toMatch(/connection refused by/i)
+      const [ops] = mockTransaction.mock.calls[0]
+      expect(ops[0].data.error).toMatch(/connection refused by/i)
     })
 
     it('handles non-Error throws gracefully', async () => {
@@ -182,80 +151,64 @@ describe('TcpStrategy', () => {
         },
         connect() {},
       }))
-      mockFindUnique.mockResolvedValue(makeMonitor())
 
-      await strategy.check('monitor-1')
+      await strategy.check(makeMonitorContext())
 
-      const [[[checkCreate]]] = mockTransaction.mock.calls
-      expect(checkCreate.data.error).toMatch(/failed to connect/i)
+      const [ops] = mockTransaction.mock.calls[0]
+      expect(ops[0].data.error).toMatch(/failed to connect/i)
     })
   })
 
   describe('performCheck() - timeout', () => {
     it('records status=down on timeout', async () => {
       setupSocket('timeout')
-      mockFindUnique.mockResolvedValue(makeMonitor())
 
-      await strategy.check('monitor-1')
+      await strategy.check(makeMonitorContext())
 
-      const [[[checkCreate]]] = mockTransaction.mock.calls
-      expect(checkCreate.data.status).toBe(StatusEnum.down)
+      const [ops] = mockTransaction.mock.calls[0]
+      expect(ops[0].data.status).toBe(StatusEnum.down)
     })
 
     it('includes timeout duration in the error message', async () => {
       setupSocket('timeout')
-      mockFindUnique.mockResolvedValue(makeMonitor({ timeout: 3000 }))
 
-      await strategy.check('monitor-1')
+      await strategy.check(makeMonitorContext({ timeout: 3000 }))
 
-      const [[[checkCreate]]] = mockTransaction.mock.calls
-      expect(checkCreate.data.error).toContain('3000ms')
+      const [ops] = mockTransaction.mock.calls[0]
+      expect(ops[0].data.error).toContain('3000ms')
     })
   })
 
-  describe('confirmTransaction()', () => {
-    it('runs prisma.$transaction with check.create, check.deleteMany and monitor.update', async () => {
+  describe('confirmCheckResult()', () => {
+    it('runs prisma.$transaction with check.create and check.deleteMany', async () => {
       setupSocket('connect')
-      mockFindUnique.mockResolvedValue(makeMonitor())
 
-      await strategy.check('monitor-1')
+      await strategy.check(makeMonitorContext())
 
       expect(mockTransaction).toHaveBeenCalledOnce()
-      const [[[...ops]]] = mockTransaction.mock.calls
-      expect(ops).toHaveLength(3)
+      const [ops] = mockTransaction.mock.calls[0]
+
+      expect(ops).toHaveLength(2)
+      expect(ops[0]).toHaveProperty('data')
+      expect(ops[1]).toHaveProperty('where')
     })
 
     it('passes the correct monitorId to check.create', async () => {
       setupSocket('connect')
-      mockFindUnique.mockResolvedValue(makeMonitor())
 
-      await strategy.check('monitor-1')
+      await strategy.check(makeMonitorContext())
 
-      const [[[checkCreate]]] = mockTransaction.mock.calls
-      expect(checkCreate.data.monitorId).toBe('monitor-1')
+      const [ops] = mockTransaction.mock.calls[0]
+      expect(ops[0].data.monitorId).toBe('monitor-1')
     })
 
-    it('updates the correct monitor record', async () => {
+    it('passes the correct monitorId to check.deleteMany', async () => {
       setupSocket('connect')
-      mockFindUnique.mockResolvedValue(makeMonitor())
 
-      await strategy.check('monitor-1')
+      await strategy.check(makeMonitorContext())
 
-      const [[[, monitorUpdate]]] = mockTransaction.mock.calls
-      expect(monitorUpdate.where).toEqual({ id: 'monitor-1' })
-    })
-
-    it('sets lastCheckedAt to approximately now', async () => {
-      setupSocket('connect')
-      mockFindUnique.mockResolvedValue(makeMonitor())
-      const before = Date.now()
-
-      await strategy.check('monitor-1')
-
-      const [[[, monitorUpdate]]] = mockTransaction.mock.calls
-      const checked: Date = monitorUpdate.data.lastCheckedAt
-      expect(checked.getTime()).toBeGreaterThanOrEqual(before)
-      expect(checked.getTime()).toBeLessThanOrEqual(Date.now())
+      const [ops] = mockTransaction.mock.calls[0]
+      expect(ops[1].where.monitorId).toBe('monitor-1')
     })
   })
 })

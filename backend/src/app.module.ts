@@ -1,7 +1,7 @@
-import { BullModule } from '@nestjs/bullmq'
 import { Module } from '@nestjs/common'
-import { ConfigModule, ConfigService } from '@nestjs/config'
+import { ConfigModule } from '@nestjs/config'
 import { APP_GUARD } from '@nestjs/core'
+import { ScheduleModule } from '@nestjs/schedule'
 
 import { validate } from '@/config/validation'
 
@@ -18,26 +18,7 @@ import { ThrottlerModule } from './shared/throttler/throttler.module'
 @Module({
   imports: [
     ConfigModule.forRoot({ envFilePath: '.env.local', isGlobal: true, validate }),
-
-    BullModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        connection: { url: configService.get<string>('REDIS_URL') },
-        limiter: {
-          max: 50,
-          duration: 1000,
-        },
-        defaultJobOptions: {
-          attempts: 3,
-          backoff: { type: 'exponential', delay: 1000 },
-          removeOnComplete: true,
-          removeOnFail: true,
-        },
-        prefix: 'live-wave:bull',
-      }),
-
-      inject: [ConfigService],
-    }),
+    ScheduleModule.forRoot(),
 
     PrismaModule,
     RedisModule,

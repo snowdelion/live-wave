@@ -57,6 +57,6 @@ async function bootstrap() {
   await app.listen(configService.get<number>('PORT', 8000))
 }
 bootstrap().catch(e => {
-  console.error(`Failed to start application: ${JSON.stringify(e)}`)
+  console.error(`Failed to start application: ${String(e)}`)
   process.exit(1)
 })

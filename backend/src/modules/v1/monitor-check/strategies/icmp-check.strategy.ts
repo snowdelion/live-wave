@@ -6,25 +6,23 @@ import { Logger } from '@/shared/logger/logger.service'
 import { PrismaService } from '@/shared/prisma/prisma.service'
 import { getErrorMessage } from '@/shared/utils/error.utils'
 
-import type { StrategyResult } from './strategy-result.types'
+import { BaseCheckStrategy } from './base-check.strategy'
+import type { StrategyContext, StrategyResult } from './strategy-result.types'
 
 @Injectable()
-export class IcmpStrategy {
-  private logger: Logger
+export class IcmpStrategy extends BaseCheckStrategy {
   constructor(
-    private prisma: PrismaService,
+    protected prisma: PrismaService,
     baseLogger: Logger,
   ) {
-    this.logger = baseLogger.child({ context: IcmpStrategy.name })
+    super(prisma, baseLogger, IcmpStrategy.name)
   }
 
-  async check(monitorId: string): StrategyResult {
-    const monitor = await this.prisma.monitor.findUnique({
-      where: { id: monitorId },
-      include: { icmpMonitor: true },
-    })
+  async check(monitor: StrategyContext): Promise<StrategyResult> {
     if (!monitor?.icmpMonitor) {
-      this.logger.warn('Monitor or its IcmpMonitor not found, skipping check', { monitorId })
+      this.logger.warn('Monitor or its IcmpMonitor not found, skipping check', {
+        monitorId: monitor.id,
+      })
       return {
         status: StatusEnum.down,
         error: 'Monitor or IcmpMonitor not found',
@@ -34,14 +32,13 @@ export class IcmpStrategy {
     }
 
     return await this.performCheck({
-      monitorId,
+      monitorId: monitor.id,
       host: monitor.icmpMonitor.host,
       timeout: monitor.timeout,
-      checkInterval: monitor.checkInterval,
     })
   }
 
-  private async performCheck({ monitorId, host, timeout, checkInterval }: PerformCheckOptions) {
+  private async performCheck({ monitorId, host, timeout }: PerformCheckOptions) {
     let status: StatusEnum = StatusEnum.down
     let error: string | null = null
     let responseTime: number | null = null
@@ -65,7 +62,7 @@ export class IcmpStrategy {
     if (status === StatusEnum.down)
       this.logger.warn('ICMP monitor is down', { monitorId, host, error })
 
-    await this.confirmTransaction({ monitorId, status, responseTime, error, checkInterval, host })
+    await this.confirmCheckResult(monitorId, { status, responseTime, error, details: { host } })
     return { status, error, responseTime, checkedAt: new Date() }
   }
 
@@ -89,62 +86,10 @@ export class IcmpStrategy {
 
     return 'No ping reply'
   }
-
-  private async confirmTransaction({
-    monitorId,
-    status,
-    responseTime,
-    error,
-    checkInterval,
-    host,
-  }: ConfirmTransactionOptions) {
-    try {
-      await this.prisma.$transaction([
-        this.prisma.check.create({
-          data: { monitorId, status, responseTime, error, details: { host } },
-        }),
-        this.prisma.monitor.update({
-          where: { id: monitorId },
-          data: {
-            lastCheckedAt: new Date(),
-            lastStatus: status,
-            nextCheckAt: new Date(Date.now() + checkInterval * 60 * 1000),
-          },
-        }),
-        this.prisma.check.deleteMany({
-          where: {
-            monitorId,
-            checkedAt: { lt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000) },
-          },
-        }),
-      ])
-    } catch (e) {
-      if (e instanceof Error && 'code' in e && e.code === 'P2003') {
-        this.logger.warn('ICMP Monitor not found, skipping check', { monitorId })
-        return
-      }
-      error = getErrorMessage(e)
-      status = StatusEnum.down
-      this.logger.error('Transaction failed for ICMP check', {
-        monitorId,
-        error: getErrorMessage(e),
-      })
-    }
-  }
 }
 
 interface PerformCheckOptions {
   monitorId: string
   host: string
   timeout: number
-  checkInterval: number
-}
-
-interface ConfirmTransactionOptions {
-  monitorId: string
-  status: StatusEnum
-  responseTime: number
-  error: string | null
-  checkInterval: number
-  host: string
 }

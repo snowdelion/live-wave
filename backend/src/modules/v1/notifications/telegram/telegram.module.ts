@@ -6,5 +6,6 @@ import { TelegramService } from './telegram.service'
 @Module({
   providers: [TelegramService],
   controllers: [TelegramController],
+  exports: [TelegramService],
 })
 export class TelegramModule {}

@@ -1,23 +1,16 @@
-import {
-  type DnsMonitor,
-  type HttpMonitor,
-  type IcmpMonitor,
-  MonitorType,
-  StatusEnum,
-  type TcpMonitor,
-} from '@prisma/client'
+import { MonitorType, StatusEnum } from '@prisma/client'
 
-interface MonitorRelations {
-  type: MonitorType
-  httpMonitor: HttpMonitor | null
-  tcpMonitor: TcpMonitor | null
-  icmpMonitor: IcmpMonitor | null
-  dnsMonitor: DnsMonitor | null
-}
-type MonitorWithRelations = { type: MonitorType } & MonitorRelations
+import type { StrategyContext } from './strategies/strategy-result.types'
 
-const extractHost: Record<MonitorType, (monitor: MonitorWithRelations) => string | null> = {
-  [MonitorType.HTTP]: m => (m.httpMonitor ? new URL(m.httpMonitor.url).hostname : null),
+const extractHost: Record<MonitorType, (monitor: StrategyContext) => string | null> = {
+  [MonitorType.HTTP]: m => {
+    if (!m.httpMonitor) return null
+    try {
+      return new URL(m.httpMonitor.url).hostname
+    } catch {
+      return null
+    }
+  },
   [MonitorType.DNS]: m => m.dnsMonitor?.host ?? null,
   [MonitorType.ICMP]: m => m.icmpMonitor?.host ?? null,
   [MonitorType.TCP]: m => m.tcpMonitor?.host ?? null,
@@ -25,7 +18,7 @@ const extractHost: Record<MonitorType, (monitor: MonitorWithRelations) => string
 
 const extractConfig: Record<
   MonitorType,
-  (monitor: MonitorWithRelations) => { url?: string; host?: string; port?: number }
+  (monitor: StrategyContext) => { url?: string; host?: string; port?: number }
 > = {
   [MonitorType.HTTP]: m => (m.httpMonitor ? { url: m.httpMonitor.url } : {}),
   [MonitorType.TCP]: m =>
@@ -34,11 +27,11 @@ const extractConfig: Record<
   [MonitorType.DNS]: m => (m.dnsMonitor ? { host: m.dnsMonitor.host } : {}),
 }
 
-export function getTargetHost(monitor: MonitorRelations): string | null {
+export function getTargetHost(monitor: StrategyContext): string | null {
   return extractHost[monitor.type]?.(monitor) ?? null
 }
 
-export function getMonitorConfig(monitor: MonitorRelations) {
+export function getMonitorConfig(monitor: StrategyContext) {
   return extractConfig[monitor.type]?.(monitor) ?? {}
 }
 
