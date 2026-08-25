@@ -138,9 +138,6 @@ importers:
       nestjs-prometheus:
         specifier: ^4.6.1
         version: 4.6.1(@nestjs/common@11.1.23(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(prom-client@15.1.3)
-      nestjs-throttler-storage-redis:
-        specifier: ^0.5.1
-        version: 0.5.1(@nestjs/common@11.1.23(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.23)(@nestjs/throttler@6.5.0(@nestjs/common@11.1.23(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.23)(reflect-metadata@0.2.2))(ioredis@5.10.1)(reflect-metadata@0.2.2)
       node-ping-rs:
         specifier: ^0.0.1
         version: 0.0.1
@@ -4357,16 +4354,6 @@ packages:
     peerDependencies:
       '@nestjs/common': ^8.0.0
       prom-client: ^14.0.0
-
-  nestjs-throttler-storage-redis@0.5.1:
-    resolution: {integrity: sha512-yuC815GE3Fto115InAHUorNQ/kQXmV0hc1RufaVcQO1Y93fElKizpjhopl9tRJDpsyoD68u96jYs5+1UR1fYtg==}
-    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
-    peerDependencies:
-      '@nestjs/common': ^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0
-      '@nestjs/core': ^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0
-      '@nestjs/throttler': '>=6.0.0'
-      ioredis: '>=5.0.0'
-      reflect-metadata: ^0.2.1
 
   next@15.5.19:
     resolution: {integrity: sha512-xNOW6tYshGX1/Oi3F8uuk4gpDeWsSUE/1Z0G5uUMekIxaQ0xc03UXd9II0VQHYMWviMeA0OHpJFAKsHf8bTYVg==}
@@ -9839,14 +9826,6 @@ snapshots:
     dependencies:
       '@nestjs/common': 11.1.23(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       prom-client: 15.1.3
-
-  nestjs-throttler-storage-redis@0.5.1(@nestjs/common@11.1.23(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.23)(@nestjs/throttler@6.5.0(@nestjs/common@11.1.23(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.23)(reflect-metadata@0.2.2))(ioredis@5.10.1)(reflect-metadata@0.2.2):
-    dependencies:
-      '@nestjs/common': 11.1.23(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/core': 11.1.23(@nestjs/common@11.1.23(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.23)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/throttler': 6.5.0(@nestjs/common@11.1.23(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.23)(reflect-metadata@0.2.2)
-      ioredis: 5.10.1
-      reflect-metadata: 0.2.2
 
   next@15.5.19(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
     dependencies:
