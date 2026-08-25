@@ -34,8 +34,10 @@ graph LR
     A[Frontend Next.js] --> B[Backend NestJS]
     B --> C[(PostgreSQL)]
     B --> D[(Redis)]
-    B --> E[BullMQ Workers]
+    B --> E[Cron Scheduler]
+    E --> C
     E --> F[Monitor Checks]
+    F --> C
     B --> G[Loki Logs]
     B --> H[Prometheus Metrics]
     G & H --> I[Grafana Dashboards]
@@ -43,12 +45,12 @@ graph LR
 
 ## Stack:
 
-| Area               | Technologies                                                                                            |
-| ------------------ | ------------------------------------------------------------------------------------------------------- |
-| **Backend**        | NestJS, TypeScript, Prisma, PostgreSQL, Redis, BullMQ, Winston, Loki, Grafana, Prometheus, JWT, Swagger |
-| **Frontend**       | Next.js, React, Tailwind CSS, TanStack Query, Zustand, Recharts                                         |
-| **Observability**  | Grafana, Loki, Prometheus                                                                               |
-| **Infrastructure** | Docker Compose, pnpm workspaces                                                                         |
+| Area               | Technologies                                                                                          |
+| ------------------ | ----------------------------------------------------------------------------------------------------- |
+| **Backend**        | NestJS, TypeScript, Prisma, PostgreSQL, Redis, Cron, Winston, Loki, Grafana, Prometheus, JWT, Swagger |
+| **Frontend**       | Next.js, React, Tailwind CSS, TanStack Query, Zustand, Recharts                                       |
+| **Observability**  | Grafana, Loki, Prometheus                                                                             |
+| **Infrastructure** | Docker Compose, pnpm workspaces                                                                       |
 
 ---
 

@@ -24,7 +24,7 @@ The scalable backend powering **LiveWave**. Built with `NestJS`, it handles asyn
 | ------------------ | :------------------------------------------------------- |
 | **Framework**      | NestJS 11                                                |
 | **Database & ORM** | PostgreSQL 16, Prisma 6                                  |
-| **Queue & Cache**  | Redis, BullMQ, `nestjs-throttler-storage-redis`          |
+| **Cache / State**  | Redis                                                    |
 | **Authentication** | Passport, JWT, bcrypt, `access`/`refresh` tokens         |
 | **Observability**  | Winston, `winston-loki`, Prometheus (`prom-client`)      |
 | **Validation**     | `class-validator`, `class-transformer`, Zod (env config) |
@@ -39,7 +39,7 @@ The scalable backend powering **LiveWave**. Built with `NestJS`, it handles asyn
   - **TCP**: port availability checks via `net.Socket`
   - **DNS**: resolution checks for 5 record types (`A`, `AAAA`, `MX`, `TXT`, `CNAME`) via `dns/promises`
 - **Flexible Configuration**: configurable check intervals (5-60 min) and timeouts (5-30 sec)
-- **Asynchronous Job Processing**: heavy lifting (network checks) is offloaded to `BullMQ` workers, ensuring the main API thread remains responsive
+- **Scheduled Processing**: checks are handled by a optimized `@nestjs/schedule` (Cron) with `p-limit` concurrency control
 - **Intelligent Rate Limiting**:
   - Global default throttler on all endpoints
   - Custom domain-based rate limiting to prevent abuse (e.g., spamming checks on a single target domain)
@@ -130,7 +130,7 @@ Once the server is running, detailed Swagger documentation is available at `http
 
 - `auth/` - JWT authentication, Telegram OAuth
 - `monitors/` - monitors CRUD
-- `monitor-check/` - monitor BullMQ scheduling
+- `monitor-check/` - Cron-based monitor scheduling
 - `analytics/` - aggregated timeline, overview and incidents queries
 - `users/` - user management and profile
 - `health/` - liveness and readiness health checks
@@ -142,7 +142,6 @@ Once the server is running, detailed Swagger documentation is available at `http
 <details>
 <summary><i> <code>shared/</code> details</i></summary>
 
-- `bull/` - keys and names constants, safe shutdown
 - `cookie/` - cookie parse decorator, set/clear `refreshToken` from the `httpOnly` cookie
 - `decorators/` - custom decorators (`@UserId()`)
 - `logger/` - custom Winston setup with Loki transport and JSON formatting
@@ -163,8 +162,8 @@ Once the server is running, detailed Swagger documentation is available at `http
 2. **Why PostgreSQL and Prisma?**<br>
    PostgreSQL guarantees ACID compliance for analytical queries, while Prisma eliminates boilerplate with auto-generated, type-safe database access.
 
-3. **Why BullMQ?**<br>
-   Network checks can be slow or hang. Offloading them to Redis-based workers prevents the main API event loop from blocking.
+3. **Why Cron + `p-limit` instead of Message Queues?**<br>
+   Message queues add Redis overhead and complexity. PostgreSQL scheduling with `p-limit` provides reliable execution at zero extra cost.
 
 4. **Why Custom Domain Rate Limiting?**<br>
    A malicious user could abuse the system to DDoS a single victim domain. A custom guard tracks check requests per target domain to prevent this specific vector of abuse.
