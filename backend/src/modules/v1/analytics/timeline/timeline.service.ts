@@ -39,7 +39,7 @@ export class TimelineService {
   private async getRawChecks(monitorId: string, startDate: Date) {
     const results = await this.prisma.check.findMany({
       where: { monitorId, checkedAt: { gte: startDate, lte: new Date() } },
-      select: { checkedAt: true, status: true, responseTime: true, error: true },
+      select: { checkedAt: true, status: true, responseTime: true },
       orderBy: { checkedAt: 'asc' },
       take: 40,
     })

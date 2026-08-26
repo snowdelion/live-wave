@@ -1,6 +1,6 @@
 import { ERROR_CODES, request, API_URL } from '@/shared/api'
 
-import { monitorResponseSchema, type MonitorResponse } from './dto/monitor-response.dto'
+import { updateMonitorResponseSchema, type UpdateMonitorResponse } from './dto/monitor-response.dto'
 import {
   updateMonitorRequestSchema,
   type UpdateMonitorRequest,
@@ -9,13 +9,13 @@ import {
 export async function updateMonitor(
   monitorId: string,
   body: UpdateMonitorRequest,
-): Promise<MonitorResponse> {
+): Promise<UpdateMonitorResponse> {
   const validatedBody = updateMonitorRequestSchema.parse(body)
 
   const res = await request({
     url: API_URL.MONITORS.UPDATE(monitorId),
     method: 'PATCH',
-    schema: monitorResponseSchema,
+    schema: updateMonitorResponseSchema,
     errorCode: ERROR_CODES.UPDATE_MONITOR,
     isProtected: true,
     json: validatedBody,

@@ -193,6 +193,7 @@ describe('TelegramService', () => {
         where: { userId: 'u1' },
         update: { telegramChatId: '42', enabled: true },
         create: { userId: 'u1', telegramChatId: '42', enabled: true },
+        select: { id: true },
       })
       expect(mockRedis.del).toHaveBeenCalledWith(REDIS_KEYS.telegramToken('some-token'))
 
@@ -256,6 +257,7 @@ describe('TelegramService', () => {
         where: { userId: 'u1' },
         update: { telegramChatId: null, enabled: false },
         create: { userId: 'u1', telegramChatId: null, enabled: false },
+        select: { id: true },
       })
     })
   })
@@ -292,10 +294,10 @@ describe('TelegramService', () => {
       expect(mockPrisma.alert.update).not.toHaveBeenCalled()
     })
 
-    it('throws Error when no alert row exists at all', async () => {
+    it('throws NotFoundException when no alert row exists at all', async () => {
       mockPrisma.alert.findUnique.mockResolvedValue(null)
 
-      await expect(service.toggleAlert('u1')).rejects.toThrow()
+      await expect(service.toggleAlert('u1')).rejects.toThrow(NotFoundException)
     })
 
     it('logs a warning but does not throw when message send fails after toggle', async () => {
@@ -306,6 +308,7 @@ describe('TelegramService', () => {
       const togglePromise = service.toggleAlert('u1')
       await vi.advanceTimersByTimeAsync(6000)
       const result = await togglePromise
+
       expect(result).toBe(true)
     })
   })
@@ -339,7 +342,7 @@ describe('TelegramService', () => {
         .mockResolvedValueOnce(makeFetchResponse(true))
 
       const sendPromise = service.sendMessage('42', 'hello', 3)
-      await vi.advanceTimersByTimeAsync(1000)
+      await vi.advanceTimersByTimeAsync(1500)
       const ok = await sendPromise
 
       expect(ok).toBe(true)
@@ -350,8 +353,7 @@ describe('TelegramService', () => {
       vi.mocked(global.fetch).mockResolvedValue(makeFetchResponse(false, 'error', 500))
 
       const sendPromise = service.sendMessage('42', 'hello', 2)
-      await vi.advanceTimersByTimeAsync(1000)
-      await vi.advanceTimersByTimeAsync(2000)
+      await vi.advanceTimersByTimeAsync(3500)
       const ok = await sendPromise
 
       expect(ok).toBe(false)

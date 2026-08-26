@@ -5,6 +5,7 @@ import { type MockInstance } from 'vitest'
 import { Logger } from '@/shared/logger/logger.service'
 import type { PrismaService } from '@/shared/prisma/prisma.service'
 
+import { BaseCheckStrategy } from '../base-check.strategy'
 import { IcmpStrategy } from '../icmp-check.strategy'
 import type { StrategyContext } from '../strategy-result.types'
 
@@ -54,6 +55,10 @@ describe('IcmpStrategy', () => {
     prisma = makePrisma()
     strategy = new IcmpStrategy(prisma, mockLogger)
     vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => {})
+
+    vi.spyOn(BaseCheckStrategy.prototype as any as any, 'confirmCheckResult').mockResolvedValue(
+      undefined,
+    )
   })
 
   afterEach(() => {
@@ -65,44 +70,54 @@ describe('IcmpStrategy', () => {
     it('skips and returns down when monitor context is missing icmpMonitor', async () => {
       const result = await strategy.check({ id: 'monitor-1', type: 'ICMP' } as StrategyContext)
 
-      expect(result.status).toBe(StatusEnum.down)
-      expect(result.error).toBe('Monitor or IcmpMonitor not found')
-      expect(prisma.$transaction).not.toHaveBeenCalled()
+      expect(result).toEqual({
+        status: StatusEnum.down,
+        error: 'Monitor or IcmpMonitor not found',
+        responseTime: null,
+        checkedAt: expect.any(Date),
+      })
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).not.toHaveBeenCalled()
     })
 
-    it('calls performCheck with correct args when monitor exists', async () => {
+    it('calls performCheck and confirms result when monitor exists', async () => {
       mockPing.mockResolvedValue({ success: true, time: BigInt(42) })
 
       await strategy.check(makeMonitorContext())
 
-      expect(prisma.$transaction).toHaveBeenCalled()
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
+        {
+          status: StatusEnum.up,
+          responseTime: 0,
+          error: null,
+          details: { host: '1.2.3.4' },
+        },
+      )
     })
   })
 
   describe('performCheck() - success', () => {
-    it('records status=up and uses ping time when finite', async () => {
+    it('records status=up', async () => {
       mockPing.mockResolvedValue({ success: true, time: 55 })
 
       await strategy.check(makeMonitorContext())
 
-      expect(prisma.check.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ status: StatusEnum.up, error: null }),
-        }),
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
+        expect.objectContaining({ status: StatusEnum.up, error: null }),
       )
     })
 
-    it('falls back to elapsed time when ping time is non-finite', async () => {
+    it('records responseTime as elapsed time', async () => {
       mockPing.mockResolvedValue({ success: true, time: NaN })
 
       await strategy.check(makeMonitorContext())
 
-      expect(prisma.check.create).toHaveBeenCalledWith(
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
         expect.objectContaining({
-          data: expect.objectContaining({
-            status: StatusEnum.up,
-            responseTime: expect.any(Number),
-          }),
+          status: StatusEnum.up,
+          responseTime: expect.any(Number),
         }),
       )
     })
@@ -114,8 +129,12 @@ describe('IcmpStrategy', () => {
 
       await strategy.check(makeMonitorContext())
 
-      expect(prisma.check.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ status: StatusEnum.down }) }),
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
+        expect.objectContaining({
+          status: StatusEnum.down,
+          error: 'Network unreachable',
+        }),
       )
     })
 
@@ -124,8 +143,12 @@ describe('IcmpStrategy', () => {
 
       await strategy.check(makeMonitorContext())
 
-      expect(prisma.check.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ status: StatusEnum.down }) }),
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
+        expect.objectContaining({
+          status: StatusEnum.down,
+          error: 'No ping reply',
+        }),
       )
     })
 
@@ -136,8 +159,12 @@ describe('IcmpStrategy', () => {
       await vi.runAllTimersAsync()
       await checkPromise
 
-      expect(prisma.check.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ status: StatusEnum.down }) }),
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
+        expect.objectContaining({
+          status: StatusEnum.down,
+          error: 'Ping timeout after 100ms',
+        }),
       )
     })
   })
@@ -159,29 +186,27 @@ describe('IcmpStrategy', () => {
 
       await strategy.check(makeMonitorContext())
 
-      expect(prisma.check.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ error: expectedMsg }) }),
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
+        expect.objectContaining({ error: expectedMsg }),
       )
     })
   })
 
   describe('confirmCheckResult()', () => {
-    it('creates a check record and deletes old checks in one transaction', async () => {
+    it('is called with the correct payload on success', async () => {
       mockPing.mockResolvedValue({ success: true, time: 10 })
 
       await strategy.check(makeMonitorContext())
 
-      expect(prisma.$transaction).toHaveBeenCalledTimes(1)
-
-      expect(prisma.check.create).toHaveBeenCalledWith(
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledTimes(1)
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
         expect.objectContaining({
-          data: expect.objectContaining({ monitorId: 'monitor-1' }),
-        }),
-      )
-
-      expect(prisma.check.deleteMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ monitorId: 'monitor-1' }),
+          status: StatusEnum.up,
+          responseTime: 0,
+          error: null,
+          details: { host: '1.2.3.4' },
         }),
       )
     })

@@ -107,7 +107,7 @@ export class MonitorCheckScheduler {
       this.metricsService.incrementMonitorChecksRequest('failure')
     } finally {
       const nextCheckAt = new Date(now.getTime() + monitor.checkInterval * 60 * 1000)
-      await this.prisma.monitor.update({
+      await this.prisma.monitor.updateMany({
         where: { id: monitor.id },
         data: {
           lastCheckedAt: now,

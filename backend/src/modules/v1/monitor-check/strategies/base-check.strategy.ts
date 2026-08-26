@@ -20,14 +20,16 @@ export abstract class BaseCheckStrategy {
   protected async confirmCheckResult(monitorId: string, result: CheckResult) {
     try {
       await this.prisma.$transaction([
-        this.prisma.check.create({
-          data: {
-            monitorId,
-            status: result.status,
-            responseTime: result.responseTime,
-            error: result.error,
-            details: result.details,
-          },
+        this.prisma.check.createMany({
+          data: [
+            {
+              monitorId,
+              status: result.status,
+              responseTime: result.responseTime,
+              error: result.error,
+              details: result.details,
+            },
+          ],
         }),
         this.prisma.check.deleteMany({
           where: {

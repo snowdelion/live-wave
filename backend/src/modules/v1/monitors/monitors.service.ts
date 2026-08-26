@@ -51,7 +51,9 @@ export class MonitorsService {
     const monitorType = dto.type
     const newMonitor = await this.prisma.monitor.create({
       data: monitorRequestData(userId, monitorType, dto),
-      include: {
+      select: {
+        id: true,
+        type: true,
         httpMonitor: monitorType === MonitorType.HTTP,
         tcpMonitor: monitorType === MonitorType.TCP,
         icmpMonitor: monitorType === MonitorType.ICMP,
@@ -172,7 +174,14 @@ export class MonitorsService {
   async update(userId: string, id: string, dto: UpdateMonitorDto) {
     const existing = await this.prisma.monitor.findUnique({
       where: { id },
-      include: { httpMonitor: true, icmpMonitor: true, tcpMonitor: true, dnsMonitor: true },
+      select: {
+        userId: true,
+        type: true,
+        httpMonitor: true,
+        icmpMonitor: true,
+        tcpMonitor: true,
+        dnsMonitor: true,
+      },
     })
     if (!existing || existing.userId !== userId) {
       this.logger.warn('Monitor not found or access denied', { userId, monitorId: id })
@@ -192,7 +201,7 @@ export class MonitorsService {
         }
         return await this.updateMonitor<{ httpMonitor: HttpMonitor }>(
           id,
-          existing as Monitor & { httpMonitor: HttpMonitor },
+          existing as Partial<Monitor> & { httpMonitor: HttpMonitor },
           updateData,
           dto,
           handleHttpTransaction,
@@ -206,7 +215,7 @@ export class MonitorsService {
         }
         return await this.updateMonitor<{ icmpMonitor: IcmpMonitor }>(
           id,
-          existing as Monitor & { icmpMonitor: IcmpMonitor },
+          existing as Partial<Monitor> & { icmpMonitor: IcmpMonitor },
           updateData,
           dto,
           handleIcmpTransaction,
@@ -220,7 +229,7 @@ export class MonitorsService {
         }
         return await this.updateMonitor<{ tcpMonitor: TcpMonitor }>(
           id,
-          existing as Monitor & { tcpMonitor: TcpMonitor },
+          existing as Partial<Monitor> & { tcpMonitor: TcpMonitor },
           updateData,
           dto,
           handleTcpTransaction,
@@ -234,7 +243,7 @@ export class MonitorsService {
         }
         return await this.updateMonitor<{ dnsMonitor: DnsMonitor }>(
           id,
-          existing as Monitor & { dnsMonitor: DnsMonitor },
+          existing as Partial<Monitor> & { dnsMonitor: DnsMonitor },
           updateData,
           dto,
           handleDnsTransaction,
@@ -249,13 +258,13 @@ export class MonitorsService {
 
   private async updateMonitor<T>(
     id: string,
-    existing: Monitor & T,
+    existing: Partial<Monitor> & T,
     updateData: UpdateData,
     dto: UpdateMonitorDto,
     transactionHandler: (
       tx: Tx,
       id: string,
-      existing: Monitor & T,
+      existing: Partial<Monitor> & T,
       updateData: UpdateData,
       dto: UpdateMonitorDto,
     ) => Promise<Monitor & T>,
@@ -273,14 +282,14 @@ export class MonitorsService {
     try {
       const monitor = await this.prisma.monitor.findUnique({
         where: { id },
-        select: { id: true, userId: true },
+        select: { userId: true },
       })
       if (!monitor || monitor.userId !== userId) {
         this.logger.warn('Monitor not found or access denied', { userId, monitorId: id })
         throw new NotFoundException('Monitor not found')
       }
 
-      await this.prisma.monitor.delete({ where: { id } })
+      await this.prisma.monitor.deleteMany({ where: { id } })
       this.logger.log('Monitor deleted', { userId, monitorId: id })
     } catch (e) {
       throw logAndThrow({

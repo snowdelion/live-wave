@@ -76,7 +76,7 @@ export function monitorRequestData(userId: string, type: MonitorType, dto: Creat
 export async function handleHttpTransaction(
   tx: Tx,
   id: string,
-  existing: Monitor & { httpMonitor: HttpMonitor | null },
+  existing: Partial<Monitor> & { httpMonitor: HttpMonitor | null },
   updateData: UpdateData,
   dto: UpdateMonitorDto,
 ) {
@@ -94,7 +94,7 @@ export async function handleHttpTransaction(
 
   const updatedHttpMonitor = await tx.monitor.findUnique({
     where: { id },
-    include: { httpMonitor: true },
+    select: { httpMonitor: true, type: true },
   })
   if (!updatedHttpMonitor) throw new Error('HTTP monitor not found after update')
 
@@ -104,7 +104,7 @@ export async function handleHttpTransaction(
 export async function handleIcmpTransaction(
   tx: Tx,
   id: string,
-  existing: Monitor & { icmpMonitor: IcmpMonitor | null },
+  existing: Partial<Monitor> & { icmpMonitor: IcmpMonitor | null },
   updateData: UpdateData,
   dto: UpdateMonitorDto,
 ) {
@@ -121,7 +121,7 @@ export async function handleIcmpTransaction(
 
   const updatedIcmpMonitor = await tx.monitor.findUnique({
     where: { id },
-    include: { icmpMonitor: true },
+    select: { icmpMonitor: true, type: true },
   })
   if (!updatedIcmpMonitor) throw new Error('HTTP monitor not found after update')
 
@@ -131,7 +131,7 @@ export async function handleIcmpTransaction(
 export async function handleTcpTransaction(
   tx: Tx,
   id: string,
-  existing: Monitor & { tcpMonitor: TcpMonitor | null },
+  existing: Partial<Monitor> & { tcpMonitor: TcpMonitor | null },
   updateData: UpdateData,
   dto: UpdateMonitorDto,
 ) {
@@ -149,7 +149,7 @@ export async function handleTcpTransaction(
 
   const updatedTcpMonitor = await tx.monitor.findUnique({
     where: { id },
-    include: { tcpMonitor: true },
+    select: { tcpMonitor: true, type: true },
   })
   if (!updatedTcpMonitor) throw new Error('HTTP monitor not found after update')
 
@@ -159,7 +159,7 @@ export async function handleTcpTransaction(
 export async function handleDnsTransaction(
   tx: Tx,
   id: string,
-  existing: Monitor & { dnsMonitor: DnsMonitor | null },
+  existing: Partial<Monitor> & { dnsMonitor: DnsMonitor | null },
   updateData: UpdateData,
   dto: UpdateMonitorDto,
 ) {
@@ -177,7 +177,7 @@ export async function handleDnsTransaction(
 
   const updatedDnsMonitor = await tx.monitor.findUnique({
     where: { id },
-    include: { dnsMonitor: true },
+    select: { dnsMonitor: true, type: true },
   })
   if (!updatedDnsMonitor) throw new Error('HTTP monitor not found after update')
 

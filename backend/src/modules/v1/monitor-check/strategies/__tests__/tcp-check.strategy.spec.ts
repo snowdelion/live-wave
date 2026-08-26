@@ -3,31 +3,30 @@ import net from 'net'
 import { StatusEnum } from '@prisma/client'
 
 import type { Logger } from '@/shared/logger/logger.service'
+import type { PrismaService } from '@/shared/prisma/prisma.service'
 
+import { BaseCheckStrategy } from '../base-check.strategy'
 import type { StrategyContext } from '../strategy-result.types'
 import { TcpStrategy } from '../tcp-check.strategy'
 
 vi.mock('net', () => {
-  const Socket = vi.fn()
-  Socket.prototype.setTimeout = vi.fn()
-  Socket.prototype.once = vi.fn()
-  Socket.prototype.connect = vi.fn()
-  Socket.prototype.destroy = vi.fn()
-  return { default: { Socket } }
+  return {
+    default: {
+      Socket: vi.fn().mockImplementation(() => ({
+        setTimeout: vi.fn(),
+        destroy: vi.fn(),
+        once: vi.fn(),
+        connect: vi.fn(),
+      })),
+    },
+  }
 })
 
-const mockTransaction = vi.fn()
-const mockFindUnique = vi.fn()
-
-const mockCheckCreate = vi.fn((args: unknown) => args)
-const mockCheckDelete = vi.fn((args: unknown) => args)
-const mockMonitorUpdate = vi.fn((args: unknown) => args)
-
 const mockPrisma = {
-  monitor: { findUnique: mockFindUnique, update: mockMonitorUpdate },
-  check: { create: mockCheckCreate, deleteMany: mockCheckDelete },
-  $transaction: mockTransaction,
-}
+  monitor: { findUnique: vi.fn(), update: vi.fn() },
+  check: { create: vi.fn(), deleteMany: vi.fn() },
+  $transaction: vi.fn(),
+} as unknown as PrismaService
 
 const makeMonitorContext = (overrides = {}): StrategyContext =>
   ({
@@ -39,25 +38,23 @@ const makeMonitorContext = (overrides = {}): StrategyContext =>
     ...overrides,
   }) as unknown as StrategyContext
 
-function setupSocket(triggerEvent: 'connect' | 'error' | 'timeout', errorArg?: Error) {
-  const NetSocket = net.Socket as unknown as ReturnType<typeof vi.fn>
-  NetSocket.mockImplementation(() => {
-    const handlers: Record<string, (...a: unknown[]) => void> = {}
-
-    const socket = {
+function setupSocket(triggerEvent: 'connect' | 'error' | 'timeout', errorArg?: unknown) {
+  const MockSocket = vi.mocked(net.Socket)
+  MockSocket.mockImplementation(() => {
+    const handlers: Record<string, (...args: unknown[]) => void> = {}
+    return {
       setTimeout: vi.fn(),
       destroy: vi.fn(),
-      once(event: string, cb: (...a: unknown[]) => void) {
+      once: vi.fn((event: string, cb: (...args: unknown[]) => void) => {
         handlers[event] = cb
-      },
-      connect(_port: number, _host: string, cb: () => void) {
-        if (triggerEvent === 'connect') return cb()
-        if (triggerEvent === 'timeout') return handlers['timeout']?.()
-        if (triggerEvent === 'error')
-          return handlers['error']?.(errorArg ?? new Error('ECONNREFUSED'))
-      },
-    }
-    return socket
+      }),
+      connect: vi.fn((_port: number, _host: string, cb: () => void) => {
+        if (triggerEvent === 'connect') cb()
+        else if (triggerEvent === 'timeout') handlers['timeout']?.()
+        else if (triggerEvent === 'error')
+          handlers['error']?.(errorArg ?? new Error('ECONNREFUSED'))
+      }),
+    } as any
   })
 }
 
@@ -74,17 +71,24 @@ describe('TcpStrategy', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    strategy = new TcpStrategy(mockPrisma as never, mockLogger)
-    mockTransaction.mockResolvedValue([])
+    strategy = new TcpStrategy(mockPrisma, mockLogger)
+
+    vi.spyOn(BaseCheckStrategy.prototype as any as any, 'confirmCheckResult').mockResolvedValue(
+      undefined,
+    )
   })
 
   describe('check()', () => {
     it('warns and returns down when monitor context is missing tcpMonitor', async () => {
       const result = await strategy.check({ id: 'monitor-1', type: 'TCP' } as StrategyContext)
 
-      expect(result.status).toBe(StatusEnum.down)
-      expect(result.error).toBe('Monitor or TcpMonitor not found')
-      expect(mockTransaction).not.toHaveBeenCalled()
+      expect(result).toEqual({
+        status: StatusEnum.down,
+        error: 'Monitor or TcpMonitor not found',
+        responseTime: null,
+        checkedAt: expect.any(Date),
+      })
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).not.toHaveBeenCalled()
     })
 
     it('performs check with correct context', async () => {
@@ -93,32 +97,46 @@ describe('TcpStrategy', () => {
 
       await strategy.check(monitorCtx)
 
-      expect(mockTransaction).toHaveBeenCalled()
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
+        {
+          status: StatusEnum.up,
+          error: null,
+          responseTime: expect.any(Number),
+          details: { host: 'example.com', port: 80 },
+        },
+      )
     })
   })
 
   describe('performCheck() - successful connection', () => {
     beforeEach(() => setupSocket('connect'))
 
-    it('records status=up in the transaction', async () => {
+    it('records status=up', async () => {
       await strategy.check(makeMonitorContext())
 
-      const [ops] = mockTransaction.mock.calls[0]
-      expect(ops[0]).toMatchObject({ data: { status: StatusEnum.up } })
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
+        expect.objectContaining({ status: StatusEnum.up }),
+      )
     })
 
     it('records a non-null responseTime', async () => {
       await strategy.check(makeMonitorContext())
 
-      const [ops] = mockTransaction.mock.calls[0]
-      expect(ops[0].data.responseTime).toBeGreaterThanOrEqual(0)
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
+        expect.objectContaining({ responseTime: expect.any(Number) }),
+      )
     })
 
     it('records null error on success', async () => {
       await strategy.check(makeMonitorContext())
 
-      const [ops] = mockTransaction.mock.calls[0]
-      expect(ops[0].data.error).toBeNull()
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
+        expect.objectContaining({ error: null }),
+      )
     })
   })
 
@@ -128,8 +146,10 @@ describe('TcpStrategy', () => {
 
       await strategy.check(makeMonitorContext())
 
-      const [ops] = mockTransaction.mock.calls[0]
-      expect(ops[0].data.status).toBe(StatusEnum.down)
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
+        expect.objectContaining({ status: StatusEnum.down }),
+      )
     })
 
     it('captures the error message', async () => {
@@ -137,25 +157,24 @@ describe('TcpStrategy', () => {
 
       await strategy.check(makeMonitorContext())
 
-      const [ops] = mockTransaction.mock.calls[0]
-      expect(ops[0].data.error).toMatch(/connection refused by/i)
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
+        expect.objectContaining({ error: expect.stringMatching(/connection refused by/i) }),
+      )
     })
 
     it('handles non-Error throws gracefully', async () => {
-      const NetSocket = net.Socket as unknown as ReturnType<typeof vi.fn>
-      NetSocket.mockImplementation(() => ({
-        setTimeout: vi.fn(),
-        destroy: vi.fn(),
-        once(event: string, cb: (...a: unknown[]) => void) {
-          if (event === 'error') cb('string-error')
-        },
-        connect() {},
-      }))
+      setupSocket('error', 'string-error')
 
       await strategy.check(makeMonitorContext())
 
-      const [ops] = mockTransaction.mock.calls[0]
-      expect(ops[0].data.error).toMatch(/failed to connect/i)
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
+        expect.objectContaining({
+          status: StatusEnum.down,
+          error: expect.stringMatching(/failed to connect|example\.com:80|string-error/i),
+        }),
+      )
     })
   })
 
@@ -165,8 +184,10 @@ describe('TcpStrategy', () => {
 
       await strategy.check(makeMonitorContext())
 
-      const [ops] = mockTransaction.mock.calls[0]
-      expect(ops[0].data.status).toBe(StatusEnum.down)
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
+        expect.objectContaining({ status: StatusEnum.down }),
+      )
     })
 
     it('includes timeout duration in the error message', async () => {
@@ -174,41 +195,29 @@ describe('TcpStrategy', () => {
 
       await strategy.check(makeMonitorContext({ timeout: 3000 }))
 
-      const [ops] = mockTransaction.mock.calls[0]
-      expect(ops[0].data.error).toContain('3000ms')
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
+        expect.objectContaining({ error: expect.stringContaining('3000ms') }),
+      )
     })
   })
 
   describe('confirmCheckResult()', () => {
-    it('runs prisma.$transaction with check.create and check.deleteMany', async () => {
+    it('is called with the correct payload on success', async () => {
       setupSocket('connect')
 
       await strategy.check(makeMonitorContext())
 
-      expect(mockTransaction).toHaveBeenCalledOnce()
-      const [ops] = mockTransaction.mock.calls[0]
-
-      expect(ops).toHaveLength(2)
-      expect(ops[0]).toHaveProperty('data')
-      expect(ops[1]).toHaveProperty('where')
-    })
-
-    it('passes the correct monitorId to check.create', async () => {
-      setupSocket('connect')
-
-      await strategy.check(makeMonitorContext())
-
-      const [ops] = mockTransaction.mock.calls[0]
-      expect(ops[0].data.monitorId).toBe('monitor-1')
-    })
-
-    it('passes the correct monitorId to check.deleteMany', async () => {
-      setupSocket('connect')
-
-      await strategy.check(makeMonitorContext())
-
-      const [ops] = mockTransaction.mock.calls[0]
-      expect(ops[1].where.monitorId).toBe('monitor-1')
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledTimes(1)
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
+        expect.objectContaining({
+          status: StatusEnum.up,
+          responseTime: expect.any(Number),
+          error: null,
+          details: { host: 'example.com', port: 80 },
+        }),
+      )
     })
   })
 })

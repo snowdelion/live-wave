@@ -43,7 +43,7 @@ describe('MonitorCheckScheduler', () => {
     return {
       monitor: {
         findMany: vi.fn(),
-        update: vi.fn(),
+        updateMany: vi.fn(),
       },
       alert: {
         findUnique: vi.fn(),
@@ -123,7 +123,7 @@ describe('MonitorCheckScheduler', () => {
 
       expect(mockPrisma.monitor.findMany).toHaveBeenCalled()
       expect(mockHttpStrategy.check).toHaveBeenCalledTimes(2)
-      expect(mockPrisma.monitor.update).toHaveBeenCalledTimes(2)
+      expect(mockPrisma.monitor.updateMany).toHaveBeenCalledTimes(2)
       expect((scheduler as any).isProcessing).toBe(false)
     })
 
@@ -154,7 +154,7 @@ describe('MonitorCheckScheduler', () => {
       expect(mockLogger.debug).toHaveBeenCalledWith('Monitor checked successfully', {
         monitorId: '1',
       })
-      expect(mockPrisma.monitor.update).toHaveBeenCalledWith({
+      expect(mockPrisma.monitor.updateMany).toHaveBeenCalledWith({
         where: { id: '1' },
         data: expect.objectContaining({
           lastStatus: StatusEnum.up,
@@ -178,7 +178,7 @@ describe('MonitorCheckScheduler', () => {
         error: 'Check failed',
       })
       expect(mockMetricsService.incrementMonitorChecksRequest).toHaveBeenCalledWith('failure')
-      expect(mockPrisma.monitor.update).toHaveBeenCalledWith({
+      expect(mockPrisma.monitor.updateMany).toHaveBeenCalledWith({
         where: { id: '1' },
         data: expect.objectContaining({
           lastStatus: StatusEnum.down,
