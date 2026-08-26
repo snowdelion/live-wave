@@ -69,10 +69,12 @@ export const MonitorRow = React.memo(
           )}
         </div>
 
-        <span className="font-jet-brains text-[0.72rem] text-[#4caf50]">
+        <span
+          className={`font-jet-brains text-[0.72rem] font-medium ${monitor.lastCheckedAt ? 'text-[#4caf50]' : 'text-[#e8f5e8]'}`}
+        >
           {monitor.lastCheckedAt
             ? formatTime(Math.floor((now - monitor.lastCheckedAt.getTime()) / 1000))
-            : '0s ago'}
+            : '-'}
         </span>
 
         <span

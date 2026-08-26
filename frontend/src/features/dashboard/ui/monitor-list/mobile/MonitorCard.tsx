@@ -111,12 +111,12 @@ export const MonitorCard = React.memo(
             <span className="font-jet-brains text-[0.55rem] text-[#2e7d32] tracking-wider uppercase">
               Last Check
             </span>
-            <div className="flex items-center gap-1 mt-0.5">
-              <span className="font-inter text-sm text-[#4caf50]">
-                {monitor.lastCheckedAt
-                  ? formatTime(Math.floor((Date.now() - monitor.lastCheckedAt.getTime()) / 1000))
-                  : '0s ago'}
-              </span>
+            <div
+              className={`flex items-center gap-1 mt-0.5 font-inter text-sm ${monitor.lastCheckedAt ? 'text-[#4caf50]' : 'text-[#e8f5e8]'}`}
+            >
+              {monitor.lastCheckedAt
+                ? formatTime(Math.floor((Date.now() - monitor.lastCheckedAt.getTime()) / 1000))
+                : '-'}
             </div>
           </div>
         </div>
