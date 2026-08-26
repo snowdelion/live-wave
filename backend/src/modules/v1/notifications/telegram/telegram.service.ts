@@ -54,7 +54,7 @@ export class TelegramService implements OnApplicationBootstrap {
 
     const existing = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { telegramId: true, email: true },
+      select: { telegramId: true },
     })
     if (existing?.telegramId) {
       this.logger.warn('User tried link Telegram when already linked', {
@@ -113,6 +113,7 @@ export class TelegramService implements OnApplicationBootstrap {
       where: { userId },
       update: { telegramChatId: chatId, enabled: true },
       create: { userId, telegramChatId: chatId, enabled: true },
+      select: { id: true },
     })
 
     await this.redis.del(key)
@@ -208,6 +209,7 @@ export class TelegramService implements OnApplicationBootstrap {
       where: { userId },
       update: { telegramChatId: null, enabled: false },
       create: { userId, telegramChatId: null, enabled: false },
+      select: { id: true },
     })
     this.logger.log('Telegram has been unlinked', { userId, telegramId: existingUser?.telegramId })
   }

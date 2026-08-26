@@ -1,24 +1,10 @@
 import z from 'zod'
 
-import { DnsRecordType, MonitorStatus, MonitorType } from '../../model/monitors.types'
+import { DnsRecordType, MonitorType } from '../../model/monitors.types'
 
-export const baseMonitorResponseSchema = z
-  .object({
-    id: z.string(),
-    name: z.string(),
-    checkInterval: z.number().min(5).max(60),
-    timeout: z.number().min(5000).max(30_000),
-    lastStatus: z.enum(MonitorStatus).nullable(),
-    userId: z.string(),
+export const baseCreateMonitorResponseSchema = z.object({ id: z.string() }).strict()
 
-    lastCheckedAt: z.coerce.date().nullable(),
-    nextCheckAt: z.coerce.date(),
-    createdAt: z.coerce.date(),
-    updatedAt: z.coerce.date(),
-  })
-  .strict()
-
-export const httpMonitorResponseSchema = baseMonitorResponseSchema
+export const createHttpMonitorResponseSchema = baseCreateMonitorResponseSchema
   .extend({
     type: z.literal(MonitorType.HTTP),
     httpMonitor: z.object({
@@ -28,7 +14,7 @@ export const httpMonitorResponseSchema = baseMonitorResponseSchema
     }),
   })
   .strict()
-export const tcpMonitorResponseSchema = baseMonitorResponseSchema
+export const createTcpMonitorResponseSchema = baseCreateMonitorResponseSchema
   .extend({
     type: z.literal(MonitorType.TCP),
     tcpMonitor: z.object({
@@ -38,7 +24,7 @@ export const tcpMonitorResponseSchema = baseMonitorResponseSchema
     }),
   })
   .strict()
-export const icmpMonitorResponseSchema = baseMonitorResponseSchema
+export const createIcmpMonitorResponseSchema = baseCreateMonitorResponseSchema
   .extend({
     type: z.literal(MonitorType.ICMP),
     icmpMonitor: z.object({
@@ -47,7 +33,7 @@ export const icmpMonitorResponseSchema = baseMonitorResponseSchema
     }),
   })
   .strict()
-export const dnsMonitorResponseSchema = baseMonitorResponseSchema
+export const createDnsMonitorResponseSchema = baseCreateMonitorResponseSchema
   .extend({
     type: z.literal(MonitorType.DNS),
     dnsMonitor: z.object({
@@ -58,11 +44,58 @@ export const dnsMonitorResponseSchema = baseMonitorResponseSchema
   })
   .strict()
 
-export const monitorResponseSchema = z.discriminatedUnion('type', [
-  httpMonitorResponseSchema,
-  tcpMonitorResponseSchema,
-  icmpMonitorResponseSchema,
-  dnsMonitorResponseSchema,
+export const updateHttpMonitorResponseSchema = z
+  .object({
+    type: z.literal(MonitorType.HTTP),
+    httpMonitor: z.object({
+      monitorId: z.string(),
+      url: z.url(),
+      method: z.enum(['HEAD']),
+    }),
+  })
+  .strict()
+export const updateTcpMonitorResponseSchema = z
+  .object({
+    type: z.literal(MonitorType.TCP),
+    tcpMonitor: z.object({
+      monitorId: z.string(),
+      host: z.string(),
+      port: z.coerce.number().min(1).max(65535),
+    }),
+  })
+  .strict()
+export const updateIcmpMonitorResponseSchema = z
+  .object({
+    type: z.literal(MonitorType.ICMP),
+    icmpMonitor: z.object({
+      monitorId: z.string(),
+      host: z.string(),
+    }),
+  })
+  .strict()
+export const updateDnsMonitorResponseSchema = z
+  .object({
+    type: z.literal(MonitorType.DNS),
+    dnsMonitor: z.object({
+      monitorId: z.string(),
+      host: z.string(),
+      recordType: z.enum(DnsRecordType),
+    }),
+  })
+  .strict()
+
+export const createMonitorResponseSchema = z.discriminatedUnion('type', [
+  createHttpMonitorResponseSchema,
+  createTcpMonitorResponseSchema,
+  createIcmpMonitorResponseSchema,
+  createDnsMonitorResponseSchema,
+])
+export const updateMonitorResponseSchema = z.discriminatedUnion('type', [
+  updateHttpMonitorResponseSchema,
+  updateTcpMonitorResponseSchema,
+  updateIcmpMonitorResponseSchema,
+  updateDnsMonitorResponseSchema,
 ])
 
-export type MonitorResponse = z.infer<typeof monitorResponseSchema>
+export type CreateMonitorResponse = z.infer<typeof createMonitorResponseSchema>
+export type UpdateMonitorResponse = z.infer<typeof updateMonitorResponseSchema>

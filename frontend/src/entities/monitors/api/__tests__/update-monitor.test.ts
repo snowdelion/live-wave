@@ -1,6 +1,10 @@
 import { request, ERROR_CODES, API_URL } from '@/shared/api'
 
-import { monitorResponseSchema, type MonitorResponse } from '../dto/monitor-response.dto'
+import {
+  createMonitorResponseSchema,
+  updateMonitorResponseSchema,
+  type CreateMonitorResponse,
+} from '../dto/monitor-response.dto'
 import {
   updateMonitorRequestSchema,
   type UpdateMonitorRequest,
@@ -22,7 +26,10 @@ vi.mock('../dto/update-monitor-request.dto', () => ({
 }))
 
 vi.mock('../dto/monitor-response.dto', () => ({
-  monitorResponseSchema: {
+  createMonitorResponseSchema: {
+    parse: vi.fn(),
+  },
+  updateMonitorResponseSchema: {
     parse: vi.fn(),
   },
 }))
@@ -58,7 +65,9 @@ describe('updateMonitor', () => {
     vi.mocked(updateMonitorRequestSchema.parse).mockReturnValue(
       validated as unknown as UpdateMonitorRequest,
     )
-    vi.mocked(monitorResponseSchema.parse).mockReturnValue(validated as unknown as MonitorResponse)
+    vi.mocked(createMonitorResponseSchema.parse).mockReturnValue(
+      validated as unknown as CreateMonitorResponse,
+    )
     mockRequest.mockResolvedValue({ data: { id: monitorId } })
 
     await updateMonitor(monitorId, input as unknown as UpdateMonitorRequest)
@@ -67,7 +76,7 @@ describe('updateMonitor', () => {
     expect(request).toHaveBeenCalledWith(
       expect.objectContaining({
         url: API_URL.MONITORS.UPDATE(monitorId),
-        schema: monitorResponseSchema,
+        schema: updateMonitorResponseSchema,
         method: 'PATCH',
         errorCode: ERROR_CODES.UPDATE_MONITOR,
         json: validated,

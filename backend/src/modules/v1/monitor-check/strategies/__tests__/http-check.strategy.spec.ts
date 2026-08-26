@@ -4,6 +4,7 @@ import { Logger } from '@/shared/logger/logger.service'
 import type { PrismaService } from '@/shared/prisma/prisma.service'
 import { httpFetch } from '@/shared/utils/http-fetch.utils'
 
+import { BaseCheckStrategy } from '../base-check.strategy'
 import { HttpStrategy } from '../http-check.strategy'
 import type { StrategyContext } from '../strategy-result.types'
 
@@ -41,15 +42,6 @@ function createMockResponse(status: number, ok = status >= 200 && status < 300):
   return { status, ok } as Response
 }
 
-async function runTransactionBatch(
-  arg: Parameters<PrismaService['$transaction']>[0],
-): Promise<unknown[]> {
-  if (typeof arg === 'function') {
-    throw new Error('callback transactions are not used in HttpStrategy tests')
-  }
-  return Promise.all(arg)
-}
-
 const mockPrisma = {
   monitor: {
     update: vi.fn(),
@@ -58,7 +50,7 @@ const mockPrisma = {
     create: vi.fn(),
     deleteMany: vi.fn(),
   },
-  $transaction: vi.fn(runTransactionBatch),
+  $transaction: vi.fn(),
 } as unknown as PrismaService
 
 const mockLogger = {
@@ -79,13 +71,13 @@ describe('HttpStrategy', () => {
     vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined)
     vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
 
-    vi.mocked(mockPrisma.check.create).mockResolvedValue({} as never)
-    vi.mocked(mockPrisma.monitor.update).mockResolvedValue({} as never)
-    vi.mocked(mockPrisma.$transaction).mockImplementation(runTransactionBatch)
     mockFetchWithRetry.mockResolvedValue(createMockResponse(200))
 
     strategy = new HttpStrategy(mockPrisma, mockLogger)
-    Object.assign(strategy, { prisma: mockPrisma })
+
+    vi.spyOn(BaseCheckStrategy.prototype as any as any, 'confirmCheckResult').mockResolvedValue(
+      undefined,
+    )
   })
 
   afterEach(() => {
@@ -98,7 +90,7 @@ describe('HttpStrategy', () => {
       await strategy.check(makeMonitorContext({ httpMonitor: undefined } as any))
 
       expect(mockFetchWithRetry).not.toHaveBeenCalled()
-      expect(mockPrisma.$transaction).not.toHaveBeenCalled()
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).not.toHaveBeenCalled()
     })
 
     it('calls httpFetch with monitor URL, timeout, method, and fixed options', async () => {
@@ -130,20 +122,18 @@ describe('HttpStrategy', () => {
 
       await strategy.check(makeMonitorContext())
 
-      expect(mockPrisma.check.create).toHaveBeenCalledWith({
-        data: {
-          monitorId: MONITOR_ID,
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        MONITOR_ID,
+        {
           status: StatusEnum.up,
-          responseTime: 0,
           error: null,
+          responseTime: 0,
           details: {
-            method: 'HEAD',
-            url: 'https://example.com/health',
+            method: Method.HEAD,
+            url: TEST_URL,
           },
         },
-      })
-
-      expect(mockPrisma.$transaction).toHaveBeenCalledOnce()
+      )
     })
 
     it('persists a down check and warns when the HTTP status is not ok', async () => {
@@ -151,12 +141,24 @@ describe('HttpStrategy', () => {
 
       await strategy.check(makeMonitorContext())
 
-      expect(mockPrisma.check.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          monitorId: MONITOR_ID,
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        MONITOR_ID,
+        {
           status: StatusEnum.down,
           error: null,
-        }),
+          responseTime: 0,
+          details: {
+            method: Method.HEAD,
+            url: TEST_URL,
+          },
+        },
+      )
+
+      expect(mockLogger.warn).toHaveBeenCalledWith('HTTP monitor is down', {
+        monitorId: MONITOR_ID,
+        statusCode: 503,
+        responseTime: 0,
+        error: null,
       })
     })
 
@@ -166,18 +168,18 @@ describe('HttpStrategy', () => {
 
       await strategy.check(makeMonitorContext())
 
-      expect(mockPrisma.check.create).toHaveBeenCalledWith({
-        data: {
-          monitorId: MONITOR_ID,
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        MONITOR_ID,
+        {
           status: StatusEnum.down,
-          responseTime: 0,
           error: 'fetch failed',
+          responseTime: 0,
           details: {
-            method: 'HEAD',
-            url: 'https://example.com/health',
+            method: Method.HEAD,
+            url: TEST_URL,
           },
         },
-      })
+      )
     })
 
     it('uses "unknown error" when fetch rejects with a non-Error value', async () => {
@@ -185,12 +187,13 @@ describe('HttpStrategy', () => {
 
       await strategy.check(makeMonitorContext())
 
-      expect(mockPrisma.check.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        MONITOR_ID,
+        expect.objectContaining({
           status: StatusEnum.down,
           error: expect.stringMatching(/unknown error/i),
         }),
-      })
+      )
     })
   })
 })

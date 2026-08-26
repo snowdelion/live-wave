@@ -26,7 +26,7 @@ describe('UsersService', () => {
         count: vi.fn(),
         create: vi.fn(),
         findUnique: vi.fn(),
-        delete: vi.fn(),
+        deleteMany: vi.fn(),
       },
     }
 
@@ -115,7 +115,7 @@ describe('UsersService', () => {
       await service.delete('user-1')
 
       expect(redis.del).toHaveBeenCalledWith(REDIS_KEYS.refreshToken('user-1'))
-      expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: 'user-1' } })
+      expect(prisma.user.deleteMany).toHaveBeenCalledWith({ where: { id: 'user-1' } })
     })
 
     it('deletes redis key before deleting the user', async () => {
@@ -123,13 +123,13 @@ describe('UsersService', () => {
       redis.del.mockImplementation(async () => {
         callOrder.push('redis.del')
       })
-      prisma.user.delete.mockImplementation(async () => {
-        callOrder.push('prisma.user.delete')
+      prisma.user.deleteMany.mockImplementation(async () => {
+        callOrder.push('prisma.user.deleteMany')
       })
 
       await service.delete('user-1')
 
-      expect(callOrder).toEqual(['redis.del', 'prisma.user.delete'])
+      expect(callOrder).toEqual(['redis.del', 'prisma.user.deleteMany'])
     })
   })
 })

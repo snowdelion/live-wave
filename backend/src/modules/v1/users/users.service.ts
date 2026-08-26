@@ -53,7 +53,7 @@ export class UsersService {
     }
 
     await this.redis.del(REDIS_KEYS.refreshToken(userId))
-    await this.prisma.user.delete({ where: { id: userId } })
+    await this.prisma.user.deleteMany({ where: { id: userId } })
     this.logger.log('User deleted', { userId })
   }
 }

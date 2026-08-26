@@ -31,8 +31,8 @@ const mockPrisma = {
     create: vi.fn(),
     findMany: vi.fn(),
     findUnique: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
+    updateMany: vi.fn(),
+    deleteMany: vi.fn(),
   },
   $queryRaw: vi.fn(),
   $transaction: vi.fn(async (cb: (tx: typeof mockTx) => unknown) => cb(mockTx)),
@@ -51,16 +51,7 @@ const makeService = () => new MonitorsService(mockPrisma, mockLoggerInstance)
 const baseMonitor = {
   id: MONITOR_ID,
   userId: USER_ID,
-  name: 'name',
   type: MonitorType.HTTP,
-  checkInterval: 10,
-  timeout: 5000,
-  lastStatus: null,
-  lastCheckedAt: null,
-  nextCheckAt: null,
-  checks: [],
-  createdAt: expect.any(Date),
-  updatedAt: expect.any(Date),
 }
 
 const httpMonitorRelation = {
@@ -164,7 +155,7 @@ describe('create', () => {
             },
           },
         },
-        include: expect.objectContaining({ httpMonitor: true }),
+        select: expect.objectContaining({ httpMonitor: true }),
       })
       expect(result).toEqual(httpMonitorWithRelation)
     })
@@ -188,7 +179,7 @@ describe('create', () => {
             create: { url: 'https://example.com', method: Method.HEAD },
           },
         }),
-        include: expect.objectContaining({ httpMonitor: true }),
+        select: expect.objectContaining({ httpMonitor: true }),
       })
     })
   })
@@ -218,7 +209,7 @@ describe('create', () => {
           type: MonitorType.ICMP,
           icmpMonitor: { create: { host: '127.0.0.1' } },
         },
-        include: expect.objectContaining({ icmpMonitor: true }),
+        select: expect.objectContaining({ icmpMonitor: true }),
       })
     })
   })
@@ -249,7 +240,7 @@ describe('create', () => {
           type: MonitorType.TCP,
           tcpMonitor: { create: { host: '127.0.0.1', port: 8080 } },
         },
-        include: expect.objectContaining({ tcpMonitor: true }),
+        select: expect.objectContaining({ tcpMonitor: true }),
       })
     })
   })
@@ -279,7 +270,7 @@ describe('create', () => {
           type: MonitorType.DNS,
           dnsMonitor: { create: { host: 'example.com', recordType: RecordType.A } },
         },
-        include: expect.objectContaining({ dnsMonitor: true }),
+        select: expect.objectContaining({ dnsMonitor: true }),
       })
     })
 
@@ -309,7 +300,7 @@ describe('create', () => {
           timeout: 8000,
           dnsMonitor: { create: { host: 'example.com', recordType: RecordType.AAAA } },
         }),
-        include: expect.objectContaining({ dnsMonitor: true }),
+        select: expect.objectContaining({ dnsMonitor: true }),
       })
     })
   })
@@ -446,7 +437,7 @@ describe('update', () => {
   it('updates and returns the HTTP monitor', async () => {
     const updated = { ...existingHttpMonitor, name: 'Updated' }
     vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(existingHttpMonitor as any)
-    vi.mocked(mockTx.monitor.update).mockResolvedValue(updated)
+    vi.mocked(mockTx.monitor.update).mockResolvedValue(updated as any)
     vi.mocked(mockTx.httpMonitor.upsert).mockResolvedValue(httpMonitorRelation)
     vi.mocked(mockTx.monitor.findUnique).mockResolvedValue(updated as any)
 
@@ -502,7 +493,7 @@ describe('update', () => {
     it('updates and returns the ICMP monitor', async () => {
       const updated = { ...existingIcmpMonitor, name: 'Updated' }
       vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(existingIcmpMonitor as any)
-      vi.mocked(mockTx.monitor.update).mockResolvedValue(updated)
+      vi.mocked(mockTx.monitor.update).mockResolvedValue(updated as any)
       vi.mocked(mockTx.icmpMonitor.upsert).mockResolvedValue(icmpMonitorRelation)
       vi.mocked(mockTx.monitor.findUnique).mockResolvedValue(updated as any)
 
@@ -525,7 +516,7 @@ describe('update', () => {
 
     it('uses host from dto when provided', async () => {
       vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(existingIcmpMonitor as any)
-      vi.mocked(mockTx.monitor.update).mockResolvedValue(existingIcmpMonitor)
+      vi.mocked(mockTx.monitor.update).mockResolvedValue(existingIcmpMonitor as any)
       vi.mocked(mockTx.icmpMonitor.upsert).mockResolvedValue(icmpMonitorRelation)
       vi.mocked(mockTx.monitor.findUnique).mockResolvedValue(existingIcmpMonitor as any)
 
@@ -556,7 +547,7 @@ describe('update', () => {
     it('updates and returns the TCP monitor', async () => {
       const updated = { ...existingTcpMonitor, name: 'Updated' }
       vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(existingTcpMonitor as any)
-      vi.mocked(mockTx.monitor.update).mockResolvedValue(updated)
+      vi.mocked(mockTx.monitor.update).mockResolvedValue(updated as any)
       vi.mocked(mockTx.tcpMonitor.upsert).mockResolvedValue(tcpMonitorRelation)
       vi.mocked(mockTx.monitor.findUnique).mockResolvedValue(updated as any)
 
@@ -579,7 +570,7 @@ describe('update', () => {
 
     it('uses host and port from dto when provided', async () => {
       vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(existingTcpMonitor as any)
-      vi.mocked(mockTx.monitor.update).mockResolvedValue(existingTcpMonitor)
+      vi.mocked(mockTx.monitor.update).mockResolvedValue(existingTcpMonitor as any)
       vi.mocked(mockTx.tcpMonitor.upsert).mockResolvedValue(tcpMonitorRelation)
       vi.mocked(mockTx.monitor.findUnique).mockResolvedValue(existingTcpMonitor as any)
 
@@ -621,7 +612,7 @@ describe('update', () => {
     it('updates and returns the DNS monitor', async () => {
       const updated = { ...existingDnsMonitor, name: 'Updated DNS' }
       vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(existingDnsMonitor as any)
-      vi.mocked(mockTx.monitor.update).mockResolvedValue(updated)
+      vi.mocked(mockTx.monitor.update).mockResolvedValue(updated as any)
       vi.mocked(mockTx.dnsMonitor.upsert).mockResolvedValue(dnsMonitorRelation)
       vi.mocked(mockTx.monitor.findUnique).mockResolvedValue(updated as any)
 
@@ -644,7 +635,7 @@ describe('update', () => {
 
     it('uses host and recordType from dto when provided', async () => {
       vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(existingDnsMonitor as any)
-      vi.mocked(mockTx.monitor.update).mockResolvedValue(existingDnsMonitor)
+      vi.mocked(mockTx.monitor.update).mockResolvedValue(existingDnsMonitor as any)
       vi.mocked(mockTx.dnsMonitor.upsert).mockResolvedValue({
         monitorId: MONITOR_ID,
         host: 'new.example.com',
@@ -689,13 +680,13 @@ describe('update', () => {
 
 describe('delete', () => {
   it('deletes the monitor', async () => {
-    vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(baseMonitor)
-    vi.mocked(mockPrisma.monitor.delete).mockResolvedValue(baseMonitor)
+    vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(baseMonitor as any)
+    vi.mocked(mockPrisma.monitor.deleteMany).mockResolvedValue(baseMonitor as any)
 
     const service = makeService()
     await service.delete(USER_ID, MONITOR_ID)
 
-    expect(mockPrisma.monitor.delete).toHaveBeenCalledWith({
+    expect(mockPrisma.monitor.deleteMany).toHaveBeenCalledWith({
       where: { id: MONITOR_ID },
     })
   })
@@ -704,7 +695,7 @@ describe('delete', () => {
     vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue({
       ...baseMonitor,
       userId: OTHER_USER_ID,
-    })
+    } as any)
 
     const service = makeService()
     await expect(service.delete(USER_ID, MONITOR_ID)).rejects.toThrow(NotFoundException)
@@ -718,8 +709,8 @@ describe('delete', () => {
   })
 
   it('wraps prisma delete errors in NotFoundException', async () => {
-    vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(baseMonitor)
-    vi.mocked(mockPrisma.monitor.delete).mockRejectedValue(new Error('DB error'))
+    vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(baseMonitor as any)
+    vi.mocked(mockPrisma.monitor.deleteMany).mockRejectedValue(new Error('DB error'))
 
     const service = makeService()
     await expect(service.delete(USER_ID, MONITOR_ID)).rejects.toThrow(
@@ -728,8 +719,8 @@ describe('delete', () => {
   })
 
   it('handles non-Error delete rejections gracefully', async () => {
-    vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(baseMonitor)
-    vi.mocked(mockPrisma.monitor.delete).mockRejectedValue(42)
+    vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue(baseMonitor as any)
+    vi.mocked(mockPrisma.monitor.deleteMany).mockRejectedValue(42)
 
     const service = makeService()
     await expect(service.delete(USER_ID, MONITOR_ID)).rejects.toThrow(

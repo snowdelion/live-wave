@@ -1,5 +1,6 @@
 import type { Logger } from '@/shared/logger/logger.service'
 
+import { BaseCheckStrategy } from '../base-check.strategy'
 import { DnsStrategy } from '../dns-check.strategy'
 
 const mockResolve = vi.hoisted(() => vi.fn())
@@ -63,6 +64,10 @@ describe('DnsStrategy', () => {
     vi.clearAllMocks()
     prisma = buildPrisma()
     strategy = new DnsStrategy(prisma as never, mockLogger)
+
+    vi.spyOn(BaseCheckStrategy.prototype as any as any, 'confirmCheckResult').mockResolvedValue(
+      undefined,
+    )
   })
 
   describe('check()', () => {
@@ -81,7 +86,7 @@ describe('DnsStrategy', () => {
         'Monitor or its DnsMonitor not found, skipping check',
         { monitorId: 'monitor-1' },
       )
-      expect(prisma.$transaction).not.toHaveBeenCalled()
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).not.toHaveBeenCalled()
     })
 
     it('persists a successful check with status "up"', async () => {
@@ -90,9 +95,15 @@ describe('DnsStrategy', () => {
 
       await strategy.check(monitor as any)
 
-      expect(prisma.$transaction).toHaveBeenCalledOnce()
-      const ops = prisma.$transaction.mock.calls[0][0]
-      expect(ops).toHaveLength(2)
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
+        {
+          error: null,
+          status: 'up',
+          responseTime: expect.any(Number),
+          details: { host: 'example.com', recordType: 'A', resolvedValue: '1.2.3.4' },
+        },
+      )
     })
 
     it('persists a failed check with status "down" on DNS error', async () => {
@@ -101,7 +112,15 @@ describe('DnsStrategy', () => {
 
       await strategy.check(monitor as any)
 
-      expect(prisma.$transaction).toHaveBeenCalledOnce()
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
+        {
+          error: 'DNS lookup failed for example.com host',
+          status: 'down',
+          responseTime: expect.any(Number),
+          details: { host: 'example.com', recordType: 'A', resolvedValue: null },
+        },
+      )
     })
   })
 
@@ -132,9 +151,15 @@ describe('DnsStrategy', () => {
 
       await strategy.check(monitor as any)
 
-      expect(prisma.$transaction).toHaveBeenCalledOnce()
-      const checkCreate = prisma.check.create.mock.calls[0]?.[0]
-      expect(checkCreate?.data?.error).toBe('DNS timeout after 5000ms')
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        'monitor-1',
+        {
+          error: 'DNS timeout after 5000ms',
+          status: 'down',
+          responseTime: expect.any(Number),
+          details: { host: 'example.com', recordType: 'A', resolvedValue: null },
+        },
+      )
     })
   })
 
@@ -145,8 +170,14 @@ describe('DnsStrategy', () => {
 
       await strategy.check(monitor as any)
 
-      const checkCreate = prisma.check.create.mock.calls[0]?.[0]
-      expect(checkCreate?.data?.details?.resolvedValue).toBe('1.1.1.1, 8.8.8.8')
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          details: expect.objectContaining({
+            resolvedValue: '1.1.1.1, 8.8.8.8',
+          }),
+        }),
+      )
     })
 
     it('formats MX records as exchange:priority pairs', async () => {
@@ -158,9 +189,13 @@ describe('DnsStrategy', () => {
 
       await strategy.check(monitor as any)
 
-      const checkCreate = prisma.check.create.mock.calls[0]?.[0]
-      expect(checkCreate?.data?.details?.resolvedValue).toBe(
-        'mail.example.com:10, mail2.example.com:20',
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          details: expect.objectContaining({
+            resolvedValue: 'mail.example.com:10, mail2.example.com:20',
+          }),
+        }),
       )
     })
 
@@ -170,8 +205,14 @@ describe('DnsStrategy', () => {
 
       await strategy.check(monitor as any)
 
-      const checkCreate = prisma.check.create.mock.calls[0]?.[0]
-      expect(checkCreate?.data?.details?.resolvedValue).toBe('v=spf1 include:example.com ~all')
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          details: expect.objectContaining({
+            resolvedValue: 'v=spf1 include:example.com ~all',
+          }),
+        }),
+      )
     })
 
     it('formats CNAME records as plain strings', async () => {
@@ -180,8 +221,14 @@ describe('DnsStrategy', () => {
 
       await strategy.check(monitor as any)
 
-      const checkCreate = prisma.check.create.mock.calls[0]?.[0]
-      expect(checkCreate?.data?.details?.resolvedValue).toBe('alias.example.com')
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          details: expect.objectContaining({
+            resolvedValue: 'alias.example.com',
+          }),
+        }),
+      )
     })
 
     it('sets resolvedValue to null when DNS query fails', async () => {
@@ -190,8 +237,14 @@ describe('DnsStrategy', () => {
 
       await strategy.check(monitor as any)
 
-      const checkCreate = prisma.check.create.mock.calls[0]?.[0]
-      expect(checkCreate?.data?.details?.resolvedValue).toBeNull()
+      expect((BaseCheckStrategy.prototype as any).confirmCheckResult).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          details: expect.objectContaining({
+            resolvedValue: null,
+          }),
+        }),
+      )
     })
   })
 
@@ -202,8 +255,12 @@ describe('DnsStrategy', () => {
 
       await strategy.check(monitor as any)
 
-      const checkCreate = prisma.check.create.mock.calls[0]?.[0]
-      expect(checkCreate?.data?.error).toMatch(/does not exist/i)
+      expect((BaseCheckStrategy.prototype as any as any).confirmCheckResult).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          error: expect.stringMatching(/does not exist/i),
+        }),
+      )
     })
 
     it('stores a generic message for non-Error throws', async () => {
@@ -212,8 +269,12 @@ describe('DnsStrategy', () => {
 
       await strategy.check(monitor as any)
 
-      const checkCreate = prisma.check.create.mock.calls[0]?.[0]
-      expect(checkCreate?.data?.error).toMatch(/DNS query failed/i)
+      expect((BaseCheckStrategy.prototype as any as any).confirmCheckResult).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          error: expect.stringMatching(/DNS query failed/i),
+        }),
+      )
     })
   })
 })

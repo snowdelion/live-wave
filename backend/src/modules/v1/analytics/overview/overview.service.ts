@@ -22,7 +22,7 @@ export class OverviewService {
   async getOverview(userId: string, monitorId: string, days: number = 7) {
     const monitor = await this.prisma.monitor.findUnique({
       where: { id: monitorId },
-      select: { userId: true, name: true },
+      select: { userId: true },
     })
     if (!monitor || monitor.userId !== userId) {
       this.logger.warn('Monitor not found or access forbidden', {
