@@ -125,8 +125,6 @@ describe('MonitorRow', () => {
     render(<MonitorRow monitor={emptyMonitor} onEdit={onEdit} setDeleteTarget={setDeleteTarget} />)
 
     const fallbacks = screen.getAllByText('-')
-    expect(fallbacks.length).toBeGreaterThanOrEqual(2)
-
-    expect(screen.getByText('0s ago')).toBeInTheDocument()
+    expect(fallbacks.length).toBe(3)
   })
 })

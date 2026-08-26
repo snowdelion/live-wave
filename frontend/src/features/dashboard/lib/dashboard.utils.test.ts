@@ -101,9 +101,9 @@ describe('dashboard.utils', () => {
       expect(getResponseColor(MonitorType.DNS, null, true)).toBe('#f44336')
     })
 
-    it('returns default green if avg is null and monitor is up', () => {
-      expect(getResponseColor(MonitorType.HTTP, null, false)).toBe('#4caf50')
-      expect(getResponseColor(MonitorType.TCP, null, false)).toBe('#4caf50')
+    it('returns default white if avg is null and monitor is up', () => {
+      expect(getResponseColor(MonitorType.HTTP, null, false)).toBe('#e8f5e8')
+      expect(getResponseColor(MonitorType.TCP, null, false)).toBe('#e8f5e8')
     })
 
     it('evaluates HTTP thresholds correctly (ok: 500, warn: 1000)', () => {

@@ -34,7 +34,7 @@ export const getResponseColor = (
   isDown: boolean,
 ): string => {
   if (isDown) return '#f44336'
-  if (avg === null) return '#4caf50'
+  if (avg === null) return '#e8f5e8'
 
   const thresholds: Record<MonitorType, { ok: number; warn: number }> = {
     HTTP: { ok: 500, warn: 1000 },
