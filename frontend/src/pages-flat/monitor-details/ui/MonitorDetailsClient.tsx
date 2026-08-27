@@ -9,6 +9,7 @@ import {
   OverviewCards,
   PeriodSwitcher,
   UptimeChart,
+  MonitorNotFound,
 } from '@/features/monitor-details'
 import { ConfirmModal } from '@/shared/ui/ConfirmModal'
 
@@ -27,6 +28,7 @@ export function MonitorDetailsClient({ monitorId }: { monitorId: string }) {
     setPeriodDays,
     selectedIncident,
     setSelectedIncident,
+    isMonitorNotFound,
   } = useMonitorDetails(monitorId)
 
   return (
@@ -38,27 +40,32 @@ export function MonitorDetailsClient({ monitorId }: { monitorId: string }) {
       />
 
       <main className="flex-1 py-7 px-7.75 max-w-350 mx-auto w-full box-border">
-        <PeriodSwitcher
-          monitorId={monitorId}
-          periodDays={periodDays}
-          setPeriodDays={setPeriodDays}
-        />
+        {isMonitorNotFound && <MonitorNotFound monitorId={monitorId} />}
+        {!isMonitorNotFound && (
+          <>
+            <PeriodSwitcher
+              monitorId={monitorId}
+              periodDays={periodDays}
+              setPeriodDays={setPeriodDays}
+            />
 
-        <OverviewCards monitorId={monitorId} periodDays={periodDays} />
+            <OverviewCards monitorId={monitorId} periodDays={periodDays} />
 
-        <div className="grid md:grid-cols-2 gap-4 mb-6">
-          <UptimeChart monitorId={monitorId} periodDays={periodDays} />
-          <LatencyChart monitorId={monitorId} periodDays={periodDays} />
-        </div>
+            <div className="grid md:grid-cols-2 gap-4 mb-6">
+              <UptimeChart monitorId={monitorId} periodDays={periodDays} />
+              <LatencyChart monitorId={monitorId} periodDays={periodDays} />
+            </div>
 
-        <Incidents
-          monitorId={monitorId}
-          onIncidentChange={setSelectedIncident}
-          periodDays={periodDays}
-        />
+            <Incidents
+              monitorId={monitorId}
+              onIncidentChange={setSelectedIncident}
+              periodDays={periodDays}
+            />
+          </>
+        )}
       </main>
 
-      {selectedIncident && (
+      {selectedIncident && monitor && (
         <IncidentModal incident={selectedIncident} onClose={() => setSelectedIncident(null)} />
       )}
 
@@ -74,7 +81,7 @@ export function MonitorDetailsClient({ monitorId }: { monitorId: string }) {
         />
       )}
 
-      {showEdit && (
+      {showEdit && monitor && (
         <MonitorModal mode="update" onClose={() => setShowEdit(false)} initial={initialMonitor} />
       )}
     </div>
