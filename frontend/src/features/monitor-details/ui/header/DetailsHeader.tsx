@@ -6,11 +6,16 @@ import { MonitorStatus, useDetailedMonitor } from '@/entities/monitors'
 import { DetailsHeaderError } from './DetailsHeaderError'
 import { DetailsHeaderSkeleton } from './DetailsHeaderSkeleton'
 
-export function DetailsHeader({ monitorId, setShowEdit, setShowDeleteConfirm }: HeaderProps) {
+export function DetailsHeader({
+  monitorId,
+  setShowEdit,
+  setShowDeleteConfirm,
+  isMonitorNotFound,
+}: HeaderProps) {
   const { data: monitor, isPending, isError } = useDetailedMonitor(monitorId)
 
   if (isPending) return <DetailsHeaderSkeleton />
-  if (isError) return <DetailsHeaderError />
+  if (isError) return <DetailsHeaderError isMonitorNotFound={isMonitorNotFound} />
 
   const isDown = monitor.lastStatus === MonitorStatus.down
 
@@ -82,4 +87,5 @@ interface HeaderProps {
   monitorId: string
   setShowEdit: (value: boolean) => void
   setShowDeleteConfirm: (value: boolean) => void
+  isMonitorNotFound: boolean
 }

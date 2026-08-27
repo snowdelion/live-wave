@@ -37,6 +37,7 @@ export function MonitorDetailsClient({ monitorId }: { monitorId: string }) {
         monitorId={monitorId}
         setShowEdit={setShowEdit}
         setShowDeleteConfirm={setShowDeleteConfirm}
+        isMonitorNotFound={isMonitorNotFound}
       />
 
       <main className="flex-1 py-7 px-7.75 max-w-350 mx-auto w-full box-border">
