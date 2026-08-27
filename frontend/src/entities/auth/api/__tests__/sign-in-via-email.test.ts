@@ -71,7 +71,13 @@ describe('signInViaEmail', () => {
   })
 
   it('should propagate errors thrown by request', async () => {
-    requestMock.mockRejectedValueOnce(new AppError('SIGN_IN_EMAIL' as never, 'Invalid credentials'))
+    requestMock.mockRejectedValueOnce(
+      new AppError({
+        code: 'SIGN_IN_EMAIL' as never,
+        message: 'Invalid credentials',
+        statusCode: 500,
+      }),
+    )
 
     await expect(signInViaEmail(validBody as never)).rejects.toBeInstanceOf(AppError)
   })

@@ -75,7 +75,11 @@ describe('signInViaTelegram', () => {
 
   it('should propagate errors thrown by request', async () => {
     requestMock.mockRejectedValueOnce(
-      new AppError('SIGN_IN_TELEGRAM' as never, 'Telegram auth failed'),
+      new AppError({
+        code: 'SIGN_IN_TELEGRAM' as never,
+        message: 'Telegram auth failed',
+        statusCode: 500,
+      }),
     )
 
     await expect(signInViaTelegram(validBody as never)).rejects.toBeInstanceOf(AppError)

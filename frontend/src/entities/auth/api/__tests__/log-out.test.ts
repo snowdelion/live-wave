@@ -47,7 +47,9 @@ describe('logout', () => {
   })
 
   it('should propagate errors thrown by request', async () => {
-    requestMock.mockRejectedValueOnce(new AppError('LOGOUT' as never, 'Logout failed'))
+    requestMock.mockRejectedValueOnce(
+      new AppError({ code: 'LOGOUT' as never, message: 'Logout failed', statusCode: 500 }),
+    )
 
     await expect(logout()).rejects.toBeInstanceOf(AppError)
   })

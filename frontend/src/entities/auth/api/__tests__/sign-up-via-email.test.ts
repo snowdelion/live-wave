@@ -70,7 +70,11 @@ describe('signUpViaEmail', () => {
 
   it('should propagate errors thrown by request', async () => {
     requestMock.mockRejectedValueOnce(
-      new AppError('SIGN_UP_EMAIL' as never, 'Email already in use'),
+      new AppError({
+        code: 'SIGN_UP_EMAIL' as never,
+        message: 'Email already in use',
+        statusCode: 401,
+      }),
     )
 
     await expect(signUpViaEmail(validBody as never)).rejects.toBeInstanceOf(AppError)

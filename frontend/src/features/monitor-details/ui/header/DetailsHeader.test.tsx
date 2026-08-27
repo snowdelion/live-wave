@@ -38,6 +38,7 @@ describe('DetailsHeader', () => {
     monitorId,
     setShowEdit: mockSetShowEdit,
     setShowDeleteConfirm: mockSetShowDeleteConfirm,
+    isMonitorNotFound: false,
   }
 
   beforeEach(() => {
