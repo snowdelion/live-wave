@@ -74,7 +74,11 @@ describe('deleteMonitor', () => {
   })
 
   it('propagates errors thrown by request itself (e.g. network failure)', async () => {
-    const networkError = new AppError(ERROR_CODES.DELETE_MONITOR, 'Network error')
+    const networkError = new AppError({
+      code: ERROR_CODES.DELETE_MONITOR,
+      message: 'Network error',
+      statusCode: 500,
+    })
     mockedRequest.mockRejectedValue(networkError)
 
     await expect(deleteMonitor('monitor-123')).rejects.toBe(networkError)

@@ -42,7 +42,11 @@ async function processTelegramAuth(authData: Record<string, string | number>) {
 
   if (!res.ok) {
     const errorText = await res.text()
-    throw new AppError(ERROR_CODES.SIGN_IN_TELEGRAM, `Status ${res.status}: ${errorText}`)
+    throw new AppError({
+      code: ERROR_CODES.SIGN_IN_TELEGRAM,
+      message: `Status ${res.status}: ${errorText}`,
+      statusCode: res.status,
+    })
   }
 
   const rawData: unknown = await res.json()

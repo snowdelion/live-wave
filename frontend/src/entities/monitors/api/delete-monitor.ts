@@ -12,5 +12,9 @@ export async function deleteMonitor(monitorId: string): Promise<{ success: true 
   })
 
   if (res.status === 204 || res.status === 200) return { success: true }
-  throw new AppError(ERROR_CODES.DELETE_MONITOR, 'Failed to delete monitor')
+  throw new AppError({
+    code: ERROR_CODES.DELETE_MONITOR,
+    message: 'Failed to delete monitor',
+    statusCode: res.status,
+  })
 }

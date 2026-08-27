@@ -12,5 +12,9 @@ export async function deleteMe(): Promise<{ success: true }> {
   })
 
   if (res.status === 200 || res.status === 204) return { success: true }
-  throw new AppError(ERROR_CODES.DELETE_USER, 'Failed to delete user')
+  throw new AppError({
+    code: ERROR_CODES.DELETE_USER,
+    message: 'Failed to delete user',
+    statusCode: res.status,
+  })
 }
