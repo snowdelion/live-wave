@@ -1,9 +1,11 @@
-import { Activity, AlertCircle, ArrowLeft } from 'lucide-react'
+import { Activity, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
-export function DetailsHeaderError() {
+export function DetailsHeaderError({ isMonitorNotFound }: { isMonitorNotFound: boolean }) {
   return (
-    <header className="bg-[#0d120d] border-b border-b-[rgba(244,67,54,0.3)] px-6 sm:px-8 lg:pl-12 lg:pr-8 h-15 flex items-center justify-between sticky top-0 z-50">
+    <header
+      className={`bg-[#0d120d] border-b px-6 sm:px-8 lg:pl-12 lg:pr-8 h-15 flex items-center justify-between sticky top-0 z-50 ${isMonitorNotFound ? 'border-b-[rgb(0,230,118)]/10' : 'border-b-[rgba(244,67,54,0.3)]'}`}
+    >
       <div className="flex items-center gap-2">
         <Link
           href="/dashboard"
@@ -26,13 +28,6 @@ export function DetailsHeaderError() {
           <ArrowLeft size={16} />
           <span>Back to Dashboard</span>
         </Link>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <AlertCircle size={13} className="text-[#f44336]" />
-        <span className="font-jet-brains text-[0.6rem] sm:text-xs text-[#f44336]">
-          Failed to load monitor
-        </span>
       </div>
     </header>
   )

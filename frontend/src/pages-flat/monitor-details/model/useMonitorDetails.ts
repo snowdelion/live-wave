@@ -7,6 +7,7 @@ import {
   DnsRecordType,
   MonitorType,
 } from '@/entities/monitors'
+import { AppError } from '@/shared/api'
 
 export function useMonitorDetails(monitorId: string) {
   const [periodDays, setPeriodDays] = useState(7)
@@ -14,7 +15,7 @@ export function useMonitorDetails(monitorId: string) {
   const [showEdit, setShowEdit] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
-  const { data: monitor } = useDetailedMonitor(monitorId)
+  const { data: monitor, error: monitorError } = useDetailedMonitor(monitorId)
   const { mutate: deleteMonitor } = useDeleteMonitor()
 
   let host = ''
@@ -47,5 +48,6 @@ export function useMonitorDetails(monitorId: string) {
     setPeriodDays,
     selectedIncident,
     setSelectedIncident,
+    isMonitorNotFound: monitorError instanceof AppError && monitorError.statusCode === 404,
   }
 }

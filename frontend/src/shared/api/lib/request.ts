@@ -42,6 +42,7 @@ export async function request<T>({
     mergedHeaders.set('Authorization', `Bearer ${accessToken}`)
   }
 
+  let statusCode = 500
   async function execute(att: number): Promise<{ data: T; status: number }> {
     try {
       const response = await fetch(url, {
@@ -57,7 +58,12 @@ export async function request<T>({
         const refreshOk = await tryRefreshToken()
         if (!refreshOk) {
           useAuthStore.getState().clearAccessToken()
-          throw new AppError(ERROR_CODES.UNAUTHORIZED, 'Session expired')
+          statusCode = response.status
+          throw new AppError({
+            code: ERROR_CODES.UNAUTHORIZED,
+            message: 'Session expired',
+            statusCode,
+          })
         }
 
         const newToken = useAuthStore.getState().accessToken
@@ -66,7 +72,10 @@ export async function request<T>({
       }
 
       if (!response.ok) {
-        if (response.status === 499) throw new DOMException('Aborted', 'AbortError')
+        if (response.status === 499) {
+          statusCode = response.status
+          throw new DOMException('Aborted', 'AbortError')
+        }
         let errorMessage: string | undefined
         try {
           const errorBody: unknown = await response.json()
@@ -77,7 +86,8 @@ export async function request<T>({
         } catch {
           errorMessage = undefined
         }
-        throwResponseErrors(response.status, errorCode, errorMessage)
+        statusCode = response.status
+        throwResponseErrors(response.status, errorCode, statusCode, errorMessage)
       }
       if (response.status === 204) return { data: null as T, status: response.status }
 
@@ -86,8 +96,19 @@ export async function request<T>({
 
       return { data, status: response.status }
     } catch (e) {
-      const isTimeout = timeoutController.signal.aborted && (!signal || !signal.aborted)
-      if (isTimeout) throw new DOMException('Timed out', 'TimeoutError')
+      const isExternalAborted = signal?.aborted
+      const isInternalTimeout = timeoutController.signal.aborted && !isExternalAborted
+      if (isInternalTimeout) throw new DOMException('Timed out', 'TimeoutError')
+
+      const isTimeoutError = e instanceof Error && e.name === 'TimeoutError'
+      const isAbortError = e instanceof Error && e.name === 'AbortError'
+      if ((isTimeoutError || isAbortError) && !isExternalAborted)
+        throw new AppError({
+          code: ERROR_CODES.TIMEOUT,
+          message: 'Check your network connection',
+          statusCode: 408,
+        })
+
       throw e
     }
   }
@@ -97,7 +118,7 @@ export async function request<T>({
   } catch (e) {
     if (e instanceof DOMException && e.name === 'TimeoutError') throw e
 
-    throw handleApiError(e, errorCode, { isExternalSignal: !!signal })
+    throw handleApiError(e, errorCode, statusCode, { isExternalSignal: !!signal })
   } finally {
     clearTimeout(timeoutId)
   }

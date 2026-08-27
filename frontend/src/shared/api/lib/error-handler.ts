@@ -7,6 +7,7 @@ import type { ErrorCode } from '../config/error-codes'
 export function handleApiError(
   error: unknown,
   errorCode: ErrorCode = ERROR_CODES.UNKNOWN,
+  statusCode: number,
   { isExternalSignal = false }: { isExternalSignal?: boolean } = {},
 ): never {
   if (error instanceof ZodError) throwZodErrors(error)
@@ -21,17 +22,27 @@ export function handleApiError(
     const isExternalAbort = error.name === 'AbortError' && isExternalSignal
 
     if (isExternalAbort) throw error
-    if (isTimeout) throw new AppError(ERROR_CODES.TIMEOUT, 'Check your network connection')
+    if (isTimeout)
+      throw new AppError({
+        code: ERROR_CODES.TIMEOUT,
+        message: 'Check your network connection',
+        statusCode,
+      })
 
     const messages = [/failed to fetch/i, /network/i, /load/i, /connection/i]
     const isNetworkError = messages.some(msg => msg.test(error.message.toLowerCase()))
 
-    if (isNetworkError) throw new AppError(ERROR_CODES.NETWORK, 'Check your network connection')
+    if (isNetworkError)
+      throw new AppError({
+        code: ERROR_CODES.NETWORK,
+        message: 'Check your network connection',
+        statusCode,
+      })
 
-    throw new AppError(errorCode, error.message)
+    throw new AppError({ code: errorCode, message: error.message, statusCode })
   }
 
-  throw new AppError(errorCode, 'Unexpected error')
+  throw new AppError({ code: errorCode, message: 'Unexpected error', statusCode })
 }
 
 const ERROR_MESSAGES: Record<number, string> = {
@@ -45,19 +56,28 @@ const ERROR_MESSAGES: Record<number, string> = {
 export function throwResponseErrors(
   status: number,
   errorCode: ErrorCode = ERROR_CODES.UNKNOWN,
+  statusCode: number,
   customMessage?: string,
 ) {
-  if (customMessage) throw new AppError(errorCode, customMessage)
+  if (customMessage) throw new AppError({ code: errorCode, message: customMessage, statusCode })
   if (status >= 500 && status <= 504)
-    throw new AppError(errorCode, 'Service is temporarily unavailable')
+    throw new AppError({
+      code: errorCode,
+      message: 'Service is temporarily unavailable',
+      statusCode,
+    })
 
   const message = ERROR_MESSAGES[status] ?? `Failed to fetch data`
-  throw new AppError(errorCode, message)
+  throw new AppError({ code: errorCode, message, statusCode })
 }
 
 function throwZodErrors(error: ZodError) {
   const messages = error.issues
     .map(({ path, message }) => `${path.join('.')}: ${message}`)
     .join('; ')
-  throw new AppError(ERROR_CODES.VALIDATION, `Validation failed: ${messages}`)
+  throw new AppError({
+    code: ERROR_CODES.VALIDATION,
+    message: `Validation failed: ${messages}`,
+    statusCode: 400,
+  })
 }
