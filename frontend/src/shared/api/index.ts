@@ -1,4 +1,4 @@
-export { request } from './lib/request'
+export { request } from './lib/request/request'
 export { AppError } from './config/app-error'
 export { ERROR_CODES, type ErrorCode } from './config/error-codes'
 export { useAuthStore } from './lib/auth.store'
