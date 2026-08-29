@@ -1,4 +1,3 @@
-'use client'
 import { Features, Hero, CTA, Footer, LandingNavbar } from '@/features/landing'
 
 export default function LandingPage() {
