@@ -1,15 +1,11 @@
 import { Globe, Bell, BarChart2, Shield, Zap, Code2 } from 'lucide-react'
 
-import { useInView } from '../model/useInView'
+import { AnimatedOverlay } from './shared/AnimatedOverlay'
 
 export function Features() {
-  const { ref, isInView } = useInView()
-
   return (
-    <section ref={ref} id="features" className="relative bg-[#080a08] py-24 px-6">
-      <div
-        className={`absolute inset-0 z-10 bg-[#080a08] transition-opacity duration-1000 pointer-events-none ${isInView ? 'opacity-0' : 'opacity-100'}`}
-      />
+    <section id="features" className="relative bg-[#080a08] py-24 px-6">
+      <AnimatedOverlay />
       <div className="absolute z-15 top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-[rgba(0,230,118,0.3)] to-transparent" />
 
       <div className="max-w-275 m-auto">

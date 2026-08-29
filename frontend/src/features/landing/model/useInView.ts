@@ -1,8 +1,9 @@
+'use client'
 import { useEffect, useRef, useState } from 'react'
 import { useMediaQuery } from 'react-responsive'
 
 export function useInView() {
-  const ref = useRef<HTMLElement | null>(null)
+  const ref = useRef<HTMLDivElement | null>(null)
   const [isInView, setIsInView] = useState(false)
 
   const isMobile = useMediaQuery({ maxWidth: 639 })

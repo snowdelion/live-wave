@@ -1,5 +1,3 @@
-'use client'
-
 import { Activity } from 'lucide-react'
 import Link from 'next/link'
 
@@ -56,7 +54,7 @@ export function Footer() {
 const SECTIONS = [
   {
     label: 'Features',
-    Tag: 'a',
+    Tag: Link,
     href: '/#features',
   },
   {

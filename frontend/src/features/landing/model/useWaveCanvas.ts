@@ -1,45 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useMediaQuery } from 'react-responsive'
+import { useEffect, useRef } from 'react'
 
-export function useHero() {
+export function useWaveCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [uptimeBars, setUptimeBars] = useState<{ ok: boolean; height: number; id: number }[]>([])
-  const [uptimePercentage, setUptimePercentage] = useState<string | null>(null)
-
-  const isMobile = useMediaQuery({ maxWidth: 500 })
-  const isLargeMobile = useMediaQuery({ minWidth: 501, maxWidth: 639 })
-  const isSmallTablet = useMediaQuery({ minWidth: 640, maxWidth: 767 })
-  const isTablet = useMediaQuery({ minWidth: 768, maxWidth: 1023 })
-
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-
-  const getBarsLength = useMemo(() => {
-    if (isMobile) return 30
-    if (isLargeMobile) return 40
-    if (isSmallTablet) return 60
-    return 90
-  }, [isLargeMobile, isMobile, isSmallTablet])
-
-  const fullBars = useMemo(
-    () =>
-      Array.from({ length: 90 }, (_, i) => {
-        const ok = Math.random() > 0.08
-        return {
-          id: i,
-          ok,
-          height: ok ? 100 : Math.floor(Math.random() * 40 + 10),
-        }
-      }),
-    [],
-  )
-
-  useEffect(() => {
-    const bars = fullBars.slice(0, getBarsLength)
-    setUptimeBars(bars)
-    const upDays = bars.filter(bar => bar.ok).length
-    setUptimePercentage(((upDays / bars.length) * 100).toFixed(2))
-  }, [fullBars, getBarsLength])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -74,9 +36,7 @@ export function useHero() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
       const newMaxPoints = cssWidth
-      if (points.length > newMaxPoints) {
-        points = points.slice(points.length - newMaxPoints)
-      }
+      if (points.length > newMaxPoints) points = points.slice(points.length - newMaxPoints)
     }
 
     function drawWave() {
@@ -148,27 +108,5 @@ export function useHero() {
     }
   }, [])
 
-  const shouldShowDots = useMediaQuery({ minWidth: 768 }) && mounted
-  const dotsCoords = PULSE_DOTS.map(dot => {
-    if (!shouldShowDots) return undefined
-    const coords = isTablet ? 'md' : 'lg'
-
-    return {
-      left: `${dot[coords].x}%`,
-      top: `${dot[coords].y}%`,
-      delay: `${dot.delay}s`,
-    }
-  })
-
-  return { canvasRef, uptimeBars, uptimePercentage, dotsCoords, shouldShowDots }
+  return { canvasRef }
 }
-
-const PULSE_DOTS = [
-  { lg: { x: 18, y: 32 }, md: { x: 49, y: 22 }, delay: 0 },
-  { lg: { x: 42, y: 15 }, md: { x: 64, y: 5 }, delay: 0.4 },
-  { lg: { x: 83, y: 22 }, md: { x: 90, y: 8 }, delay: 1.2 },
-  { lg: { x: 31, y: 62 }, md: { x: 55, y: 52 }, delay: 0.6 },
-  { lg: { x: 67, y: 48 }, md: { x: 80, y: 38 }, delay: 0.8 },
-  { lg: { x: 56, y: 71 }, md: { x: 72, y: 61 }, delay: 1.0 },
-  { lg: { x: 76, y: 67 }, md: { x: 91, y: 57 }, delay: 0.2 },
-]

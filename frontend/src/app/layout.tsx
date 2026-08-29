@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Barlow_Condensed, Geist, Geist_Mono, Inter, JetBrains_Mono } from 'next/font/google'
 
 import './globals.css'
+import './animations.css'
 import { QueryProvider } from './providers/QueryProvider'
 
 const geistSans = Geist({

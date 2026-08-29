@@ -1,239 +1,28 @@
 import { act, render, renderHook, waitFor } from '@testing-library/react'
 
-import { useHero } from '../useHero'
+import { useWaveCanvas } from '../useWaveCanvas'
 
 function setViewportWidth(width: number) {
   globalThis.setMockViewportWidth(width)
 }
 
-beforeEach(() => {
-  setViewportWidth(1024)
-
-  vi.stubGlobal(
-    'requestAnimationFrame',
-    vi.fn((cb: FrameRequestCallback) => {
-      return setTimeout(() => cb(performance.now()), 0) as unknown as number
-    }),
-  )
-  vi.stubGlobal(
-    'cancelAnimationFrame',
-    vi.fn((id: number) => clearTimeout(id)),
-  )
-})
-
-afterEach(() => {
-  vi.unstubAllGlobals()
-  vi.restoreAllMocks()
-})
-
-describe('useHero - uptime bars', () => {
-  it('produces 90 bars on desktop width (>= 1024)', async () => {
-    setViewportWidth(1200)
-    const { result } = renderHook(() => useHero())
-
-    await waitFor(() => {
-      expect(result.current.uptimeBars).toHaveLength(90)
-    })
-  })
-
-  it('produces 30 bars on mobile width (<= 500)', async () => {
-    setViewportWidth(400)
-    const { result } = renderHook(() => useHero())
-
-    await waitFor(() => {
-      expect(result.current.uptimeBars).toHaveLength(30)
-    })
-  })
-
-  it('produces 40 bars on large-mobile width (501-639)', async () => {
-    setViewportWidth(600)
-    const { result } = renderHook(() => useHero())
-
-    await waitFor(() => {
-      expect(result.current.uptimeBars).toHaveLength(40)
-    })
-  })
-
-  it('produces 60 bars on small-tablet width (640-767)', async () => {
-    setViewportWidth(700)
-    const { result } = renderHook(() => useHero())
-
-    await waitFor(() => {
-      expect(result.current.uptimeBars).toHaveLength(60)
-    })
-  })
-
-  it('produces 90 bars on tablet width (768-1023, falls through to default)', async () => {
-    setViewportWidth(900)
-    const { result } = renderHook(() => useHero())
-
-    await waitFor(() => {
-      expect(result.current.uptimeBars).toHaveLength(90)
-    })
-  })
-
-  it('computes uptimePercentage consistent with the bars returned', async () => {
-    setViewportWidth(1200)
-    const { result } = renderHook(() => useHero())
-
-    await waitFor(() => {
-      expect(result.current.uptimePercentage).not.toBeNull()
-    })
-
-    const bars = result.current.uptimeBars
-    const expectedPct = ((bars.filter(b => b.ok).length / bars.length) * 100).toFixed(2)
-    expect(result.current.uptimePercentage).toBe(expectedPct)
-  })
-
-  it('assigns height 100 to ok bars and a value in [10, 50) to non-ok bars', async () => {
-    setViewportWidth(1200)
-    const { result } = renderHook(() => useHero())
-
-    await waitFor(() => {
-      expect(result.current.uptimeBars.length).toBeGreaterThan(0)
-    })
-
-    for (const bar of result.current.uptimeBars) {
-      if (bar.ok) {
-        expect(bar.height).toBe(100)
-      } else {
-        expect(bar.height).toBeGreaterThanOrEqual(10)
-        expect(bar.height).toBeLessThan(50)
-      }
-    }
-  })
-
-  it('assigns each bar a unique id matching its index', async () => {
-    setViewportWidth(1200)
-    const { result } = renderHook(() => useHero())
-
-    await waitFor(() => {
-      expect(result.current.uptimeBars.length).toBe(90)
-    })
-
-    result.current.uptimeBars.forEach((bar, i) => {
-      expect(bar.id).toBe(i)
-    })
-  })
-
-  it('handles the all-bars-down edge case without producing NaN%', () => {
-    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
-    setViewportWidth(1200)
-    const { result } = renderHook(() => useHero())
-
-    expect(result.current.uptimePercentage).toBe('0.00')
-    randomSpy.mockRestore()
-  })
-
-  it('handles the all-bars-up edge case (100% uptime)', () => {
-    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(1)
-    setViewportWidth(1200)
-    const { result } = renderHook(() => useHero())
-
-    expect(result.current.uptimePercentage).toBe('100.00')
-    randomSpy.mockRestore()
-  })
-})
-
-describe('useHero - dots / mounted / tablet logic', () => {
-  it('starts with shouldShowDots false synchronously before the mount effect flushes, even on desktop width', () => {
-    setViewportWidth(1200)
-    let firstRenderShouldShowDots: boolean | undefined
-    function Probe() {
-      const hero = useHero()
-      if (firstRenderShouldShowDots === undefined) {
-        firstRenderShouldShowDots = hero.shouldShowDots
-      }
-      return null
-    }
-    render(<Probe />)
-    expect(firstRenderShouldShowDots).toBe(false)
-  })
-
-  it('shows dots on desktop width after mount (shouldShowDots = true)', async () => {
-    setViewportWidth(1200)
-    const { result } = renderHook(() => useHero())
-
-    await waitFor(() => {
-      expect(result.current.shouldShowDots).toBe(true)
-    })
-
-    expect(result.current.dotsCoords).toHaveLength(7)
-    result.current.dotsCoords.forEach(coord => {
-      expect(coord).toBeDefined()
-      expect(coord).toHaveProperty('left')
-      expect(coord).toHaveProperty('top')
-      expect(coord).toHaveProperty('delay')
-    })
-  })
-
-  it('hides dots on mobile width (shouldShowDots = false) and all coords are undefined', async () => {
-    setViewportWidth(400)
-    const { result } = renderHook(() => useHero())
-
-    await waitFor(() => {
-      expect(result.current.uptimeBars.length).toBeGreaterThan(0)
-    })
-
-    expect(result.current.shouldShowDots).toBe(false)
-    result.current.dotsCoords.forEach(coord => {
-      expect(coord).toBeUndefined()
-    })
-  })
-
-  it('uses "md" coordinates when in the tablet range (768-1023)', async () => {
-    setViewportWidth(900)
-    const { result } = renderHook(() => useHero())
-
-    await waitFor(() => {
-      expect(result.current.shouldShowDots).toBe(true)
-    })
-
-    expect(result.current.dotsCoords[0]?.left).toBe('49%')
-  })
-
-  it('uses "lg" coordinates when above tablet range (>= 1024)', async () => {
-    setViewportWidth(1200)
-    const { result } = renderHook(() => useHero())
-
-    await waitFor(() => {
-      expect(result.current.shouldShowDots).toBe(true)
-    })
-
-    expect(result.current.dotsCoords[0]?.left).toBe('18%')
-  })
-
-  it('produces exactly 7 dot delay strings matching PULSE_DOTS source values', async () => {
-    setViewportWidth(1200)
-    const { result } = renderHook(() => useHero())
-
-    await waitFor(() => {
-      expect(result.current.shouldShowDots).toBe(true)
-    })
-
-    const expectedDelays = ['0s', '0.4s', '1.2s', '0.6s', '0.8s', '1s', '0.2s']
-    const actualDelays = result.current.dotsCoords.map(c => c?.delay)
-    expect(actualDelays).toEqual(expectedDelays)
-  })
-})
-
-describe('useHero - canvas wave animation effect', () => {
+describe('useWaveCanvas', () => {
   it('returns a canvasRef whose current is null before being attached to a DOM node', () => {
     setViewportWidth(1200)
-    const { result } = renderHook(() => useHero())
+    const { result } = renderHook(() => useWaveCanvas())
     expect(result.current.canvasRef.current).toBeNull()
   })
 
   it('does not throw when the ref is never attached to a canvas (ctx-not-found early return)', () => {
     setViewportWidth(1200)
-    expect(() => renderHook(() => useHero())).not.toThrow()
+    expect(() => renderHook(() => useWaveCanvas())).not.toThrow()
   })
 
   it('drives canvas drawing calls once attached to a real <canvas> and rAF fires', async () => {
     setViewportWidth(1200)
 
     function Harness() {
-      const { canvasRef } = useHero()
+      const { canvasRef } = useWaveCanvas()
       return <canvas ref={canvasRef} data-testid="hero-canvas" />
     }
 
@@ -283,7 +72,7 @@ describe('useHero - canvas wave animation effect', () => {
     setViewportWidth(1200)
 
     function Harness() {
-      const { canvasRef } = useHero()
+      const { canvasRef } = useWaveCanvas()
       return <canvas ref={canvasRef} />
     }
 
@@ -340,7 +129,7 @@ describe('useHero - canvas wave animation effect', () => {
     vi.stubGlobal('ResizeObserver', SpyResizeObserver)
 
     function Harness() {
-      const { canvasRef } = useHero()
+      const { canvasRef } = useWaveCanvas()
       return <canvas ref={canvasRef} />
     }
 
@@ -359,7 +148,7 @@ describe('useHero - canvas wave animation effect', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
 
     function Harness() {
-      const { canvasRef } = useHero()
+      const { canvasRef } = useWaveCanvas()
       return <canvas ref={canvasRef} />
     }
 
@@ -411,7 +200,7 @@ describe('useHero - canvas wave animation effect', () => {
     })
 
     function Harness() {
-      const { canvasRef } = useHero()
+      const { canvasRef } = useWaveCanvas()
       return <canvas ref={canvasRef} />
     }
 
@@ -480,7 +269,7 @@ describe('useHero - canvas wave animation effect', () => {
     })
 
     function Harness() {
-      const { canvasRef } = useHero()
+      const { canvasRef } = useWaveCanvas()
       return <canvas ref={canvasRef} />
     }
 
