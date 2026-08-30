@@ -1,11 +1,6 @@
 import crypto from 'crypto'
 
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common'
+import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
 import bcrypt from 'bcrypt'
@@ -43,7 +38,7 @@ export class AuthService {
     const existing = await this.prisma.user.count({ where: { email: dto.email.toLowerCase() } })
     if (existing > 0) {
       this.logger.warn('User attempted to register using an existing email', { email: dto.email })
-      throw new ForbiddenException('Email already taken')
+      throw new ConflictException('Email already taken')
     }
 
     const hashedPassword = await bcrypt.hash(dto.password.trim(), 10)
@@ -51,7 +46,6 @@ export class AuthService {
       data: { email: dto.email.toLowerCase(), password: hashedPassword },
       select: { id: true, email: true },
     })
-    if (!newUser.email) throw new BadRequestException('Email not found')
 
     this.logger.log('User registered via email', { userId: newUser.id, email: newUser.email })
     const { accessToken, refreshToken } = await this.generateTokens({
@@ -68,19 +62,19 @@ export class AuthService {
     })
     if (!user || !user.password || !user.email) {
       this.logger.warn('Failed sign-in: user not found', { email: dto.email })
-      throw new ForbiddenException('Incorrect email or password')
+      throw new UnauthorizedException('Incorrect email or password')
     }
 
-    const isValid = await bcrypt.compare(dto.password.trim(), user.password.trim())
+    const isValid = await bcrypt.compare(dto.password, user.password)
     if (!isValid) {
       this.logger.warn('Failed sign-in: invalid password', { email: user.email })
-      throw new ForbiddenException('Incorrect email or password')
+      throw new UnauthorizedException('Incorrect email or password')
     }
 
     this.logger.log('User signed in via email', { userId: user.id, email: user.email })
     const { accessToken, refreshToken } = await this.generateTokens({
       userId: user.id,
-      email: user.email?.toLowerCase(),
+      email: user.email.toLowerCase(),
     })
     return { accessToken, refreshToken }
   }
@@ -169,7 +163,7 @@ export class AuthService {
     telegramId,
   }: {
     userId: string
-    email?: string
+    email?: string | null
     telegramId?: string | null
   }) {
     const payload = { sub: userId, email, telegramId }

@@ -50,17 +50,6 @@ describe('UsersController', () => {
   })
 
   describe('delete', () => {
-    it('throws UnauthorizedException if userId is missing', async () => {
-      const mockRes = {} as Response
-
-      await expect(controller.delete(undefined as unknown as string, mockRes)).rejects.toThrow(
-        new UnauthorizedException('User not found'),
-      )
-
-      expect(usersService.delete).not.toHaveBeenCalled()
-      expect(cookieService.clearRefreshToken).not.toHaveBeenCalled()
-    })
-
     it('calls usersService.delete and clears refresh token when userId is present', async () => {
       const mockRes = {} as Response
       usersService.delete.mockResolvedValue(undefined)

@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common'
+import {
+  BadRequestException,
+  ForbiddenException,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common'
 import { Method, type Monitor, MonitorType, RecordType, type PrismaClient } from '@prisma/client'
 
 import type { PrismaService } from '@/shared/prisma/prisma.service'
@@ -479,14 +484,16 @@ describe('update', () => {
     await expect(service.update(USER_ID, MONITOR_ID, {})).rejects.toThrow(NotFoundException)
   })
 
-  it('throws BadRequestException when HTTP monitor has no URL', async () => {
+  it('throws InternalServerErrorException when HTTP monitor has no URL', async () => {
     vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue({
       ...existingHttpMonitor,
       httpMonitor: null,
     } as any)
 
     const service = makeService()
-    await expect(service.update(USER_ID, MONITOR_ID, {})).rejects.toThrow(BadRequestException)
+    await expect(service.update(USER_ID, MONITOR_ID, {})).rejects.toThrow(
+      InternalServerErrorException,
+    )
   })
 
   describe('ICMP', () => {
@@ -532,14 +539,16 @@ describe('update', () => {
       })
     })
 
-    it('throws BadRequestException when ICMP monitor has no host', async () => {
+    it('throws InternalServerErrorException when ICMP monitor has no host', async () => {
       vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue({
         ...existingIcmpMonitor,
         icmpMonitor: null,
       } as any)
 
       const service = makeService()
-      await expect(service.update(USER_ID, MONITOR_ID, {})).rejects.toThrow(BadRequestException)
+      await expect(service.update(USER_ID, MONITOR_ID, {})).rejects.toThrow(
+        InternalServerErrorException,
+      )
     })
   })
 
@@ -587,14 +596,16 @@ describe('update', () => {
       })
     })
 
-    it('throws BadRequestException when TCP monitor has no host', async () => {
+    it('throws InternalServerErrorException when TCP monitor has no host', async () => {
       vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue({
         ...existingTcpMonitor,
         tcpMonitor: null,
       } as any)
 
       const service = makeService()
-      await expect(service.update(USER_ID, MONITOR_ID, {})).rejects.toThrow(BadRequestException)
+      await expect(service.update(USER_ID, MONITOR_ID, {})).rejects.toThrow(
+        InternalServerErrorException,
+      )
     })
 
     it('throws BadRequestException when TCP monitor has no port', async () => {
@@ -656,25 +667,29 @@ describe('update', () => {
       })
     })
 
-    it('throws BadRequestException when DNS monitor data is missing', async () => {
+    it('throws InternalServerErrorException when DNS monitor data is missing', async () => {
       vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue({
         ...existingDnsMonitor,
         dnsMonitor: null,
       } as any)
 
       const service = makeService()
-      await expect(service.update(USER_ID, MONITOR_ID, {})).rejects.toThrow(BadRequestException)
+      await expect(service.update(USER_ID, MONITOR_ID, {})).rejects.toThrow(
+        InternalServerErrorException,
+      )
     })
   })
 
-  it('throws BadRequestException for an unknown monitor type', async () => {
+  it('throws InternalServerErrorException for an unknown monitor type', async () => {
     vi.mocked(mockPrisma.monitor.findUnique).mockResolvedValue({
       ...existingHttpMonitor,
       type: 'UNKNOWN',
     } as any)
 
     const service = makeService()
-    await expect(service.update(USER_ID, MONITOR_ID, {})).rejects.toThrow(BadRequestException)
+    await expect(service.update(USER_ID, MONITOR_ID, {})).rejects.toThrow(
+      InternalServerErrorException,
+    )
   })
 })
 

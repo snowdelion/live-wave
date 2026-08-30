@@ -5,8 +5,17 @@ import { GetMeResponseDto } from './dto/get-me-response.dto'
 export const deleteDocs = {
   summary: 'Completely deletes account',
   description: 'Permanently deletes the user account and all associated data',
-  extraResponses: [{ status: HttpStatus.NO_CONTENT }],
-  isProtected: true,
+  extraResponses: [
+    { status: HttpStatus.NO_CONTENT },
+    {
+      example: {
+        message: 'Access denied',
+        error: 'Forbidden',
+        statusCode: HttpStatus.FORBIDDEN,
+      },
+      status: HttpStatus.FORBIDDEN,
+    },
+  ],
 }
 
 export const getMeDocs = {

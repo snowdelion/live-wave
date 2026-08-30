@@ -8,15 +8,6 @@ import {
   TokensResponseDto,
 } from './dto/responses/access-token-response.dto'
 
-const FORBIDDEN_EXAMPLE = {
-  example: {
-    message: 'Access denied',
-    error: 'Forbidden',
-    statusCode: HttpStatus.FORBIDDEN,
-  },
-  status: HttpStatus.FORBIDDEN,
-}
-
 export const signUpEmailDocs = {
   summary: 'Registers a new account via Email',
   description:
@@ -26,7 +17,14 @@ export const signUpEmailDocs = {
       type: AccessTokenResponseDto,
       status: HttpStatus.CREATED,
     },
-    FORBIDDEN_EXAMPLE,
+    {
+      example: {
+        message: 'Email already taken',
+        error: 'Conflict',
+        statusCode: HttpStatus.CONFLICT,
+      },
+      status: HttpStatus.CONFLICT,
+    },
   ],
   hasBadRequest: true,
   bodyType: SignUpEmailDto,
@@ -41,8 +39,8 @@ export const signInEmailDocs = {
       type: AccessTokenResponseDto,
       status: HttpStatus.OK,
     },
-    FORBIDDEN_EXAMPLE,
   ],
+  isProtected: true,
   hasBadRequest: true,
   bodyType: SignInEmailDto,
 }

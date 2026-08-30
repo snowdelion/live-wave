@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common'
+import { BadRequestException, InternalServerErrorException } from '@nestjs/common'
 import {
   type DnsMonitor,
   type HttpMonitor,
@@ -96,7 +96,8 @@ export async function handleHttpTransaction(
     where: { id },
     select: { httpMonitor: true, type: true },
   })
-  if (!updatedHttpMonitor) throw new Error('HTTP monitor not found after update')
+  if (!updatedHttpMonitor)
+    throw new InternalServerErrorException('HTTP monitor not found after update')
 
   return updatedHttpMonitor as Monitor & { httpMonitor: HttpMonitor }
 }
@@ -123,7 +124,8 @@ export async function handleIcmpTransaction(
     where: { id },
     select: { icmpMonitor: true, type: true },
   })
-  if (!updatedIcmpMonitor) throw new Error('HTTP monitor not found after update')
+  if (!updatedIcmpMonitor)
+    throw new InternalServerErrorException('HTTP monitor not found after update')
 
   return updatedIcmpMonitor as Monitor & { icmpMonitor: IcmpMonitor }
 }
@@ -151,7 +153,8 @@ export async function handleTcpTransaction(
     where: { id },
     select: { tcpMonitor: true, type: true },
   })
-  if (!updatedTcpMonitor) throw new Error('HTTP monitor not found after update')
+  if (!updatedTcpMonitor)
+    throw new InternalServerErrorException('HTTP monitor not found after update')
 
   return updatedTcpMonitor as Monitor & { tcpMonitor: TcpMonitor }
 }
@@ -179,7 +182,8 @@ export async function handleDnsTransaction(
     where: { id },
     select: { dnsMonitor: true, type: true },
   })
-  if (!updatedDnsMonitor) throw new Error('HTTP monitor not found after update')
+  if (!updatedDnsMonitor)
+    throw new InternalServerErrorException('HTTP monitor not found after update')
 
   return updatedDnsMonitor as Monitor & { dnsMonitor: DnsMonitor }
 }
@@ -205,5 +209,5 @@ export const getDomainByType = ({
   if (type === MonitorType.ICMP && host) return host
   if (type === MonitorType.TCP && host && port) return `${host}:${port}`
   if (type === MonitorType.DNS && host) return host
-  throw new BadRequestException(`invalid domain setup for ${type}`)
+  throw new InternalServerErrorException(`invalid domain setup for ${type}`)
 }
