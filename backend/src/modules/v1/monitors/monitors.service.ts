@@ -1,7 +1,7 @@
 import {
-  BadRequestException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common'
 import {
@@ -168,7 +168,7 @@ export class MonitorsService {
     if (rest.type === MonitorType.ICMP) return { ...rest, icmpMonitor, domain }
     if (rest.type === MonitorType.TCP) return { ...rest, tcpMonitor, domain }
     if (rest.type === MonitorType.DNS) return { ...rest, dnsMonitor, domain }
-    return { rest, domain }
+    return { ...rest, domain }
   }
 
   async update(userId: string, id: string, dto: UpdateMonitorDto) {
@@ -197,7 +197,7 @@ export class MonitorsService {
       case MonitorType.HTTP:
         if (!existing.httpMonitor) {
           this.logger.warn('httpMonitor data is missing', { monitorId: id, userId })
-          throw new BadRequestException('HTTP monitor data missing')
+          throw new InternalServerErrorException('HTTP monitor data missing')
         }
         return await this.updateMonitor<{ httpMonitor: HttpMonitor }>(
           id,
@@ -211,7 +211,7 @@ export class MonitorsService {
       case MonitorType.ICMP:
         if (!existing.icmpMonitor) {
           this.logger.warn('icmpMonitor data is missing', { monitorId: id, userId })
-          throw new BadRequestException('ICMP monitor data missing')
+          throw new InternalServerErrorException('ICMP monitor data missing')
         }
         return await this.updateMonitor<{ icmpMonitor: IcmpMonitor }>(
           id,
@@ -225,7 +225,7 @@ export class MonitorsService {
       case MonitorType.TCP:
         if (!existing.tcpMonitor) {
           this.logger.warn('tcpMonitor data is missing', { monitorId: id, userId })
-          throw new BadRequestException('TCP monitor data missing')
+          throw new InternalServerErrorException('TCP monitor data missing')
         }
         return await this.updateMonitor<{ tcpMonitor: TcpMonitor }>(
           id,
@@ -239,7 +239,7 @@ export class MonitorsService {
       case MonitorType.DNS:
         if (!existing.dnsMonitor) {
           this.logger.warn('dnsMonitor data is missing', { monitorId: id, userId })
-          throw new BadRequestException('DNS monitor data missing')
+          throw new InternalServerErrorException('DNS monitor data missing')
         }
         return await this.updateMonitor<{ dnsMonitor: DnsMonitor }>(
           id,
@@ -252,7 +252,7 @@ export class MonitorsService {
 
       default:
         this.logger.warn('Unknown monitor type', { monitorType: existing.type, userId })
-        throw new BadRequestException(`Unknown monitor type`)
+        throw new InternalServerErrorException(`Unknown monitor type`)
     }
   }
 

@@ -1,6 +1,6 @@
 import crypto from 'crypto'
 
-import { ForbiddenException, BadRequestException, UnauthorizedException } from '@nestjs/common'
+import { UnauthorizedException, ConflictException } from '@nestjs/common'
 import type { ConfigService } from '@nestjs/config'
 import type { JwtService } from '@nestjs/jwt'
 import bcrypt from 'bcrypt'
@@ -67,10 +67,10 @@ describe('AuthService', () => {
   describe('signUpEmail', () => {
     const dto = { email: 'Test@Example.com', password: '  password123  ' }
 
-    it('throws ForbiddenException if email already taken', async () => {
+    it('throws ConflictException if email already taken', async () => {
       vi.mocked(prisma.user.count).mockResolvedValue(1)
 
-      await expect(service.signUpEmail(dto as any)).rejects.toThrow(ForbiddenException)
+      await expect(service.signUpEmail(dto as any)).rejects.toThrow(ConflictException)
       expect(prisma.user.count).toHaveBeenCalledWith({
         where: { email: 'test@example.com' },
       })
@@ -93,14 +93,6 @@ describe('AuthService', () => {
         select: { id: true, email: true },
       })
       expect(result).toEqual({ accessToken: 'signed-token', refreshToken: 'signed-token' })
-    })
-
-    it('throws BadRequestException if created user has no email', async () => {
-      vi.mocked(prisma.user.count).mockResolvedValue(0)
-      ;(bcrypt.hash as Mock).mockResolvedValue('hashed-pw')
-      vi.mocked(prisma.user.create).mockResolvedValue({ id: 'user-1', email: null } as any)
-
-      await expect(service.signUpEmail(dto as any)).rejects.toThrow(BadRequestException)
     })
 
     it('generates tokens and stores hashed refresh token in redis after signup', async () => {
@@ -126,23 +118,23 @@ describe('AuthService', () => {
   describe('signInEmail', () => {
     const dto = { email: 'Test@Example.com', password: '  password123  ' }
 
-    it('throws ForbiddenException if user not found or has no password', async () => {
+    it('throws UnauthorizedException if user not found or has no password', async () => {
       vi.mocked(prisma.user.findUnique).mockResolvedValue(null)
 
-      await expect(service.signInEmail(dto as any)).rejects.toThrow(ForbiddenException)
+      await expect(service.signInEmail(dto as any)).rejects.toThrow(UnauthorizedException)
     })
 
-    it('throws ForbiddenException if user has no password set', async () => {
+    it('throws UnauthorizedException if user has no password set', async () => {
       vi.mocked(prisma.user.findUnique).mockResolvedValue({
         id: 'u1',
         email: 'test@example.com',
         password: null,
       } as any)
 
-      await expect(service.signInEmail(dto as any)).rejects.toThrow(ForbiddenException)
+      await expect(service.signInEmail(dto as any)).rejects.toThrow(UnauthorizedException)
     })
 
-    it('throws ForbiddenException if password is invalid', async () => {
+    it('throws UnauthorizedException if password is invalid', async () => {
       vi.mocked(prisma.user.findUnique).mockResolvedValue({
         id: 'u1',
         email: 'test@example.com',
@@ -150,11 +142,11 @@ describe('AuthService', () => {
       } as any)
       ;(bcrypt.compare as Mock).mockResolvedValue(false)
 
-      await expect(service.signInEmail(dto as any)).rejects.toThrow(ForbiddenException)
-      expect(bcrypt.compare).toHaveBeenCalledWith('password123', 'hashed-pw')
+      await expect(service.signInEmail(dto as any)).rejects.toThrow(UnauthorizedException)
+      expect(bcrypt.compare).toHaveBeenCalledWith('  password123  ', 'hashed-pw')
     })
 
-    it('throws ForbiddenException if user has no email', async () => {
+    it('throws UnauthorizedException if user has no email', async () => {
       vi.mocked(prisma.user.findUnique).mockResolvedValue({
         id: 'u1',
         email: null,
@@ -162,7 +154,7 @@ describe('AuthService', () => {
       } as any)
       ;(bcrypt.compare as Mock).mockResolvedValue(true)
 
-      await expect(service.signInEmail(dto as any)).rejects.toThrow(ForbiddenException)
+      await expect(service.signInEmail(dto as any)).rejects.toThrow(UnauthorizedException)
     })
 
     it('returns tokens on successful sign in', async () => {

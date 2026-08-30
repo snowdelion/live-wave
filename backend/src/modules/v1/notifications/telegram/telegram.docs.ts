@@ -7,6 +7,15 @@ import {
 } from './dto/telegram-link-unlink-response.dto'
 import { TelegramSettingsResponseDto } from './dto/telegram-settings-response.dto'
 
+const FORBIDDEN_EXAMPLE = {
+  example: {
+    message: 'Access denied',
+    error: 'Forbidden',
+    statusCode: HttpStatus.FORBIDDEN,
+  },
+  status: HttpStatus.FORBIDDEN,
+}
+
 export const linkTelegramDocs = {
   summary: 'Link Telegram chat to receive notifications',
   description:
@@ -16,6 +25,15 @@ export const linkTelegramDocs = {
       status: HttpStatus.CREATED,
       description: 'Chat linked successfully',
       type: TelegramLinkResponseDto,
+    },
+    {
+      status: HttpStatus.CONFLICT,
+      description: '',
+      example: {
+        message: 'Telegram already linked',
+        error: 'Conflict',
+        statusCode: HttpStatus.CONFLICT,
+      },
     },
   ],
 }
@@ -42,6 +60,7 @@ export const unlinkTelegramDocs = {
       description: 'Chat unlinked successfully',
       type: TelegramUnlinkResponseDto,
     },
+    FORBIDDEN_EXAMPLE,
   ],
 }
 
@@ -55,6 +74,7 @@ export const toggleAlertTelegramDocs = {
       description: 'Notification status toggled successfully',
       type: TelegramAlertResponseDto,
     },
+    FORBIDDEN_EXAMPLE,
   ],
 }
 

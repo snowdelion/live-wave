@@ -1,10 +1,10 @@
 import { randomBytes } from 'crypto'
 
 import {
-  BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
-  NotFoundException,
+  InternalServerErrorException,
   OnApplicationBootstrap,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
@@ -49,7 +49,7 @@ export class TelegramService implements OnApplicationBootstrap {
         hasBotUsername: !!this.botUsername,
         hasBotToken: !!this.botToken,
       })
-      throw new BadRequestException('Telegram bot token or bot username not set')
+      throw new InternalServerErrorException('Telegram bot token or bot username not set')
     }
 
     const existing = await this.prisma.user.findUnique({
@@ -61,7 +61,7 @@ export class TelegramService implements OnApplicationBootstrap {
         userId,
         telegramId: existing.telegramId,
       })
-      throw new BadRequestException('Telegram already linked')
+      throw new ConflictException('Telegram already linked')
     }
 
     const token = randomBytes(32).toString('hex')
@@ -201,7 +201,7 @@ export class TelegramService implements OnApplicationBootstrap {
         telegramId: existingUser.telegramId,
       })
       throw new ForbiddenException(
-        "You cannot unlink Telegram because you don't have an email associated with your account",
+        "You can't unlink Telegram because you don't have an email associated with your account",
       )
     }
 
@@ -222,13 +222,14 @@ export class TelegramService implements OnApplicationBootstrap {
       })
       if (!oldAlert?.telegramChatId) {
         this.logger.warn('Tried to toggle alert without linked Telegram', { userId })
-        throw new NotFoundException('Telegram chat is not linked. Link your chat first')
+        throw new ForbiddenException('Telegram chat is not linked. Link your chat first')
       }
       const newEnabled = !oldAlert.enabled
 
-      const updatedAlert = await this.prisma.alert.update({
+      const updatedAlert = await this.prisma.alert.upsert({
         where: { userId },
-        data: { enabled: newEnabled },
+        update: { enabled: newEnabled },
+        create: { userId, enabled: newEnabled, telegramChatId: oldAlert.telegramChatId },
         select: { enabled: true },
       })
 
@@ -250,7 +251,6 @@ export class TelegramService implements OnApplicationBootstrap {
         logger: this.logger,
         context: `toggle alert for ${userId}`,
         e,
-        exception: Error,
         exceptionContext: 'No active Telegram alert link found',
         loggerType: 'warn',
       })
@@ -269,7 +269,7 @@ export class TelegramService implements OnApplicationBootstrap {
 
     for (let att = 1; att <= retries; att++) {
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort, 5000)
+      const timeout = setTimeout(() => controller.abort(), 5000)
 
       try {
         const res = await fetch(`${this.baseUrl}/sendMessage`, {
@@ -292,6 +292,7 @@ export class TelegramService implements OnApplicationBootstrap {
             statusCode: res.status,
             message: errorText,
           })
+          if (res.status >= 400 && res.status < 500 && res.status !== 429) return false
           throw new Error(`Telegram API error: ${res.status} ${errorText}`)
         }
 

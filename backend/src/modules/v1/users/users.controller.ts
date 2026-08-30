@@ -1,13 +1,4 @@
-import {
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Res,
-  UnauthorizedException,
-  UseGuards,
-} from '@nestjs/common'
+import { Controller, Delete, Get, HttpCode, HttpStatus, Res, UseGuards } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
 import { seconds, Throttle } from '@nestjs/throttler'
 import { Response } from 'express'
@@ -40,7 +31,6 @@ export class UsersController {
   @Throttle({ short: { ttl: seconds(60), limit: 20 } })
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@UserId() userId: string, @Res({ passthrough: true }) res: Response) {
-    if (!userId) throw new UnauthorizedException('User not found')
     await this.usersService.delete(userId)
     this.cookieService.clearRefreshToken(res)
   }

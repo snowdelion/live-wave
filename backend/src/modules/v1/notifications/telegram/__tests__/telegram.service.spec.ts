@@ -1,6 +1,10 @@
 import { randomBytes } from 'crypto'
 
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common'
+import {
+  BadRequestException,
+  ForbiddenException,
+  InternalServerErrorException,
+} from '@nestjs/common'
 
 import { REDIS_KEYS } from '@/shared/redis/redis.constants'
 
@@ -31,6 +35,7 @@ function makeFetchResponse(ok: boolean, body: unknown = {}, status = 200) {
 const mockPrisma = {
   user: {
     findUnique: vi.fn(),
+    update: vi.fn(),
   },
   alert: {
     upsert: vi.fn(),
@@ -39,6 +44,7 @@ const mockPrisma = {
     update: vi.fn(),
     create: vi.fn(),
   },
+  $transaction: vi.fn(),
 }
 
 const mockConfig = {
@@ -99,7 +105,7 @@ describe('TelegramService', () => {
   })
 
   describe('linkChatId', () => {
-    it('throws BadRequestException if bot config is missing', async () => {
+    it('throws InternalServerErrorException if bot config is missing', async () => {
       const configNoToken = { get: vi.fn().mockReturnValue(undefined) }
       const s = new TelegramService(
         mockPrisma as any,
@@ -108,7 +114,7 @@ describe('TelegramService', () => {
         mockLogger as any,
       )
 
-      await expect(s.linkChatId('u1')).rejects.toThrow(BadRequestException)
+      await expect(s.linkChatId('u1')).rejects.toThrow(InternalServerErrorException)
     })
 
     it('throws BadRequestException if telegram is already linked', async () => {
@@ -248,8 +254,12 @@ describe('TelegramService', () => {
       expect(mockPrisma.alert.upsert).not.toHaveBeenCalled()
     })
 
-    it('upserts alert to disable and clear chatId', async () => {
+    it('upserts alert to disable and clear chatId inside a transaction', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({ telegramId: '42', email: 'a@b.com' })
+
+      mockPrisma.$transaction.mockImplementation(async callback => {
+        return await callback(mockPrisma)
+      })
 
       await service.unlinkChatId('u1')
 
@@ -265,7 +275,7 @@ describe('TelegramService', () => {
   describe('toggleAlert', () => {
     it('enables alert and sends an enabled message', async () => {
       mockPrisma.alert.findUnique.mockResolvedValue({ enabled: false, telegramChatId: '42' })
-      mockPrisma.alert.update.mockResolvedValue({ enabled: true })
+      mockPrisma.alert.upsert.mockResolvedValue({ enabled: true })
       vi.mocked(global.fetch).mockResolvedValue(makeFetchResponse(true))
 
       const result = await service.toggleAlert('u1')
@@ -277,7 +287,7 @@ describe('TelegramService', () => {
 
     it('disables alert and sends a disabled message', async () => {
       mockPrisma.alert.findUnique.mockResolvedValue({ enabled: true, telegramChatId: '42' })
-      mockPrisma.alert.update.mockResolvedValue({ enabled: false })
+      mockPrisma.alert.upsert.mockResolvedValue({ enabled: false })
       vi.mocked(global.fetch).mockResolvedValue(makeFetchResponse(true))
 
       const result = await service.toggleAlert('u1')
@@ -287,22 +297,22 @@ describe('TelegramService', () => {
       expect(body.text).toMatch(/disabled notifications/)
     })
 
-    it('throws NotFoundException when no telegramChatId is linked', async () => {
+    it('throws ForbiddenException when no telegramChatId is linked', async () => {
       mockPrisma.alert.findUnique.mockResolvedValue({ enabled: true, telegramChatId: null })
 
-      await expect(service.toggleAlert('u1')).rejects.toThrow(NotFoundException)
+      await expect(service.toggleAlert('u1')).rejects.toThrow(ForbiddenException)
       expect(mockPrisma.alert.update).not.toHaveBeenCalled()
     })
 
-    it('throws NotFoundException when no alert row exists at all', async () => {
+    it('throws ForbiddenException when no alert row exists at all', async () => {
       mockPrisma.alert.findUnique.mockResolvedValue(null)
 
-      await expect(service.toggleAlert('u1')).rejects.toThrow(NotFoundException)
+      await expect(service.toggleAlert('u1')).rejects.toThrow(ForbiddenException)
     })
 
     it('logs a warning but does not throw when message send fails after toggle', async () => {
       mockPrisma.alert.findUnique.mockResolvedValue({ enabled: false, telegramChatId: '42' })
-      mockPrisma.alert.update.mockResolvedValue({ enabled: true })
+      mockPrisma.alert.upsert.mockResolvedValue({ enabled: true })
       vi.mocked(global.fetch).mockResolvedValue(makeFetchResponse(false, 'Bad Request', 400))
 
       const togglePromise = service.toggleAlert('u1')
