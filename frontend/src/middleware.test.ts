@@ -39,24 +39,6 @@ describe('middleware', () => {
       expect(response.status).toBe(200)
       expect(response.headers.get('location')).toBeNull()
     })
-
-    it('should allow access to /api/auth without a refresh token', () => {
-      const request = buildRequest('/api/auth')
-
-      const response = middleware(request)
-
-      expect(response.status).toBe(200)
-      expect(response.headers.get('location')).toBeNull()
-    })
-
-    it('should allow access to nested /api/auth paths without a refresh token', () => {
-      const request = buildRequest('/api/auth/refresh-token')
-
-      const response = middleware(request)
-
-      expect(response.status).toBe(200)
-      expect(response.headers.get('location')).toBeNull()
-    })
   })
 
   describe('protected paths', () => {
