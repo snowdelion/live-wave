@@ -1,9 +1,10 @@
+import type { Metadata } from 'next'
+
 import { LandingPage } from '@/pages-flat/landing'
 
 export default LandingPage
 
-export function generateMetadata() {
-  return {
-    title: 'LiveWave · Real-time uptime monitoring',
-  }
+export const metadata: Metadata = {
+  title: 'Real-time uptime monitoring',
+  alternates: { canonical: '/' },
 }

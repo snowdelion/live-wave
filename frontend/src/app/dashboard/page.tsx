@@ -1,9 +1,10 @@
+import type { Metadata } from 'next'
+
 import { DashboardPage } from '@/pages-flat/dashboard'
 
 export default DashboardPage
 
-export function generateMetadata() {
-  return {
-    title: 'LiveWave · Dashboard',
-  }
+export const metadata: Metadata = {
+  title: 'Dashboard',
+  alternates: { canonical: '/dashboard' },
 }
