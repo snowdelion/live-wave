@@ -37,9 +37,7 @@ const nextConfig: NextConfig = {
               "frame-ancestors 'none'",
             ].join('; '),
           },
-          ...(isProd
-            ? [{ key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' }]
-            : []),
+          ...(isProd ? [{ key: 'Strict-Transport-Security', value: 'max-age=31536000' }] : []),
         ],
       },
     ]
