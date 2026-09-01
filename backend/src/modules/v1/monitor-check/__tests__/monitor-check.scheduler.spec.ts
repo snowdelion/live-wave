@@ -162,7 +162,7 @@ describe('MonitorCheckScheduler', () => {
       })
     })
 
-    it('should handle checkSingleMonitor errors, log, increment failure metric, but still update monitor', async () => {
+    it('should handle checkSingleMonitor errors, log, increment failure metric, and reschedule in 60s', async () => {
       const monitor = {
         id: '1',
         type: MonitorType.HTTP,
@@ -171,6 +171,7 @@ describe('MonitorCheckScheduler', () => {
       } as any
       vi.spyOn(scheduler as any, 'checkSingleMonitor').mockRejectedValue(new Error('Check failed'))
 
+      const before = Date.now()
       await (scheduler as any).process(monitor)
 
       expect(mockLogger.error).toHaveBeenCalledWith('Failed to check monitor', {
@@ -178,12 +179,15 @@ describe('MonitorCheckScheduler', () => {
         error: 'Check failed',
       })
       expect(mockMetricsService.incrementMonitorChecksRequest).toHaveBeenCalledWith('failure')
-      expect(mockPrisma.monitor.updateMany).toHaveBeenCalledWith({
-        where: { id: '1' },
-        data: expect.objectContaining({
-          lastStatus: StatusEnum.down,
-        }),
+      expect(mockPrisma.monitor.updateMany).toHaveBeenCalledTimes(1)
+      const updateCall = mockPrisma.monitor.updateMany.mock.calls[0][0]
+      expect(updateCall.where).toEqual({ id: '1' })
+      expect(updateCall.data).toEqual({
+        nextCheckAt: expect.any(Date),
       })
+      const nextCheckAt = (updateCall.data.nextCheckAt as Date).getTime()
+      expect(nextCheckAt).toBeGreaterThan(before + 59_000)
+      expect(nextCheckAt).toBeLessThan(before + 62_000)
     })
   })
 
@@ -199,36 +203,36 @@ describe('MonitorCheckScheduler', () => {
       httpMonitor: { url: 'https://example.com' },
     } as any
 
-    it('should return down and log error for unknown monitor type', async () => {
+    it('should return nothing and log error for unknown monitor type', async () => {
       const unknownMonitor = { ...baseMonitor, type: 'UNKNOWN' }
 
       const result = await (scheduler as any).checkSingleMonitor(unknownMonitor)
 
-      expect(result).toBe(StatusEnum.down)
+      expect(result).toBe(undefined)
       expect(mockLogger.error).toHaveBeenCalledWith('Unknown monitor type', {
         monitorType: 'UNKNOWN',
         monitorId: '1',
       })
     })
 
-    it('should return down and log warn if target host cannot be determined', async () => {
+    it('should return nothing and log warn if target host cannot be determined', async () => {
       vi.mocked(monitorCheckUtils.getTargetHost).mockReturnValue(null)
 
       const result = await (scheduler as any).checkSingleMonitor(baseMonitor)
 
-      expect(result).toBe(StatusEnum.down)
+      expect(result).toBe(undefined)
       expect(mockLogger.warn).toHaveBeenCalledWith("Can't determine target host", {
         monitorId: '1',
       })
     })
 
-    it('should return down if rate limited', async () => {
+    it('should return nothing if rate limited', async () => {
       vi.mocked(monitorCheckUtils.getTargetHost).mockReturnValue('example.com')
       mockRateLimitService.domain.mockResolvedValue(true)
 
       const result = await (scheduler as any).checkSingleMonitor(baseMonitor)
 
-      expect(result).toBe(StatusEnum.down)
+      expect(result).toBe(undefined)
       expect(mockLogger.debug).toHaveBeenCalledWith('Rate limit exceeded, skipping', {
         domain: 'example.com',
         monitorId: '1',
