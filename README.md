@@ -24,6 +24,7 @@ It continuously checks uptime and performance, sends alerts via Telegram, and vi
 - [Architecture](#architecture)
 - [Stack](#stack)
 - [Features](#features)
+- [Security and SEO](#security-and-seo)
 - [Quick Start](#quick-start)
 - [LiveWave Structure](#livewave-structure)
 
@@ -52,8 +53,6 @@ graph LR
 | **Observability**  | Grafana, Loki, Prometheus                                                                             |
 | **Infrastructure** | Docker Compose, pnpm workspaces                                                                       |
 
----
-
 ## Features:
 
 - **Real‑time checks** - monitor servers, APIs, websites with configurable intervals (5‑60 min)
@@ -61,15 +60,36 @@ graph LR
 - **Secure authentication** - JWT with refresh/access tokens stored in `httpOnly` cookies + Redis validation
 - **Optimistic UI** - instant feedback after `POST`/`PATCH`/`DELETE` for better UX
 
----
+## Security and SEO
+
+LiveWave is built with a strong security posture and modern SEO best
+practices.
+
+### Security
+
+- **Security headers** via Next.js `headers()` config: `Content-Security-Policy`,
+  `Referrer-Policy`, `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`
+- **Content Security Policy (CSP)** with Telegram OAuth support
+- **Strict-Transport-Security (HSTS)** with 1-year `max-age`
+- **JWT Authentication** with `httpOnly` cookies, refresh/access token rotation
+- **Middleware-based Route Protection:** guarded pages redirect to `/auth`
+
+### SEO and Discoverability
+
+- **Metadata API**: title templates, Open Graph, Twitter Cards, viewport config
+- **JSON-LD structured data** (`WebSite` type) for rich results
+- **`robots.txt`** allows `/` and `/auth`, disallows `/dashboard/` and `/api/`
+- **`sitemap.xml`** lists all public pages
+- **`llms.txt`:** machine-readable site summary following the
+  [llmstxt.org](https://llmstxt.org/) spec for AI agents
+- **Lighthouse scores**: Performance **~99**, SEO **100**, Accessibility **~95**,
+  Best Practices **~96**, Agentic Browsing **3/3**
 
 ## Requirements:
 
 - **Node.js** >= 22
 - **pnpm** >= 11
 - **Docker** and **Docker Compose** (for local infrastructure)
-
----
 
 ## Quick Start:
 
@@ -105,8 +125,6 @@ Once started, the services will be available at:
 - Grafana: `http://localhost:3001`
 - Prometheus: `http://localhost:9090`
 - Loki: `http://localhost:3100`
-
----
 
 ## Available root scripts:
 
@@ -148,8 +166,6 @@ pnpm docker:restart   # Restart docker containers
 ```
 
 </details>
-
----
 
 ## LiveWave Structure:
 

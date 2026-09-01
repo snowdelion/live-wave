@@ -5,12 +5,13 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
 
-The type-safe frontend application powering **LiveWave**. Built with `Next.js`, it provides a responsive, type-safe dashboard for real-time infrastructure monitoring.
+The type-safe frontend application powering **LiveWave**. Built with **Next.js**, it provides a responsive, type-safe dashboard for real-time infrastructure monitoring.
 
 ## Table of Contents
 
 - [Stack](#stack)
 - [Features](#features)
+- [Security, SEO and Metadata](#security-seo-and-metadata)
 - [Quick Start](#quick-start)
 - [Testing and Quality Assurance](#testing-and-quality-assurance)
 - [Structure](#structure)
@@ -38,6 +39,45 @@ The type-safe frontend application powering **LiveWave**. Built with `Next.js`, 
 - **Centralized State**: Zustand store in the `shared` layer for access token management, enabling reuse across React components and pure TypeScript utilities
 - **Error Handling**: `AppError` class (extends native `Error`) standardizes error payloads with `code` and `message` for consistent UI feedback
 - **Developer Experience (DX)**: comprehensive Vitest + React Testing Library coverage, strict ESLint/Prettier rules, and absolute import paths
+
+## Security, SEO and Metadata
+
+All metadata, security headers and discoverability files are
+centralized in `src/shared/config/` and Next.js Metadata API for easy
+maintenance.
+
+### Configuration files
+
+| File                            | Purpose                                                         |
+| ------------------------------- | --------------------------------------------------------------- |
+| `src/shared/config/metadata.ts` | `METADATA` (title template, Open Graph, Twitter) and `VIEWPORT` |
+| `src/shared/config/json-ld.ts`  | `JSON_LD` structured data (`WebSite` type)                      |
+| `src/shared/config/fonts.ts`    | `fontVariables` for `next/font`                                 |
+| `src/app/robots.ts`             | generates `/robots.txt` (allow `/`, disallow `/dashboard/`)     |
+| `src/app/sitemap.ts`            | generates `/sitemap.xml`                                        |
+| `public/llms.txt`               | machine-readable site summary for AI agents                     |
+| `public/dashboard-preview.jpg`  | `1200x630` image used as Open Graph and Twitter card            |
+
+### Middleware and route protection
+
+`src/middleware.ts` declaratively protects private routes:
+
+- Redirects unauthenticated users to `/auth` (no refresh token cookie)
+- Redirects authenticated users from `/auth` back to `/dashboard`
+- Bypasses auth checks for static assets, `robots.txt`, `sitemap.xml`,
+  `llms.txt`, images and API routes via `config.matcher`
+
+### Security headers
+
+Configured via `headers()` in `next.config.ts`:
+
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Content-Security-Policy` (enforcing in production, report-only in development) with
+  Telegram OAuth support
+- `Strict-Transport-Security: max-age=31536000; includeSubDomains` in
+  production only
 
 ## Quick Start
 
