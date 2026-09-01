@@ -43,16 +43,12 @@ To prevent unauthorized access to backend metrics, Prometheus authenticates with
 
 2. Generate a secure random string and paste it into the token file:
 
-- Windows:
-
 ```bash
-`([guid]::NewGuid().ToString() + [guid]::NewGuid().ToString()).Replace("-","").Substring(0,64)`
-```
+# Windows:
+([guid]::NewGuid().ToString() + [guid]::NewGuid().ToString()).Replace("-","").Substring(0,64)
 
-- Linux/macOS:
-
-```bash
-`openssl rand -hex 32`
+# Linux/macOS:
+openssl rand -hex 32
 ```
 
 3. Ensure the exact same token is set in your backend `.env.local` as `METRICS_BEARER_TOKEN`
@@ -84,7 +80,7 @@ Grafana provisioning and dashboards are automatically loaded when Grafana starts
 ## Links
 
 - Grafana: http://localhost:3001
-  - Default credentials: admin / admin (or as defined in .env.local)
+  - Default credentials: admin / admin (or as defined in `.env.local`)
 - Prometheus UI: http://localhost:9090
 - Loki API: http://localhost:3100
 
