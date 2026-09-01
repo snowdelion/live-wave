@@ -87,17 +87,16 @@ export class MonitorCheckScheduler {
         icmpMonitor: true,
       },
       take: 30,
-      orderBy: { nextCheckAt: 'asc' },
+      orderBy: { nextCheckAt: { sort: 'asc', nulls: 'first' } },
     })
   }
 
   private async process(monitor: StrategyContext) {
     const now = new Date()
     now.setMilliseconds(0)
-    let lastStatus: StatusEnum = StatusEnum.down
+    let lastStatus: StatusEnum | null = null
     try {
-      lastStatus = await this.checkSingleMonitor(monitor)
-
+      lastStatus = (await this.checkSingleMonitor(monitor)) ?? null
       this.logger.debug('Monitor checked successfully', { monitorId: monitor.id })
     } catch (e) {
       this.logger.error('Failed to check monitor', {
@@ -105,17 +104,24 @@ export class MonitorCheckScheduler {
         error: getErrorMessage(e),
       })
       this.metricsService.incrementMonitorChecksRequest('failure')
-    } finally {
-      const nextCheckAt = new Date(now.getTime() + monitor.checkInterval * 60 * 1000)
+    }
+
+    if (lastStatus === null) {
       await this.prisma.monitor.updateMany({
         where: { id: monitor.id },
-        data: {
-          lastCheckedAt: now,
-          nextCheckAt,
-          lastStatus,
-        },
+        data: { nextCheckAt: new Date(now.getTime() + 60_000) },
       })
+      return
     }
+
+    await this.prisma.monitor.updateMany({
+      where: { id: monitor.id },
+      data: {
+        lastCheckedAt: now,
+        lastStatus,
+        nextCheckAt: new Date(now.getTime() + monitor.checkInterval * 60_000),
+      },
+    })
   }
 
   private async checkSingleMonitor(monitor: StrategyContext) {
@@ -127,13 +133,13 @@ export class MonitorCheckScheduler {
         monitorType: monitor.type,
         monitorId,
       })
-      return StatusEnum.down
+      return
     }
 
     const targetHost = getTargetHost(monitor)
     if (!targetHost) {
       this.logger.warn("Can't determine target host", { monitorId })
-      return StatusEnum.down
+      return
     }
 
     const isRateLimited = await this.rateLimitService.domain({
@@ -146,7 +152,7 @@ export class MonitorCheckScheduler {
         domain: targetHost,
         monitorId,
       })
-      return StatusEnum.down
+      return
     }
 
     const strategy = this.strategies[monitor.type]
