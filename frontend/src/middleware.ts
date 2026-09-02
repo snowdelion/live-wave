@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
-  const publicPaths = ['/', '/auth']
+  const publicPaths = ['/', '/auth', '/api/auth']
   const isPublic = publicPaths.some(p => path === p || path.startsWith(`${p}/`))
   const refreshToken = request.cookies.get('refreshToken')?.value
 
@@ -16,7 +16,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|llms.txt|.*\\.(?:png|jpe?g|svg|webp|ico)$).*)',
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpe?g|svg|webp|ico)$).*)'],
 }
